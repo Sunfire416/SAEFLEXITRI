@@ -1,0 +1,284 @@
+/* Variables globales */
+:root {
+    --primary: #2563eb;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+  }
+  
+  /* Container principal */
+  .kafka-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+  
+  /* En-têtes */
+  .kafka-container h1 {
+    color: var(--gray-900);
+    font-size: 2.25rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.025em;
+  }
+  
+  .kafka-container h2 {
+    color: var(--gray-600);
+    font-size: 1.5rem;
+    font-weight: 500;
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+  
+  /* Carte de notification */
+  .notification-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+    overflow: hidden;
+  }
+  
+  .notification-card:hover {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    transform: translateY(-2px);
+  }
+  
+  .notification-card.valid {
+    border-top: 4px solid var(--success);
+  }
+  
+  .notification-card.invalid {
+    border-top: 4px solid var(--error);
+  }
+  
+  .card-content {
+    padding: 1.5rem;
+  }
+  
+  /* Message de la notification */
+  .message {
+    background: var(--gray-50);
+    padding: 1.25rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    line-height: 1.6;
+  }
+  
+  .message strong {
+    color: var(--gray-700);
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+  
+  /* Liste des tâches */
+  .tasks-list {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin: 2rem 0;
+    padding: 0 1rem;
+  }
+  
+  /* Style des tâches */
+  .task-item {
+    flex: 1;
+    min-width: 180px;
+    padding: 1.25rem;
+    border-radius: 12px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    background: white;
+    transition: all 0.2s ease;
+  }
+  
+  .task-item.completed {
+    background: #ecfdf5;
+    border: 2px solid var(--success);
+  }
+  
+  .task-item.incomplete {
+    background: #fef2f2;
+    border: 2px solid var(--error);
+  }
+  
+  .task-item.pending {
+    background: var(--gray-50);
+    border: 2px solid var(--gray-200);
+  }
+  
+  /* Numéro de tâche */
+  .task-number {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: white;
+    background: var(--gray-500);
+  }
+  
+  .task-item.completed .task-number {
+    background: var(--success);
+  }
+  
+  .task-item.incomplete .task-number {
+    background: var(--error);
+  }
+  
+  /* Statut de la tâche */
+  .task-status {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px;
+    height: 24px;
+    background: var(--success);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Flèches entre les tâches */
+  .task-arrow {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 2px;
+    background: var(--gray-300);
+    position: relative;
+  }
+  
+  .task-arrow::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    border-top: 2px solid var(--gray-300);
+    border-right: 2px solid var(--gray-300);
+    transform: translateY(-50%) rotate(45deg);
+  }
+  
+  /* Statut de validation */
+  .validation-status {
+    text-align: center;
+    padding: 1rem;
+    border-radius: 8px;
+    font-weight: 500;
+    background: var(--gray-50);
+    color: var(--gray-700);
+    margin-top: 1.5rem;
+  }
+  
+  /* État de chargement */
+  .loading {
+    text-align: center;
+    padding: 2rem;
+    color: var(--gray-600);
+    font-size: 1.125rem;
+  }
+  
+  /* Message pas de notification */
+  .no-notification {
+    text-align: center;
+    padding: 3rem;
+    background: var(--gray-50);
+    border-radius: 12px;
+    color: var(--gray-600);
+    font-size: 1.125rem;
+  }
+  
+  /* Responsive design */
+  @media (max-width: 768px) {
+    .tasks-list {
+      flex-direction: column;
+      padding: 0;
+    }
+  
+    .task-item {
+      width: 100%;
+      min-width: auto;
+    }
+  
+    .task-arrow {
+      width: 2px;
+      height: 20px;
+      margin: 0.5rem 0;
+    }
+  
+    .task-arrow::after {
+      right: -3px;
+      top: auto;
+      bottom: 0;
+      transform: translateX(-50%) rotate(135deg);
+    }
+  
+    .message {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  /* Animations */
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .notification-card {
+    animation: slideIn 0.3s ease-out;
+  }
+  
+  /* Style des boutons et interactions */
+  .task-item {
+    cursor: default;
+    user-select: none;
+  }
+  
+  .task-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Style du texte */
+  .task-item {
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-align: center;
+    line-height: 1.4;
+  }

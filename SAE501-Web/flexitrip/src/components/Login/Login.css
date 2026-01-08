@@ -1,0 +1,314 @@
+/* src/pages/Login.css */
+
+.login-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: #f0f2f5; /* Subtle light background */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+}
+
+.login-box {
+    background-color: #ffffff;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1); /* Softer shadow for depth */
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.login-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.15);
+}
+
+.login-box h2 {
+    margin-bottom: 25px;
+    font-size: 15px;
+    color: #333; /* Darker font color */
+    font-weight: 600;
+}
+
+.input-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.input-group label {
+    font-size: 14px;
+    color: #555; /* Medium gray label color */
+    margin-bottom: 5px;
+    display: block;
+}
+
+.input-group input {
+    width: 93%;
+    padding: 12px;
+    border-radius: 20px;
+    border: 1px solid #ddd; /* Light gray border */
+    font-size: 15px;
+    background-color: #f9f9f9;
+    transition: border-color 0.3s ease;
+}
+
+.input-group input:focus {
+    border-color: #007bff; /* Blue border on focus */
+    background-color: #ffffff;
+    outline: none;
+    transform: translateY(-2px);
+}
+
+.login-button {
+    width: 100%;
+    padding: 12px;
+    background-color: #007bff; /* Blue button */
+    color: #ffffff;
+    border: none;
+    border-radius: 20px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.login-button:hover {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
+.login-footer {
+    margin-top: 20px;
+    font-size: 14px;
+    color: #555;
+}
+
+.login-footer a {
+    color: #007bff;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.login-footer a:hover {
+    color: #0056b3;
+}
+
+.google-login-button {
+    width: 100%;
+    margin-top: 20px;
+    background-color: #4285f4;
+    color: white;
+    border: none;
+    padding: 10px 0;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+/* Styles globaux */
+.login-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: #f0f2f5;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Conteneur de la boîte de connexion */
+.login-box {
+    background-color: #ffffff;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.login-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.15);
+}
+
+.login-box h2 {
+    margin-bottom: 25px;
+    font-size: 24px;
+    color: #333;
+    font-weight: 600;
+}
+
+/* Boutons de connexion sociale */
+.social-login {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.social-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 20px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.social-button .icon {
+    margin-right: 10px;
+    width: 20px;
+    height: 20px;
+    margin-top: 4px;
+}
+
+.icon-login {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px; /* Espace à droite */
+    margin-top: 2px; /* Descend l'icône légèrement */
+    display: inline-block; /* S'assure que le margin-top fonctionne */
+    vertical-align: middle; /* Centre avec le texte environnant */
+}
+
+
+.google {
+    background-color: #db4437;
+    color: #ffffff;
+}
+
+.google:hover {
+    background-color: #c23321;
+}
+
+
+.facebook {
+    background-color: #3b5998;
+    color: #ffffff;
+}
+
+.facebook:hover {
+    background-color: #2d4373;
+}
+
+/* Style du formulaire */
+.input-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.input-group label {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.input-group input {
+    width: 93%;
+    padding: 12px;
+    border-radius: 20px;
+    border: 1px solid #ddd;
+    font-size: 15px;
+    background-color: #f9f9f9;
+    transition: border-color 0.3s ease;
+}
+
+.input-group input:focus {
+    border-color: #007bff;
+    background-color: #ffffff;
+    outline: none;
+    transform: translateY(-2px);
+}
+
+.input-group {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.input-group .icon {
+  position: absolute;
+  top: 65%;
+  left: 10px;
+  transform: translateY(-50%);
+  color: #2d4373;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 10px 10px 10px 35px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.input-group button {
+    position: absolute;
+    bottom: -10px; /* Descend le bouton en dessous du conteneur */
+    right: 10px; /* Distance par rapport au bord droit */
+    background-color: #666;
+    color: #666;
+    border: 1px solid #333;
+    border-radius: 5px;
+    font-size: medium;
+    padding: 8px 12px;
+    cursor: pointer;
+    transform: none; /* Supprime tout ajustement de décalage inutile */
+}
+
+
+
+.button-login {
+    position: absolute;
+    bottom: -10px; /* Positionne le bouton plus bas */
+    right: 10px; /* Distance par rapport au bord droit */
+    background-color: #666;
+    color: #666;
+    border: 1px solid #333;
+    border-radius: 0px;
+    font-size: medium;
+    padding: 8px 12px;
+    cursor: pointer; 
+}
+
+.image {
+    width: 100%;
+    height: 100%;
+    bottom: -10px;
+
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+    .login-box {
+        padding: 30px 15px;
+    }
+
+    .login-box h2 {
+        font-size: 22px;
+    }
+
+    .input-group input {
+        font-size: 14px;
+    }
+
+    .login-button {
+        font-size: 14px;
+    }
+
+    .social-button {
+        font-size: 14px;
+    }
+}
+

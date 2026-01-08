@@ -1,0 +1,64 @@
+const Facturation = require('./Facturation');
+const Reservations = require('./Reservations');
+const User = require('./User');
+// ==========================================
+// 🆕 POINT 3 - MODÈLES BIOMÉTRIQUES
+// ==========================================
+const EnrollmentBiometric = require('./EnrollmentBiometric');
+const CheckInLog = require('./CheckInLog');
+const BoardingPass = require('./BoardingPass');
+// ==========================================
+const Notification = require('./Notification');
+const Voyage = require('./Voyage');
+const Agent = require('./Agent');
+
+// Associations
+
+// User et Reservations
+Reservations.belongsTo(User, {
+    foreignKey: 'user_id',
+    as: 'user', // Alias pour accéder à l'utilisateur depuis une réservation
+});
+User.hasMany(Reservations, {
+    foreignKey: 'user_id',
+    as: 'reservations', // Alias pour accéder aux réservations depuis un utilisateur
+});
+
+// ==========================================
+// 🆕 POINT 3 - ASSOCIATIONS BOARDING PASS
+// ==========================================
+// BoardingPass et Reservations
+BoardingPass.belongsTo(Reservations, {
+    foreignKey: 'reservation_id',
+    as: 'reservation'
+});
+Reservations.hasOne(BoardingPass, {
+    foreignKey: 'reservation_id',
+    as: 'boarding_pass'
+});
+
+// BoardingPass et User
+BoardingPass.belongsTo(User, {
+    foreignKey: 'user_id',
+    as: 'user'
+});
+User.hasMany(BoardingPass, {
+    foreignKey: 'user_id',
+    as: 'boarding_passes'
+});
+
+module.exports = {
+    Facturation,
+    Agent,
+    Reservations,
+    User,
+    // ==========================================
+    // 🆕 POINT 3 - EXPORTS MODÈLES BIOMÉTRIQUES
+    // ==========================================
+    EnrollmentBiometric,
+    CheckInLog,
+    BoardingPass,
+    // ==========================================
+    Notification,
+    Voyage,
+};

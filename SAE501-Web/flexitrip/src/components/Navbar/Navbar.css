@@ -1,0 +1,976 @@
+/* src/components/Navbar.css */
+
+.navbar {
+    background-color: #ffffff;
+    height: 80px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.navbar.sticky {
+    background-color: #fafafa;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 1200px;
+    padding: 0 20px;
+}
+
+.navbar-logo {
+    display: flex;
+    align-items: center;
+    font-size: 24px;
+    font-weight: 600;
+    text-decoration: none;
+    color: #333;
+    transition: color 0.3s ease;
+}
+
+.navbar-logo:hover {
+    color: #007bff;
+}
+
+.navbar-logo-img {
+    height: 50px;
+    margin-right: 10px;
+}
+
+/* Navigation menu */
+.nav-menu {
+    display: flex;
+    align-items: center;
+    gap: 5em;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.nav-item {
+    position: relative;
+}
+
+.nav-links {
+    color: #4B5563;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95rem;
+    padding: 0.5rem 0;
+    transition: color 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.nav-links:hover {
+    color: #3B82F6;
+    text-decoration: none;
+}
+
+.nav-links::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background-color: #3B82F6;
+    transition: width 0.3s ease;
+}
+
+.nav-links:hover::after {
+    width: 100%;
+}
+
+.nav-buttons {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.btn {
+    border: none;
+    border-radius: 25px;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.3s, box-shadow 0.3s, transform 0.3s;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.btn-signin {
+    background-color: #007bff;
+    color: #333;
+}
+
+.btn-signin:hover {
+    background-color: #d0d0d0;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.btn-register {
+    background-color: #333;
+    color: #fff;
+}
+
+.btn-register:hover {
+    background-color: #555;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Menu Hamburger */
+.menu-icon {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    position: sticky;
+    cursor: pointer;
+    width: 30px;
+    height: 25px;
+    transition: transform 0.3s ease;
+}
+
+.menu-icon .bar1, .menu-icon .bar2, .menu-icon .bar3 {
+    width: 100%;
+    height: 5px;
+    background-color: #333;
+    margin: 4px 0;
+    transition: 0.4s;
+}
+
+.menu-icon.open .bar1 {
+    transform: rotate(-45deg) translate(-5px, 6px);
+}
+
+.menu-icon.open .bar2 {
+    opacity: 0;
+}
+
+.menu-icon.open .bar3 {
+    transform: rotate(45deg) translate(-5px, -6px);
+}
+
+/* Mobile Menu */
+.mobile-menu {
+    display: none;
+    flex-direction: column;
+    align-items: flex-start;
+    background-color: #ffffff;
+    /*background: linear-gradient(180deg, #18283b 0%, #2c3e50 100%);/* Fond sombre */
+    border-radius: 10px 0px 0px 10px;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 97.8vh;
+    width: 256px; /* Ajusté pour correspondre à l'image */
+    box-shadow: -4px 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 999;
+    padding: 10px; /* Padding réduit */
+    margin: 0;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+
+.mobile-menu.active {
+    display: flex;
+    transform: translateX(0);
+    animation: slide-in 0.4s ease-out;
+}
+
+@keyframes slide-in {
+    from {
+        transform: translateX(100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+.mobile-menu-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px 40px;
+    text-align: center;
+}
+
+.mobile-menu-list {
+    list-style: none;
+    padding: 0;
+    width: 100%;
+}
+
+.mobile-menu .nav-item {
+    border-radius: 0 0 0px 0px;
+    margin: 10px 0; /* Marges réduites */
+    border-bottom: 1px solid #e9ecef;
+}
+
+.mobile-menu .nav-links {
+    display: flex;
+    align-items: center;
+    color: #222222; /* Couleur du texte et des icônes en gris clair */
+    text-decoration: none;
+    font-size: 16px; /* Taille du texte ajustée */
+    padding: 12px 20px;
+    width: 100%;
+    text-align: left;
+    transition: background 0.3s, color 0.3s, transform 0.3s;
+}
+
+.mobile-menu .nav-links:hover {
+    background-color: #f0f4f5; /* Légère couleur de survol */
+    color: #222222; /* Texte plus clair au survol */
+    border-radius: 10px 0 0 10px;
+    transform: translateY(-1px);
+}
+
+/* Icônes dans le menu (si vous ajoutez des icônes) */
+.mobile-menu .nav-links .icon {
+    margin-right: 10px;
+    font-size: 18px; /* Taille d'icône ajustée */
+}
+
+.navbar-bottom {
+    margin-top: 10px;
+    text-align: center;
+    width: 100%;
+    font-size: 9px;
+    color: #777;
+    border-top: 1px solid #e0e0e0;
+    padding-top: 15px;
+}
+
+
+/* Profile Section */
+.profile-section {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    background-color: #0000; /* Fond sombre pour la section de profil */
+    width: 80%;
+    max-width: 400%;
+    padding: 20px; /* Ajout de padding pour espacer */
+    border-radius: 5px;
+    margin: 0 auto 10px auto;
+}
+
+/* User Info Section */
+.user-info {
+    position: relative;
+    display: flex;
+    align-items: center; /* Alignement vertical centré */
+    gap: 6px; /* Espacement entre l'image et le texte */
+    cursor: pointer;
+    padding: 8px 10px; /* Ajuste l'espacement interne */
+    margin-top: 19px; /* Descend davantage l'ensemble */
+}
+
+
+.user-info span {
+    font-weight: 500;
+    color: #333;
+    font-size: 14px; /* Taille ajustée pour un meilleur équilibre */
+    line-height: 1.2; /* Assure un alignement fluide avec l'image */
+    white-space: nowrap; /* Empêche le texte de se casser en plusieurs lignes */
+    overflow: hidden;
+    text-overflow: ellipsis; /* Ajoute "..." si le texte dépasse */
+    transform: translateY(-9px); /* Descend le texte pour correspondre à l'image */
+
+}
+
+.user-info span .arrow {
+    font-size: 10px; /* Taille de la flèche */
+    color: #666;
+    margin-left: 5px; /* Ajustement pour espacement avec le texte */
+}
+
+
+.upload-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    color: #fff;
+    border-radius: 10px;
+}
+
+/* Dropdown Menu */
+.user-dropdown {
+    position: absolute;
+    top: 60px; /* Distance du bouton utilisateur */
+    right: 0; /* Alignement à droite */
+    background: #ffffff; /* Fond blanc pur */
+    backdrop-filter: blur(12px); /* Flou pour modernité */
+    border: 1px solid rgba(230, 230, 230, 0.6); /* Bordure subtile */
+    border-radius: 20px; /* Coins arrondis plus prononcés */
+    box-shadow: 
+        0 8px 16px rgba(0, 0, 0, 0.1),
+        0 4px 6px rgba(0, 0, 0, 0.06); /* Ombres plus marquées */
+    width: 360px; /* Largeur légèrement augmentée */
+    padding: 24px; /* Espaces internes généreux */
+    display: flex;
+    flex-direction: column; /* Organisation verticale */
+    gap: 16px; /* Espacement entre les éléments */
+    z-index: 1000;
+    animation: dropdownFadeIn 0.35s ease-out; /* Animation plus fluide */
+    transform-origin: top right; /* Origine de l'animation */
+    overflow: hidden;
+    
+    
+}
+
+.user-dropdown:focus-within {
+    display: flex; /* Affiche le menu */
+}
+
+.profile-pic-user {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%; /* Forme circulaire */
+    object-fit: cover; /* Ajuste l'image sans déformation */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Ajout d'une ombre subtile */
+    transform: translateY(3px); /* Descend encore plus précisément l'image seule */
+    border: 2px solid #eef2ff;
+}
+
+.user-info-menu {
+    font-size: 14px;
+    color: #333; /* Couleur du texte */
+    font-weight: 500;
+    text-align: right; /* Alignement du texte à droite */
+    display: flex;
+    align-items: center;
+    justify-content: flex-end; /* Place le contenu à droite */
+    gap: 10px; /* Espace entre les éléments si nécessaire */
+}
+
+/* Animation d'apparition */
+@keyframes dropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-15px); /* Départ plus petit et légèrement en haut */
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0); /* Taille normale */
+    }
+}
+
+/* Centrage des informations utilisateur avec bordure */
+.user-dropdown .user-info {
+    display: flex;
+    flex-direction: column; /* Organisation verticale */
+    align-items: center; /* Centre horizontalement */
+    justify-content: center; /* Centre verticalement */
+    text-align: center; /* Texte centré */
+    padding: 16px; /* Espacement interne */
+    border: 1px solid rgba(230, 230, 230, 0.8); /* Bordure subtile */
+    border-radius: 12px; /* Coins arrondis */
+    background: #f9fafb; /* Fond légèrement gris */
+    gap: 8px; /* Espacement entre les lignes */
+}
+
+/* Style des informations utilisateur */
+.user-dropdown .user-info span {
+    font-size: 14px;
+    color: #374151; /* Couleur moderne */
+    font-weight: 500;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Animation d'apparition */
+@keyframes dropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-15px); /* Départ plus petit et légèrement en haut */
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0); /* Taille normale */
+    }
+}
+
+/* Liens dans le menu - bleu clair */
+.user-dropdown a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Icône alignée à droite */
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 500;
+    color: #666; /* Bleu clair pour View Profile et Settings */
+    padding: 14px 20px; /* Espacement interne généreux */
+    transition: background 0.3s ease, color 0.3s ease;
+    border-bottom: 1px solid rgba(230, 230, 230, 0.6); /* Séparateurs plus doux */
+    border-radius: 12px; /* Coins arrondis au survol */
+}
+
+.user-dropdown a:hover {
+    background: #eef2ff; /* Fond bleu clair au survol */
+    color: #2563eb; /* Bleu légèrement plus foncé au survol */
+}
+
+/* Bouton "Changer l'image de profil" */
+.user-dropdown .upload-label {
+    font-size: 15px;
+    font-weight: 500;
+    color: #2563eb; /* Texte bleu */
+    cursor: pointer;
+    text-align: center;
+    padding: 14px;
+    background: #eef6ff; /* Fond bleu très clair */
+    border: 1px solid #dbeafe; /* Bordure subtile */
+    border-radius: 12px;
+    transition: background 0.3s ease, color 0.3s ease, border 0.3s ease;
+}
+
+.user-dropdown .upload-label:hover {
+    background: #2563eb; /* Fond bleu au survol */
+    color: #ffffff; /* Texte blanc au survol */
+    border-color: #2563eb; /* Bordure correspondante au survol */
+}
+
+/* Bouton "Logout" - Rouge */
+.user-dropdown .btn-logout {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Icône alignée à droite */
+    font-size: 16px;
+    font-weight: 500;
+    color: #dc2626; /* Rouge vif pour déconnexion */
+    padding: 14px 20px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.3s ease, color 0.3s ease, border 0.3s ease;
+}
+
+.user-dropdown .btn-logout:hover {
+    background: #fee2e2; /* Fond rouge clair au survol */
+    color: #b91c1c; /* Rouge plus foncé au survol */
+    border-color: #fca5a5; /* Bordure subtile au survol */
+}
+
+/* Icônes alignées à droite */
+.user-dropdown .icon-Drop {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+    transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.user-dropdown a:hover .icon-Drop,
+.user-dropdown .btn-logout:hover .icon-Drop {
+    transform: translateX(8px); /* Déplacement fluide vers la droite */
+    color: inherit;
+}
+
+
+
+/* Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Header Section for avatar and name */
+.profile-header {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    justify-content: flex-start;
+    margin-bottom: 15px;
+}
+
+/* Avatar */
+.profile-avatar {
+    width: 50px; /* Taille de l'avatar */
+    height: 50px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-right: 15px; /* Espacement entre avatar et nom */
+}
+
+.profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Profile Name and Role */
+.profile-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.profile-name {
+    color: #222222; /* Texte blanc pour le nom */
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.profile-role {
+    font-size: 12px;
+    color: #222222; /* Texte gris clair pour le rôle */
+    margin-top: 5px;
+}
+
+.profile-links {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.profile-actions {
+    display: flex; /* Met en ligne les éléments */
+    align-items: center; /* Centre verticalement */
+    justify-content: space-between; /* Sépare les blocs */
+    gap: 10px; /* Espacement entre les éléments */
+    max-width: 400px; /* Largeur maximale pour éviter un étalement */
+    margin: 0 auto; /* Centrer horizontalement */
+    flex-direction: column;
+}
+
+/* Profile Description */
+.profile-description {
+    color: #0000;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.profile-pic {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 20px;
+    border: 0px solid #007bff;
+}
+
+.auth-links {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.auth-links a {
+    color: white;
+    background-color: #007bff;
+    padding: 7px 18px;
+    border-radius: 25px;
+    text-decoration: none;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.auth-links a:hover {
+    background-color: #0056b3;
+    transform: scale(1.1);
+}
+
+.auth-links-menu{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 90%;
+    padding: 10px 0;
+}
+
+.user-info-menu {
+    display: flex;
+    flex-direction: column; /* Aligne les éléments verticalement */
+    align-items: center; /* Centre les éléments horizontalement */
+    gap: 1.2rem; /* Espacement ajusté entre les éléments */
+    margin: 0 auto; /* Centre le menu horizontalement */
+    padding: 1.2rem; /* Ajout d'un padding interne */
+    background-color: #ffffff; /* Arrière-plan blanc */
+    border: 1px solid #e5e7eb; /* Bordure subtile */
+    border-radius: 12px; /* Coins arrondis modernes */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Ombre plus marquée */
+    width: 200px; /* Largeur pour un design compact */
+    position: relative; /* Nécessaire pour ajuster la position */
+    left: -20px; /* Déplace légèrement le menu à gauche */
+    transition: all 0.3s ease; /* Animation douce sur l'apparence */
+}
+
+.user-info-menu:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15); /* Ombre plus marquée au survol */
+}
+
+.user-info-menu img {
+    width: 60px; /* Taille de l'image de profil */
+    height: 60px;
+    border-radius: 50%; /* Forme circulaire */
+    object-fit: cover; /* Ajuste l'image sans déformation */
+    border: 3px solid #007bff; /* Bordure bleue autour de l'image */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Ajout d'une ombre subtile */
+    transition: transform 0.3s ease; /* Animation douce pour l'image */
+    margin-bottom: 0.5rem; /* Ajout d'espace sous l'image */
+}
+
+.user-info-menu a {
+    text-decoration: none; /* Supprime le soulignement */
+    font-size: 1rem; /* Taille de texte légèrement augmentée */
+    font-weight: 500; /* Texte semi-gras */
+    color: #4B5563; /* Couleur gris foncé pour le texte */
+    padding: 0.3rem 0; /* Espacement interne réduit */
+    display: inline-block;
+    width: 100%; /* Occupe toute la largeur */
+    text-align: center; /* Centre le texte */
+    position: relative; /* Position nécessaire pour l'indicateur */
+    margin-top: -5px; /* Monte légèrement les liens */
+    transition: color 0.3s ease; /* Animation fluide */
+}
+
+.user-info-menu a::after {
+    content: ''; /* Crée la ligne d'indicateur */
+    position: absolute;
+    bottom: -2px; /* Positionné juste sous le texte */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0%; /* Commence invisible */
+    height: 2px; /* Hauteur de la ligne */
+    background-color: #007bff; /* Couleur bleue */
+    transition: width 0.3s ease; /* Animation fluide */
+}
+
+.user-info-menu a:hover::after {
+    width: 100%; /* La ligne s'étend sur toute la largeur au survol */
+}
+
+.user-info-menu a:hover {
+    color: #007bff; /* Change la couleur du texte au survol */
+}
+
+
+.user-info-menu button {
+    background-color: #3b82f6; /* Bleu moderne */
+    color: #ffffff; /* Texte blanc */
+    border: none;
+    border-radius: 25px; /* Coins très arrondis pour un look moderne */
+    padding: 0.5rem 1.2rem; /* Espacement interne */
+    font-size: 0.95rem; /* Taille cohérente avec `.nav-links` */
+    font-weight: 500; /* Texte semi-gras */
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease; /* Animation fluide */
+    width: 100%; /* Largeur alignée avec le menu */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Ombre subtile */
+}
+
+.user-info-menu button:hover {
+    background-color: #2563eb; /* Bleu plus foncé au survol */
+    transform: translateY(-2px); /* Animation de mouvement au survol */
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15); /* Ombre renforcée */
+}
+
+
+/* Container for Sign In/Sign Out sections */
+.signout-signin-container {
+    display: flex;
+    justify-content: space-between; /* Aligne les éléments sur la gauche et la droite */
+    width: 100%; /* Assurez-vous que le conteneur occupe toute la largeur */
+    padding: 10px 0;
+}
+
+/* Signout Section */
+.signout-section {
+    width: 45%; /* Prend 45% de la largeur pour laisser de l'espace */
+    text-align: center;
+    padding: 10px 0;
+    background-color: #f0f4f5;
+    border-radius: 25px;
+}
+
+/* Signin Section */
+.signin-section {
+    width: 45%; /* Prend 45% de la largeur pour laisser de l'espace */
+    text-align: center;
+    padding: 10px 0;
+    background-color: #f0f4f5;
+    border-radius: 25px;
+}
+
+/* Overlay pour fond semi-transparent lors de l’ouverture du menu */
+.mobile-menu-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 100vw;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 998;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.mobile-menu-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+/* Mobile menu logo 
+.mobile-menu-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px 0;
+    text-align: center;
+}
+*/
+.mobile-menu-logo img {
+    height: 50px;
+    width: auto;
+}
+
+/* Translations */
+.language-bar {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    background-color: #fff; /* Couleur de fond noire */
+    color: #fff; /* Texte en blanc */
+    padding: 5px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    border-bottom: 2px solid #007bff; /* Ligne bleue */
+}
+
+.language-bar a {
+    text-decoration: none;
+    color: #fff;
+    margin: 0 10px;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.language-bar a:hover {
+    color: #007bff; /* Couleur bleue au survol */
+}
+
+.language-bar .active {
+    font-weight: bold;
+    color: #007bff; /* Couleur bleue pour la langue active */
+}
+
+
+/* Responsives Icons */
+.icon-settings {
+    width: 20px; /* Largeur de l'icône */
+    height: 20px; /* Hauteur de l'icône */
+    fill: currentColor; /* Utilise la couleur du texte */
+    margin-right: 5px; /* Espacement avec le texte ou autres éléments */
+    justify-content: center;
+}
+
+.icon-user {
+    width: 20px; /* Largeur de l'icône */
+    height: 20px; /* Hauteur de l'icône */
+    fill: currentColor; /* Utilise la couleur du texte */
+    margin-right: 5px; /* Espacement avec le texte ou autres éléments */
+    justify-content: center;
+}
+
+.btn-logout-icon {
+    display: flex; /* Permet de centrer le contenu */
+    align-items: center;
+    justify-content: center;
+    width: 120px; /* Largeur du bouton */
+    height: 40px; /* Hauteur du bouton */
+    background-color: #007bff; /* Couleur bleue */
+    color: #fff; /* Couleur du texte ou icône */
+    border: none; /* Supprime la bordure */
+    border-radius: 20px; /* Rend le bouton arrondi */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Ombre subtile */
+    cursor: pointer; /* Pointeur en forme de main */
+    transition: background-color 0.3s, box-shadow 0.3s; /* Transition pour un effet au survol */
+}
+
+.btn-logout:hover {
+    background-color: #0056b3; /* Couleur plus sombre au survol */
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15); /* Augmente l'ombre au survol */
+}
+
+.icon-logout {
+    width: 20px; /* Largeur de l'icône */
+    height: 20px; /* Hauteur de l'icône */
+    fill: #fff; /* Couleur de l'icône (blanc) */
+}
+
+.icon-login {
+    width: 20px; /* Largeur de l'icône */
+    height: 20px; /* Hauteur de l'icône */
+    fill: currentColor; /* Utilise la couleur du texte */
+    margin-right: 5px; /* Espacement avec le texte ou autres éléments */
+    justify-content: center; 
+}
+
+.nav-icon {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+    margin-right: 5px;
+    justify-content: center;
+}
+
+.icon {
+    width: 20px;
+    height: 20px;
+    fill: currentColor; /* Couleur de l'icône */
+    margin-right: -5px;
+    display: inline-flex; /* Utilisation d'un flex pour l'alignement */
+    align-items: center; /* Alignement vertical centré */
+    justify-content: center; /* Alignement horizontal centré */
+    vertical-align: middle; /* Évite que l'icône descende trop bas par rapport au texte */
+    transition: transform 0.3s ease, fill 0.3s ease;
+    transform: translateY(-10px); /* Position initiale */
+}
+
+.icon:hover {
+    fill: #007bff; /* Change la couleur en bleu */
+    animation: hoverEffect 0.3s ease forwards; 
+    transform: translateY(-5px); /* Monte davantage au survol */
+}
+
+/* Facultatif : définition de l'animation hoverEffect */
+@keyframes hoverEffect {
+    0% {
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(-5px);
+    }
+}
+
+
+.icon-angle {
+    width: 20px;
+    height: 20px;
+    fill: currentColor; /* Couleur de l'icône */
+    transition: transform 0.3s ease, fill 0.3s ease; /* Animation fluide */
+}
+
+.icon-angle:hover {
+    transform: translateX(5px); /* L'icône se déplace légèrement vers la droite */
+    fill: #007bff; /* Change la couleur de l'icône en bleu */
+}
+
+/* Animation au survol */
+@keyframes hoverEffect {
+    0% {
+        transform: translateY(0);
+        fill: currentColor;
+    }
+    100% {
+        transform: translateY(-5px);
+        fill: #007bff;
+    }
+}
+
+/* Navbar.css */
+
+/* Bouton de bascule du mode sombre */
+.dark-mode-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dark-mode-icon {
+    width: 24px;
+    height: 24px;
+    fill: #333; /* Couleur par défaut pour le mode clair */
+}
+
+/* Styles pour le mode sombre */
+.navbar.dark-mode {
+    background-color: #1e1e1e;
+    color: #ffffff;
+}
+
+.navbar.dark-mode .navbar-logo-img {
+    filter: invert(1); /* Inverser la couleur du logo pour le mode sombre */
+}
+
+.navbar.dark-mode .nav-links {
+    color: #ffffff;
+}
+
+.navbar.dark-mode .user-info {
+    color: #ffffff;
+}
+
+.navbar.dark-mode .user-dropdown {
+    background-color: #2a2a2a;
+    color: #ffffff;
+}
+
+.navbar.dark-mode .btn-logout {
+    color: #ffffff;
+}
+
+.navbar.dark-mode .dark-mode-icon {
+    fill: #ffffff; /* Couleur pour le mode sombre */
+}
+
+
+/* Responsive Styles */
+@media screen and (max-width: 768px) {
+    .nav-menu, .nav-buttons {
+        display: none;
+    }
+
+    .navbar-container {
+        justify-content: space-between;
+    }
+
+    .menu-icon {
+        display: flex;
+    }
+
+    .user-info {
+        display: none;
+    }
+
+    .auth-links {
+        display: none;
+    }
+
+    .profile-actions{
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+
+
+
+

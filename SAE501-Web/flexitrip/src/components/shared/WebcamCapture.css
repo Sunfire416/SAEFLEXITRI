@@ -1,0 +1,245 @@
+.webcam-capture {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.webcam-container {
+  position: relative;
+  width: 100%;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 4/3;
+}
+
+.webcam-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.webcam-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #fff;
+  text-align: center;
+  padding: 2rem;
+}
+
+.webcam-placeholder p {
+  font-size: 1.2rem;
+  margin-bottom: 1.5rem;
+}
+
+.btn-start-webcam {
+  background: #1e40af;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-start-webcam:hover {
+  background: #1e3a8a;
+  transform: translateY(-2px);
+}
+
+.countdown-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.countdown-number {
+  font-size: 6rem;
+  font-weight: bold;
+  color: #fff;
+  animation: countdown-pulse 1s ease-in-out;
+}
+
+@keyframes countdown-pulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.countdown-overlay p {
+  color: #fff;
+  font-size: 1.2rem;
+  margin-top: 1rem;
+}
+
+.recording-indicator {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 5;
+}
+
+.recording-dot {
+  width: 12px;
+  height: 12px;
+  background: #ef4444;
+  border-radius: 50%;
+  animation: recording-blink 1s infinite;
+}
+
+@keyframes recording-blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.captured-preview {
+  width: 100%;
+  height: 100%;
+}
+
+.captured-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.webcam-error {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.webcam-controls {
+  display: flex;
+  gap: 12px;
+  margin-top: 1.5rem;
+  justify-content: center;
+}
+
+.btn-capture,
+.btn-stop,
+.btn-retake,
+.btn-confirm {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-capture {
+  background: #10b981;
+  color: white;
+  flex: 1;
+  max-width: 200px;
+}
+
+.btn-capture:hover:not(:disabled) {
+  background: #059669;
+  transform: translateY(-2px);
+}
+
+.btn-video {
+  background: #ef4444;
+}
+
+.btn-video:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.btn-stop {
+  background: #6b7280;
+  color: white;
+}
+
+.btn-stop:hover {
+  background: #4b5563;
+}
+
+.capture-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  justify-content: center;
+}
+
+.btn-retake {
+  background: #f59e0b;
+  color: white;
+  flex: 1;
+  max-width: 150px;
+}
+
+.btn-retake:hover {
+  background: #d97706;
+}
+
+.btn-confirm {
+  background: #10b981;
+  color: white;
+  flex: 1;
+  max-width: 150px;
+}
+
+.btn-confirm:hover:not(:disabled) {
+  background: #059669;
+}
+
+.btn-capture:disabled,
+.btn-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .webcam-container {
+    border-radius: 8px;
+  }
+
+  .webcam-controls {
+    flex-direction: column;
+  }
+
+  .btn-capture,
+  .btn-stop,
+  .btn-retake,
+  .btn-confirm {
+    max-width: 100%;
+  }
+}

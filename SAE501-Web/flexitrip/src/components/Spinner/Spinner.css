@@ -1,0 +1,25 @@
+/* src/components/Spinner/Spinner.css */
+/* Conteneur principal */
+.spinner-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh; /* Prend toute la hauteur de la fenêtre */
+    background-color: white; /* Fond blanc */
+    padding: 20px; /* Espace intérieur */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Ombre légère */
+    border-radius: 10px; /* Coins arrondis */
+}
+
+.spinner-gif {
+    width: 320px; /* Taille agrandie */
+    height: 320px;
+}
+
+.spinner-message {
+    margin-top: 20px;
+    font-size: 1.2rem;
+    color: #333;
+}
+

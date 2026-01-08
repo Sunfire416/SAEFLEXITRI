@@ -1,0 +1,110 @@
+/* ewallet.css */
+
+.ewallet-container {
+  padding: 30px;
+  background-color: #ffffff;
+  border-radius: 15px;
+  width: 90%;
+  max-width: 800px;
+  margin: 50px auto;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.ewallet-title {
+  margin-bottom: 30px;
+  color: #333;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.baggage-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.baggage-form input,
+.baggage-form textarea {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ced4da;
+  width: 100%;
+  max-width: 300px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.baggage-form input:focus,
+.baggage-form textarea:focus {
+  border-color: #007bff;
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.1);
+}
+
+.baggage-form button {
+  padding: 12px 20px;
+  background-color: #007bff;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.baggage-form button:hover {
+  background-color: #0056b3;
+  transform: translateY(-2px);
+}
+
+.preview-image {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.baggage-qr-section {
+  margin-top: 30px;
+}
+
+.baggage-qr-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+}
+
+.baggage-qr-card {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  text-align: center;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.baggage-qr-card:hover {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
+}
+
+.qr-image {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-top: 10px;
+}
+
+/* Responsiveness */
+@media screen and (max-width: 768px) {
+  .baggage-form input,
+  .baggage-form textarea,
+  .baggage-form button {
+    width: 100%;
+    max-width: none;
+  }
+}

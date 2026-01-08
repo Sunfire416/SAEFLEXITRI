@@ -1,0 +1,319 @@
+/* VoyageQRModal.css */
+
+.voyage-qr-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.voyage-qr-modal {
+  background: white;
+  border-radius: 20px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: #f3f4f6;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.modal-close-btn:hover {
+  background: #e5e7eb;
+  transform: rotate(90deg);
+}
+
+.modal-header {
+  padding: 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 20px 20px 0 0;
+}
+
+.modal-header h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.8rem;
+}
+
+.voyage-route-summary {
+  margin: 0;
+  font-size: 1.1rem;
+  opacity: 0.9;
+}
+
+.modal-body {
+  padding: 2rem;
+}
+
+/* Loading */
+.loading-qr {
+  text-align: center;
+  padding: 3rem 2rem;
+}
+
+.loading-qr .spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error */
+.error-qr {
+  text-align: center;
+  padding: 2rem;
+  background: #fee2e2;
+  border-radius: 12px;
+  color: #dc2626;
+}
+
+.error-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 1rem;
+}
+
+/* QR Code Display */
+.qr-code-display {
+  text-align: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+  border-radius: 16px;
+  margin-bottom: 1.5rem;
+}
+
+.qr-code-image {
+  max-width: 300px;
+  width: 100%;
+  height: auto;
+  border: 4px solid white;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+/* Voyage Info */
+.voyage-qr-info {
+  background: #f9fafb;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-weight: 600;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.info-value {
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.info-value.pmr {
+  color: #3b82f6;
+  background: #dbeafe;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+}
+
+/* Actions */
+.qr-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.qr-action-btn {
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  background: white;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.qr-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.qr-action-btn.download {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.qr-action-btn.download:hover {
+  background: #d1fae5;
+}
+
+.qr-action-btn.print {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.qr-action-btn.print:hover {
+  background: #dbeafe;
+}
+
+.qr-action-btn.copy {
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.qr-action-btn.copy:hover {
+  background: #fef3c7;
+}
+
+/* Instructions */
+.qr-instructions {
+  background: #eff6ff;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+}
+
+.qr-instructions h4 {
+  margin: 0 0 1rem;
+  color: #1e40af;
+  font-size: 1rem;
+}
+
+.qr-instructions ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #1f2937;
+}
+
+.qr-instructions li {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.qr-instructions li:last-child {
+  margin-bottom: 0;
+}
+
+/* Metadata */
+.qr-metadata {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+/* Print styles */
+@media print {
+  .voyage-qr-modal-overlay {
+    background: white;
+  }
+
+  .modal-close-btn,
+  .qr-actions,
+  .qr-instructions {
+    display: none;
+  }
+
+  .modal-header {
+    background: white;
+    color: black;
+  }
+
+  .qr-code-display {
+    background: white;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .voyage-qr-modal {
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .modal-header {
+    border-radius: 0;
+  }
+
+  .modal-body {
+    padding: 1.5rem 1rem;
+  }
+
+  .qr-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .qr-code-image {
+    max-width: 250px;
+  }
+}

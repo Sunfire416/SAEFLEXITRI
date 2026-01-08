@@ -1,0 +1,11 @@
+# Ignorer le dossier node_modules
+node_modules/
+
+# Configuration: Fichiers .env (secrets personnels)
+# On ignore tous les fichiers .env sauf le template .env.example
+.env
+.env.local.*
+.env.*
+
+# Mais on garde le template pour que chaque développeur puisse le copier
+!.env.example
