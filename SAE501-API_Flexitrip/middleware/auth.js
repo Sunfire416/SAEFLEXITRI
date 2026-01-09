@@ -1,33 +1,96 @@
 const jwt = require('jsonwebtoken');
+const SupabaseService = require('../services/SupabaseService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret';
+const JWT_SECRET = process.env.JWT_SECRET || 'flexitrip-secret-key-2024';
 
-// Middleware pour vérifier le token
-const authenticateToken = (req, res, next) => {
-    // Allow CORS preflight requests (OPTIONS) to pass through
-    if (req.method === 'OPTIONS') {
-        return next();
-    }
+/**
+ * Middleware d'authentification JWT custom avec Supabase
+ */
+const authenticate = async (req, res, next) => {
+    try {
+        const authHeader = req.headers.authorization;
 
-    // Récupération du token dans les en-têtes de la requête
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-        return res.status(401).json({ error: "Token manquant" }); // Unauthorized
-    }
-
-    // Vérification du token
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
-        if (err) {
-            // En cas d'erreur, retourne une réponse plus descriptive
-            return res.status(403).json({ error: "Token invalide ou expiré" }); // Forbidden
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({
+                success: false,
+                error: 'Token d\'authentification requis'
+            });
         }
-        
-        // Ajoute l'utilisateur décodé dans la requête pour une utilisation future
-        req.user = decoded;
+
+        const token = authHeader.split(' ')[1];
+
+        // Vérifier le JWT
+        let decoded;
+        try {
+            decoded = jwt.verify(token, JWT_SECRET);
+        } catch (jwtError) {
+            return res.status(401).json({
+                success: false,
+                error: 'Token invalide ou expiré'
+            });
+        }
+
+        // Récupérer l'utilisateur depuis Supabase
+        const user = await SupabaseService.getUserById(decoded.userId || decoded.user_id);
+
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                error: 'Utilisateur non trouvé'
+            });
+        }
+
+        // Attacher les infos utilisateur à la requête
+        req.user = user;
+        req.userId = user.user_id;
+        req.userRole = user.role;
+
         next();
-    });
+    } catch (error) {
+        console.error('❌ Erreur authentification:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Erreur d\'authentification'
+        });
+    }
 };
 
-module.exports = authenticateToken;
+/**
+ * Middleware de vérification de rôle
+ */
+const requireRole = (allowedRoles) => {
+    return (req, res, next) => {
+        if (!req.userRole || !allowedRoles.includes(req.userRole)) {
+            return res.status(403).json({
+                success: false,
+                error: 'Accès interdit - Permissions insuffisantes',
+                required_roles: allowedRoles,
+                current_role: req.userRole
+            });
+        }
+        next();
+    };
+};
+
+/**
+ * Raccouci pour PMR et Accompagnant
+ */
+const requirePMR = requireRole(['PMR', 'Accompagnant', 'admin']);
+
+/**
+ * Raccourci pour Agents
+ */
+const requireAgent = requireRole(['Agent', 'admin']);
+
+/**
+ * Raccourci pour Admin
+ */
+const requireAdmin = requireRole(['admin']);
+
+module.exports = {
+    authenticate,
+    requireRole,
+    requirePMR,
+    requireAgent,
+    requireAdmin
+};

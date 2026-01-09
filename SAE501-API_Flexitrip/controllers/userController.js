@@ -1,358 +1,229 @@
-const { User, Voyage } = require('../models');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
-const { Op } = require('sequelize');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret';
+const SupabaseService = require('../services/SupabaseService');
 
 /**
- * ==========================================
- * AUTHENTIFICATION
- * ==========================================
+ * User Controller - Uses Supabase for user operations
  */
+class UserController {
 
-/**
- * Connexion utilisateur
- */
-exports.loginUser = async (req, res) => {
-    const { email, password } = req.body;
-    
-    try {
-        const user = await User.findOne({ where: { email } });
+    /**
+     * Récupérer un utilisateur par ID
+     */
+    async getById(req, res) {
+        try {
+            const { id } = req.params;
 
-        if (!user) {
-            return res.status(404).json({ error: 'Utilisateur non trouvé' });
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(401).json({ error: 'Mot de passe invalide' });
-        }
-
-        const token = jwt.sign({ id: user.user_id }, JWT_SECRET, { expiresIn: '24h' });
-
-        // Sauvegarder en session
-        req.session.user = {
-            id: user.user_id,
-            name: user.name,
-            surname: user.surname,
-            email: user.email,
-            role: user.role
-        };
-
-        // Retourner les données sans le mot de passe
-        const userWithoutPassword = { ...user.toJSON() };
-        delete userWithoutPassword.password;
-
-        res.json({ token, user: userWithoutPassword });
-    } catch (err) {
-        console.error('Erreur lors de la connexion:', err);
-        res.status(500).json({ error: 'Erreur serveur', details: err.message });
-    }
-};
-
-/**
- * Déconnexion utilisateur
- */
-exports.logoutUser = async (req, res) => {
-    try {
-        req.session.destroy((err) => {
-            if (err) {
-                return res.status(500).json({ error: 'Échec de la déconnexion' });
+            // Vérifier les droits
+            if (id !== req.userId && req.userRole !== 'admin' && req.userRole !== 'Agent') {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Accès non autorisé'
+                });
             }
-            res.clearCookie('connect.sid');
-            res.status(200).json({ message: 'Déconnexion réussie' });
-        });
-    } catch (err) {
-        res.status(500).json({ error: 'Erreur serveur' });
-    }
-};
 
-/**
- * ==========================================
- * INSCRIPTION
- * ==========================================
- */
+            const user = await SupabaseService.getUserById(id);
 
-/**
- * Inscription utilisateur (PMR ou Accompagnant)
- */
-exports.insertUser = async (req, res) => {
-    const {
-        name,
-        surname,
-        date_naissance,
-        nationalite,
-        email,
-        phone,
-        address,
-        role,
-        password,
-        type_handicap,
-        besoins_specifiques
-    } = req.body;
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Utilisateur non trouvé'
+                });
+            }
 
-    // Validation des champs obligatoires
-    if (!name || !surname || !email || !phone || !role || !password) {
-        return res.status(400).json({
-            error: 'Les champs suivants sont obligatoires : nom, prénom, email, téléphone, rôle, mot de passe'
-        });
-    }
+            const { password: _, ...userWithoutPassword } = user;
 
-    try {
-        // Hachage du mot de passe
-        const hashedPassword = await bcrypt.hash(password, 10);
+            res.json({
+                success: true,
+                user: userWithoutPassword
+            });
 
-        // Préparation des données
-        const userData = {
-            name,
-            surname,
-            date_naissance: date_naissance || null,
-            nationalite: nationalite || null,
-            email,
-            phone,
-            address: address || null,
-            role,
-            password: hashedPassword,
-            type_handicap: role === 'PMR' ? (type_handicap || 'Aucun') : 'Aucun',
-            besoins_specifiques: role === 'PMR' ? (besoins_specifiques || {}) : {}
-        };
-
-        // Création de l'utilisateur
-        const newUser = await User.create(userData);
-
-        // Retourner sans le mot de passe
-        const userResponse = { ...newUser.toJSON() };
-        delete userResponse.password;
-
-        res.status(201).json({
-            message: 'Compte créé avec succès',
-            user: userResponse
-        });
-
-    } catch (error) {
-        console.error('Erreur lors de l\'inscription:', error);
-
-        if (error.name === 'SequelizeUniqueConstraintError') {
-            return res.status(400).json({ error: 'Cet email est déjà utilisé' });
-        }
-
-        if (error.name === 'SequelizeValidationError') {
-            return res.status(400).json({
-                error: 'Données invalides',
-                details: error.errors.map(e => e.message)
+        } catch (error) {
+            console.error('❌ UserController.getById error:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Erreur lors de la récupération'
             });
         }
-
-        res.status(500).json({ error: 'Erreur lors de la création du compte' });
-    }
-};
-
-/**
- * Inscription agent
- */
-exports.insertAgent = async (req, res) => {
-    const { name, surname, email, phone, address, password } = req.body;
-
-    if (!name || !surname || !email || !phone || !password) {
-        return res.status(400).json({ error: 'Tous les champs obligatoires sont requis' });
     }
 
-    try {
-        const hashedPassword = await bcrypt.hash(password, 10);
+    /**
+     * Mettre à jour un utilisateur
+     */
+    async update(req, res) {
+        try {
+            const { id } = req.params;
 
-        const newAgent = await User.create({
-            name,
-            surname,
-            email,
-            phone,
-            address: address || null,
-            role: 'Agent',
-            password: hashedPassword,
-            type_handicap: 'Aucun',
-            besoins_specifiques: {}
-        });
+            // Vérifier les droits
+            if (id !== req.userId && req.userRole !== 'admin') {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Accès non autorisé'
+                });
+            }
 
-        const agentResponse = { ...newAgent.toJSON() };
-        delete agentResponse.password;
+            const allowedFields = [
+                'name', 'surname', 'phone', 'address',
+                'pmr_profile', 'needs_assistance', 'besoins_specifiques'
+            ];
 
-        res.status(201).json({
-            message: 'Agent créé avec succès',
-            agent: agentResponse
-        });
+            const updates = {};
+            for (const field of allowedFields) {
+                if (req.body[field] !== undefined) {
+                    updates[field] = req.body[field];
+                }
+            }
 
-    } catch (error) {
-        console.error('Erreur lors de la création de l\'agent:', error);
+            const { data, error } = await SupabaseService.client
+                .from('users')
+                .update(updates)
+                .eq('user_id', id)
+                .select()
+                .single();
 
-        if (error.name === 'SequelizeUniqueConstraintError') {
-            return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+            if (error) throw error;
+
+            const { password: _, ...userWithoutPassword } = data;
+
+            res.json({
+                success: true,
+                message: 'Utilisateur mis à jour',
+                user: userWithoutPassword
+            });
+
+        } catch (error) {
+            console.error('❌ UserController.update error:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Erreur lors de la mise à jour'
+            });
         }
-
-        res.status(500).json({ error: 'Erreur lors de la création de l\'agent' });
     }
-};
 
-/**
- * ==========================================
- * GESTION DES UTILISATEURS (CRUD)
- * ==========================================
- */
+    /**
+     * Lister les utilisateurs (admin)
+     */
+    async list(req, res) {
+        try {
+            if (req.userRole !== 'admin') {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Accès réservé aux administrateurs'
+                });
+            }
 
-/**
- * Récupérer tous les utilisateurs
- */
-exports.getAllUsers = async (req, res) => {
-    try {
-        const users = await User.findAll({
-            attributes: { exclude: ['password'] }
-        });
-        res.status(200).json(users);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
+            const { role, limit = 50, offset = 0 } = req.query;
 
-/**
- * Récupérer un utilisateur par ID
- */
-exports.getUserById = async (req, res) => {
-    try {
-        const user = await User.findOne({
-            where: { user_id: req.params.id },
-            attributes: { exclude: ['password'] }
-        });
+            let query = SupabaseService.client
+                .from('users')
+                .select('user_id, name, surname, email, phone, role, solde, needs_assistance, created_at')
+                .order('created_at', { ascending: false })
+                .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
 
-        if (!user) {
-            return res.status(404).json({ error: 'Utilisateur non trouvé' });
+            if (role) {
+                query = query.eq('role', role);
+            }
+
+            const { data, error } = await query;
+
+            if (error) throw error;
+
+            res.json({
+                success: true,
+                count: data.length,
+                users: data
+            });
+
+        } catch (error) {
+            console.error('❌ UserController.list error:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Erreur lors de la récupération'
+            });
         }
-
-        // Ajouter l'âge calculé
-        const userResponse = user.toJSON();
-        userResponse.age = user.getAge();
-
-        res.status(200).json(userResponse);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
     }
-};
 
-/**
- * Mettre à jour un utilisateur
- */
-exports.updateUser = async (req, res) => {
-    try {
-        const userId = req.params.id;
-        const updates = req.body;
+    /**
+     * Récupérer le solde wallet
+     */
+    async getWallet(req, res) {
+        try {
+            const { id } = req.params;
 
-        // Si le mot de passe est présent, le hacher
-        if (updates.password) {
-            updates.password = await bcrypt.hash(updates.password, 10);
+            if (id !== req.userId && req.userRole !== 'admin') {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Accès non autorisé'
+                });
+            }
+
+            const { data, error } = await SupabaseService.client
+                .from('users')
+                .select('solde')
+                .eq('user_id', id)
+                .single();
+
+            if (error) throw error;
+
+            res.json({
+                success: true,
+                wallet: {
+                    balance: parseFloat(data.solde),
+                    currency: 'EUR'
+                }
+            });
+
+        } catch (error) {
+            console.error('❌ UserController.getWallet error:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Erreur lors de la récupération du solde'
+            });
         }
+    }
 
-        // Vérifier que l'utilisateur existe
-        const user = await User.findByPk(userId);
-        if (!user) {
-            return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    /**
+     * Mettre à jour le profil PMR
+     */
+    async updatePmrProfile(req, res) {
+        try {
+            const { id } = req.params;
+
+            if (id !== req.userId && req.userRole !== 'admin') {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Accès non autorisé'
+                });
+            }
+
+            const { pmr_profile, needs_assistance } = req.body;
+            const updates = {};
+
+            if (pmr_profile) updates.pmr_profile = pmr_profile;
+            if (needs_assistance !== undefined) updates.needs_assistance = needs_assistance;
+
+            const { data, error } = await SupabaseService.client
+                .from('users')
+                .update(updates)
+                .eq('user_id', id)
+                .select('pmr_profile, needs_assistance')
+                .single();
+
+            if (error) throw error;
+
+            res.json({
+                success: true,
+                message: 'Profil PMR mis à jour',
+                pmr_profile: data.pmr_profile,
+                needs_assistance: data.needs_assistance
+            });
+
+        } catch (error) {
+            console.error('❌ UserController.updatePmrProfile error:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Erreur lors de la mise à jour'
+            });
         }
-
-        // Mise à jour
-        await user.update(updates);
-
-        // Retourner sans le mot de passe
-        const updatedUser = await User.findByPk(userId, {
-            attributes: { exclude: ['password'] }
-        });
-
-        res.status(200).json({
-            message: 'Profil mis à jour avec succès',
-            user: updatedUser
-        });
-
-    } catch (error) {
-        console.error('Erreur lors de la mise à jour:', error);
-        res.status(500).json({ error: error.message });
     }
-};
+}
 
-/**
- * Supprimer un utilisateur
- */
-exports.deleteUser = async (req, res) => {
-    try {
-        const deleted = await User.destroy({
-            where: { user_id: req.params.id }
-        });
-
-        if (!deleted) {
-            return res.status(404).json({ error: 'Utilisateur non trouvé' });
-        }
-
-        res.status(200).json({ message: 'Utilisateur supprimé avec succès' });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
-
-/**
- * ==========================================
- * FILTRES PAR RÔLE
- * ==========================================
- */
-
-/**
- * Récupérer tous les PMR
- */
-exports.getUserWithPMRRole = async (req, res) => {
-    try {
-        const users = await User.findAll({
-            where: { role: 'PMR' },
-            attributes: { exclude: ['password'] }
-        });
-        res.status(200).json(users);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
-
-/**
- * Récupérer tous les Accompagnants
- */
-exports.getUserWithAccompagnantRole = async (req, res) => {
-    try {
-        const users = await User.findAll({
-            where: { role: 'Accompagnant' },
-            attributes: { exclude: ['password'] }
-        });
-        res.status(200).json(users);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
-
-/**
- * ==========================================
- * VOYAGE
- * ==========================================
- */
-
-/**
- * Récupérer les voyages d'un PMR
- */
-exports.getVoyageWithIdPMR = async (req, res) => {
-    const { idPMR } = req.params;
-    
-    try {
-        const voyage = await Voyage.findOne({ id_pmr: idPMR });
-
-        if (!voyage) {
-            return res.status(404).json({ error: 'Voyage non trouvé pour cet ID PMR' });
-        }
-
-        res.status(200).json(voyage);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({
-            error: `Erreur lors de la récupération du voyage : ${error.message}`
-        });
-    }
-};
+module.exports = new UserController();
