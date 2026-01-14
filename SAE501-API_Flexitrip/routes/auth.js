@@ -11,43 +11,59 @@ const JWT_EXPIRES_IN = '24h';
 /**
  * @swagger
  * /api/auth/login:
- *   post:
- *     summary: Connexion utilisateur
- *     tags: [Auth]
+ * post:
+ * summary: Connexion utilisateur
+ * tags: [Auth]
  */
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
+        // LOG 1: Vérification de la réception des données
+        console.log('📩 Tentative de connexion reçue pour:', email);
+
         if (!email || !password) {
+            console.log('⚠️ Erreur: Email ou mot de passe manquant dans la requête');
             return res.status(400).json({
                 success: false,
                 error: 'Email et mot de passe requis'
             });
         }
 
-        // Rechercher l'utilisateur
+        // Rechercher l'utilisateur dans Supabase
         const { data: user, error } = await SupabaseService.client
             .from('users')
             .select('*')
-            .eq('email', email.toLowerCase())
+            .eq('email', email.toLowerCase().trim())
             .single();
 
+        // LOG 2: Vérification si l'utilisateur existe
         if (error || !user) {
+            console.log('❌ Utilisateur non trouvé en base ou erreur Supabase:', error ? error.message : 'Utilisateur inexistant');
             return res.status(401).json({
                 success: false,
                 error: 'Identifiants invalides'
             });
         }
 
-        // Vérifier le mot de passe
+        console.log('👤 Utilisateur trouvé en base, vérification du mot de passe...');
+
+        // LOG 3: Comparaison du mot de passe
         const validPassword = await bcrypt.compare(password, user.password);
+
         if (!validPassword) {
+            console.log('❌ Mot de passe incorrect pour:', email);
+            // Utile en debug : vérifie si le mot de passe en base ressemble à un hash bcrypt (commence par $2b$)
+            if (!user.password.startsWith('$2b$')) {
+                console.log('⚠️ Alerte: Le mot de passe stocké en base ne semble pas être hashé avec BCrypt !');
+            }
             return res.status(401).json({
                 success: false,
                 error: 'Identifiants invalides'
             });
         }
+
+        console.log('✅ Mot de passe valide. Génération du token...');
 
         // Générer le JWT
         const token = jwt.sign(
@@ -63,6 +79,8 @@ router.post('/login', async (req, res) => {
         // Retourner les infos (sans le mot de passe)
         const { password: _, ...userWithoutPassword } = user;
 
+        console.log('🚀 Login réussi pour:', user.email);
+
         res.json({
             success: true,
             token,
@@ -71,7 +89,7 @@ router.post('/login', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Erreur login:', error);
+        console.error('❌ Erreur critique lors du login:', error);
         res.status(500).json({
             success: false,
             error: 'Erreur lors de la connexion'
@@ -82,9 +100,9 @@ router.post('/login', async (req, res) => {
 /**
  * @swagger
  * /api/auth/register:
- *   post:
- *     summary: Inscription utilisateur
- *     tags: [Auth]
+ * post:
+ * summary: Inscription utilisateur
+ * tags: [Auth]
  */
 router.post('/register', async (req, res) => {
     try {
@@ -99,6 +117,8 @@ router.post('/register', async (req, res) => {
             needs_assistance = false
         } = req.body;
 
+        console.log('📝 Tentative d\'inscription pour:', email);
+
         // Validation
         if (!email || !password || !name || !surname || !phone) {
             return res.status(400).json({
@@ -111,10 +131,11 @@ router.post('/register', async (req, res) => {
         const { data: existingUser } = await SupabaseService.client
             .from('users')
             .select('user_id')
-            .eq('email', email.toLowerCase())
+            .eq('email', email.toLowerCase().trim())
             .single();
 
         if (existingUser) {
+            console.log('⚠️ Inscription refusée: Email déjà utilisé:', email);
             return res.status(409).json({
                 success: false,
                 error: 'Cet email est déjà utilisé'
@@ -127,7 +148,7 @@ router.post('/register', async (req, res) => {
         // Créer l'utilisateur
         const newUser = {
             user_id: uuidv4(),
-            email: email.toLowerCase(),
+            email: email.toLowerCase().trim(),
             password: hashedPassword,
             name,
             surname,
@@ -135,7 +156,7 @@ router.post('/register', async (req, res) => {
             role,
             pmr_profile,
             needs_assistance,
-            solde: 700.00 // Solde initial
+            solde: 700.00
         };
 
         const { data: createdUser, error } = await SupabaseService.client
@@ -145,6 +166,7 @@ router.post('/register', async (req, res) => {
             .single();
 
         if (error) {
+            console.error('❌ Erreur insertion Supabase:', error.message);
             throw error;
         }
 
@@ -158,6 +180,8 @@ router.post('/register', async (req, res) => {
             JWT_SECRET,
             { expiresIn: JWT_EXPIRES_IN }
         );
+
+        console.log('✅ Nouvel utilisateur créé avec succès:', createdUser.email);
 
         const { password: _, ...userWithoutPassword } = createdUser;
 
@@ -180,9 +204,9 @@ router.post('/register', async (req, res) => {
 /**
  * @swagger
  * /api/auth/me:
- *   get:
- *     summary: Profil utilisateur actuel
- *     tags: [Auth]
+ * get:
+ * summary: Profil utilisateur actuel
+ * tags: [Auth]
  */
 router.get('/me', async (req, res) => {
     try {
@@ -226,13 +250,11 @@ router.get('/me', async (req, res) => {
 /**
  * @swagger
  * /api/auth/logout:
- *   post:
- *     summary: Déconnexion
- *     tags: [Auth]
+ * post:
+ * summary: Déconnexion
+ * tags: [Auth]
  */
 router.post('/logout', (req, res) => {
-    // Avec JWT stateless, on ne peut pas vraiment invalider le token côté serveur
-    // Le client doit supprimer le token de son côté
     res.json({
         success: true,
         message: 'Déconnexion réussie'

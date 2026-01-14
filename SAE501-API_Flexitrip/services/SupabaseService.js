@@ -8,10 +8,12 @@ class SupabaseService {
 
     init() {
         const supabaseUrl = process.env.SUPABASE_URL;
-        const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+        // On utilise SERVICE_ROLE_KEY pour bypasser le RLS côté serveur
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
 
         if (!supabaseUrl || !supabaseKey) {
-            throw new Error('❌ SUPABASE_URL et SUPABASE_KEY requis');
+            console.error('❌ Configuration Supabase incomplète');
+            throw new Error('❌ SUPABASE_URL et une clé API sont requis');
         }
 
         this.client = createClient(supabaseUrl, supabaseKey, {
@@ -24,7 +26,9 @@ class SupabaseService {
             }
         });
 
-        console.log('✅ Supabase client initialisé');
+        // Log pour confirmer quelle clé est utilisée
+        const keyType = (supabaseKey === process.env.SUPABASE_SERVICE_ROLE_KEY) ? 'SERVICE_ROLE (Full Access)' : 'ANON (Limited Access)';
+        console.log(`✅ Supabase client initialisé avec le mode: ${keyType}`);
     }
 
     // ==================== USERS ====================
@@ -37,7 +41,7 @@ class SupabaseService {
             .single();
 
         if (error) {
-            console.error('❌ Supabase getUserById error:', error);
+            console.error('❌ Supabase getUserById error:', error.message);
             return null;
         }
         return data;
@@ -51,7 +55,7 @@ class SupabaseService {
             .single();
 
         if (error) {
-            console.error('❌ Supabase createUser error:', error);
+            console.error('❌ Supabase createUser error:', error.message);
             throw error;
         }
         return data;
@@ -66,7 +70,7 @@ class SupabaseService {
             });
 
         if (error) {
-            console.error('❌ Supabase updateUserWallet error:', error);
+            console.error('❌ Supabase updateUserWallet error:', error.message);
             throw error;
         }
         return data;
@@ -82,7 +86,7 @@ class SupabaseService {
             .single();
 
         if (error) {
-            console.error('❌ Supabase createVoyage error:', error);
+            console.error('❌ Supabase createVoyage error:', error.message);
             throw error;
         }
         return data;
@@ -100,7 +104,7 @@ class SupabaseService {
             .single();
 
         if (error) {
-            console.error('❌ Supabase getVoyageById error:', error);
+            console.error('❌ Supabase getVoyageById error:', error.message);
             return null;
         }
         return data;
@@ -127,7 +131,7 @@ class SupabaseService {
         const { data, error } = await query.order('date_debut', { ascending: false });
 
         if (error) {
-            console.error('❌ Supabase getVoyagesByUser error:', error);
+            console.error('❌ Supabase getVoyagesByUser error:', error.message);
             return [];
         }
         return data;
@@ -143,7 +147,7 @@ class SupabaseService {
             .single();
 
         if (error) {
-            console.error('❌ Supabase createReservation error:', error);
+            console.error('❌ Supabase createReservation error:', error.message);
             throw error;
         }
         return data;
@@ -161,7 +165,7 @@ class SupabaseService {
             .single();
 
         if (error) {
-            console.error('❌ Supabase getReservationByNumReza error:', error);
+            console.error('❌ Supabase getReservationByNumReza error:', error.message);
             return null;
         }
         return data;
@@ -176,7 +180,7 @@ class SupabaseService {
             .single();
 
         if (error) {
-            console.error('❌ Supabase updateReservationStatus error:', error);
+            console.error('❌ Supabase updateReservationStatus error:', error.message);
             throw error;
         }
         return data;
@@ -192,7 +196,7 @@ class SupabaseService {
             .single();
 
         if (error) {
-            console.error('❌ Supabase createTransaction error:', error);
+            console.error('❌ Supabase createTransaction error:', error.message);
             throw error;
         }
         return data;
@@ -206,7 +210,7 @@ class SupabaseService {
             .order('created_at', { ascending: false });
 
         if (error) {
-            console.error('❌ Supabase getUserTransactions error:', error);
+            console.error('❌ Supabase getUserTransactions error:', error.message);
             return [];
         }
         return data;
@@ -221,7 +225,7 @@ class SupabaseService {
         });
 
         if (error) {
-            console.error('❌ Supabase executeRawQuery error:', error);
+            console.error('❌ Supabase executeRawQuery error:', error.message);
             throw error;
         }
         return data;

@@ -40,18 +40,49 @@ const bookingRoutes = require('./routes/booking');
 
 const app = express();
 
-// Sécurité
+// ✅ Sécurité
 app.use(helmet());
+
+// ✅ CORS (fix login React localhost:3000 -> API localhost:17777)
+const allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+];
+
+// Si tu veux le piloter via .env (optionnel) :
+// CORS_ORIGIN=http://localhost:3000,http://127.0.0.1:3000
+if (process.env.CORS_ORIGIN) {
+    allowedOrigins.push(
+        ...process.env.CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean)
+    );
+}
+
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: (origin, cb) => {
+        // Autoriser les appels sans "Origin" (curl, postman, serveur à serveur)
+        if (!origin) return cb(null, true);
+
+        if (allowedOrigins.includes(origin)) return cb(null, true);
+
+        return cb(new Error(`CORS blocked for origin: ${origin}`), false);
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true
 }));
 
-// Body parsing
+// ✅ Gérer le preflight (OPTIONS) partout
+app.options('*', cors());
+
+// ✅ Body parsing
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// (optionnel mais utile en debug)
+// app.use((req, res, next) => {
+//   console.log(`${req.method} ${req.originalUrl}`);
+//   next();
+// });
 
 // ==========================================
 // ENDPOINTS DE SANTÉ ET DIAGNOSTIC
@@ -60,7 +91,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.get('/api/health', async (req, res) => {
     try {
         // Test Supabase
-        const { data: supabaseHealth, error: supabaseError } = await SupabaseService.client
+        const { error: supabaseError } = await SupabaseService.client
             .from('users')
             .select('count', { count: 'exact' })
             .limit(1);
@@ -68,7 +99,6 @@ app.get('/api/health', async (req, res) => {
         // Test Neo4j
         const neo4jHealth = await Neo4jService.testConnection();
 
-        // Test connexion générale
         const services = {
             supabase: supabaseError ? 'ERROR' : 'OK',
             neo4j: neo4jHealth ? 'OK' : 'ERROR',
@@ -80,7 +110,7 @@ app.get('/api/health', async (req, res) => {
             timestamp: new Date().toISOString(),
             version: '2.0.0',
             architecture: 'Supabase PostgreSQL + Neo4j',
-            services: services
+            services
         });
 
     } catch (error) {
@@ -102,7 +132,7 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // Authentification
 app.use('/api/auth', authRoutes);
 
-// Recherche de stations (public car utilisé avant connexion)
+// Stations (public)
 app.use('/api/stations', stationRoutes);
 
 // ==========================================
@@ -137,7 +167,11 @@ app.use('/api/booking', bookingRoutes);
 // Recherche d'itinéraire accessible PMR
 app.post('/api/routes/find-accessible', authMiddleware.authenticate, async (req, res) => {
     try {
-        const { start_lat, start_lon, end_lat, end_lon, max_distance_km = 2, require_accessibility = true } = req.body;
+        const {
+            start_lat, start_lon, end_lat, end_lon,
+            max_distance_km = 2,
+            require_accessibility = true
+        } = req.body;
 
         if (!start_lat || !start_lon || !end_lat || !end_lon) {
             return res.status(400).json({
@@ -145,14 +179,12 @@ app.post('/api/routes/find-accessible', authMiddleware.authenticate, async (req,
             });
         }
 
-        // 1. Trouver stations accessibles proches du départ
         const startStations = await Neo4jService.findAccessibleStations(
             parseFloat(start_lat),
             parseFloat(start_lon),
             max_distance_km * 1000
         );
 
-        // 2. Trouver stations accessibles proches de l'arrivée
         const endStations = await Neo4jService.findAccessibleStations(
             parseFloat(end_lat),
             parseFloat(end_lon),
@@ -170,7 +202,6 @@ app.post('/api/routes/find-accessible', authMiddleware.authenticate, async (req,
             });
         }
 
-        // 3. Pour chaque paire, trouver le meilleur itinéraire
         const routes = [];
         const MAX_COMBINATIONS = 3;
 
@@ -186,20 +217,19 @@ app.post('/api/routes/find-accessible', authMiddleware.authenticate, async (req,
                     routes.push({
                         start_station: startStations[i],
                         end_station: endStations[j],
-                        route: route,
-                        total_score: this.calculateRouteScore(route, startStations[i], endStations[j])
+                        route,
+                        total_score: calculateRouteScore(route, startStations[i], endStations[j])
                     });
                 }
             }
         }
 
-        // Trier par meilleur score
         routes.sort((a, b) => b.total_score - a.total_score);
 
         res.json({
             success: true,
             count: routes.length,
-            routes: routes.slice(0, 3), // Retourner les 3 meilleurs
+            routes: routes.slice(0, 3),
             metadata: {
                 start_location: { lat: start_lat, lon: start_lon },
                 end_location: { lat: end_lat, lon: end_lon },
@@ -217,26 +247,23 @@ app.post('/api/routes/find-accessible', authMiddleware.authenticate, async (req,
     }
 });
 
-// Fonction helper pour calculer le score d'un itinéraire
+// Helper score
 function calculateRouteScore(route, startStation, endStation) {
     let score = 0;
 
-    // Score pour durée courte
     if (route.total_duration) {
         score += Math.max(0, 100 - route.total_duration);
     }
 
-    // Score pour toutes les stations accessibles
     if (route.stations) {
         const accessibleCount = route.stations.filter(s => s.accessible).length;
         const totalCount = route.stations.length;
         score += (accessibleCount / totalCount) * 50;
     }
 
-    // Score pour distance de marche réduite
     if (startStation.distance && endStation.distance) {
         const walkDistance = startStation.distance + endStation.distance;
-        score += Math.max(0, 50 - (walkDistance / 100)); // -1 point par 100m
+        score += Math.max(0, 50 - (walkDistance / 100));
     }
 
     return score;
@@ -249,7 +276,6 @@ function calculateRouteScore(route, startStation, endStation) {
 if (process.env.NODE_ENV === 'development') {
     app.post('/api/dev/init-test-data', async (req, res) => {
         try {
-            // Vérifier si déjà initialisé
             const { data: existingUsers } = await SupabaseService.client
                 .from('users')
                 .select('user_id')
@@ -262,7 +288,6 @@ if (process.env.NODE_ENV === 'development') {
                 });
             }
 
-            // Créer des utilisateurs de test
             const testUsers = [
                 {
                     user_id: require('uuid').v4(),
@@ -271,7 +296,7 @@ if (process.env.NODE_ENV === 'development') {
                     email: 'pmr@flexitrip.fr',
                     phone: '+33612345678',
                     role: 'PMR',
-                    password: '$2b$10$YourHashedPasswordHere', // Password123!
+                    password: '$2b$10$YourHashedPasswordHere',
                     pmr_profile: {
                         mobility_aid: 'wheelchair',
                         wheelchair_type: 'electric',
@@ -305,7 +330,6 @@ if (process.env.NODE_ENV === 'development') {
                 }
             ];
 
-            // Insérer les utilisateurs
             const { error: usersError } = await SupabaseService.client
                 .from('users')
                 .insert(testUsers);
@@ -337,7 +361,7 @@ if (process.env.NODE_ENV === 'development') {
 // GESTION DES ERREURS ET 404
 // ==========================================
 
-// Route 404
+// 404 API
 app.use('/api/*', (req, res) => {
     res.status(404).json({
         error: 'Route API non trouvée',
@@ -354,25 +378,21 @@ app.use(errorHandler);
 // DÉMARRAGE DU SERVEUR
 // ==========================================
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 17777;
 
 const startServer = async () => {
     try {
-        // Vérifier les connexions
         console.log('🔄 Vérification des connexions...');
 
-        // Test Supabase
-        const { data: supabaseCheck } = await SupabaseService.client
+        await SupabaseService.client
             .from('users')
             .select('count', { count: 'exact' })
             .limit(1);
         console.log('✅ Supabase connecté');
 
-        // Test Neo4j
         await Neo4jService.init();
         console.log('✅ Neo4j connecté');
 
-        // Démarrer le serveur
         app.listen(PORT, () => {
             console.log('\n' + '='.repeat(50));
             console.log('🚀 FlexiTrip API démarrée avec succès');
@@ -398,7 +418,6 @@ const startServer = async () => {
     }
 };
 
-// Gestion arrêt gracieux
 process.on('SIGTERM', async () => {
     console.log('🛑 Signal SIGTERM reçu, arrêt gracieux...');
     await Neo4jService.close();
@@ -411,7 +430,6 @@ process.on('SIGINT', async () => {
     process.exit(0);
 });
 
-// Démarrer le serveur
 startServer();
 
 module.exports = app;
