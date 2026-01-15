@@ -29,12 +29,12 @@ function Ewallet() {
   // Fetch balance and payment history
   useEffect(() => {
     if (!token || !user || !user.user_id) return;
-    const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+    const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
     const fetchBalance = async () => {
       try {
         const response = await axios.get(
-          `${API_BASE_URL}/blockchain/balance/${user.user_id}`,
+          `${API_BASE_URL}/blockchain/balance`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setBalance(response.data.balance);
@@ -46,7 +46,7 @@ function Ewallet() {
     const fetchPaymentHistory = async () => {
       try {
         const response = await axios.get(
-          `${API_BASE_URL}/blockchain/historic/${user.user_id}`,
+          `${API_BASE_URL}/blockchain/history`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setPaymentHistory(response.data);
@@ -54,12 +54,12 @@ function Ewallet() {
         setError("❌ Impossible de récupérer l'historique des paiements.");
       }
     };
-    
+
 
     fetchBalance();
     fetchPaymentHistory();
   }, [token, user]);
-  
+
 
   // Handle payment
   const handlePayment = async () => {
@@ -78,11 +78,12 @@ function Ewallet() {
         sender: user.user_id,
         receiver: receiverId,
         amount: paymentAmount,
+        description: "Paiement"
       };
 
-      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+      const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
       const response = await axios.post(
-        `${API_BASE_URL}/blockchain/addBlock`,
+        `${API_BASE_URL}/transactions/pay`,
         paymentData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -172,7 +173,7 @@ function Ewallet() {
                   {formattedDate && <p><strong>Date :</strong> {formattedDate}</p>}
                   <p><strong>Montant :</strong> {payment.amount} $</p>
                   <p><strong>Destinataire :</strong> {payment.receiver}</p>
-                 
+
                 </div>
               );
             })}

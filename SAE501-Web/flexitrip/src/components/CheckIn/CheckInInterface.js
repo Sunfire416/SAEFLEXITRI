@@ -10,7 +10,7 @@ import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 import './CheckInInterface.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 const CheckInInterface = () => {
     const { reservationId } = useParams();
@@ -30,11 +30,14 @@ const CheckInInterface = () => {
     const fetchReservationAndStatus = async () => {
         try {
             setLoading(true);
-            
+
             // Récupérer statut check-in
             const statusRes = await axios.get(
-                `${API_BASE_URL}/api/checkin/${reservationId}/status`,
-                { params: { user_id: user?.user_id } }
+                `${API_BASE_URL}/checkin/${reservationId}/status`,
+                {
+                    params: { user_id: user?.user_id },
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                }
             );
 
             if (statusRes.data.success) {
@@ -47,7 +50,10 @@ const CheckInInterface = () => {
             // Récupérer détails réservation (via voyageHistory endpoint)
             const reservationRes = await axios.get(
                 `${API_BASE_URL}/voyages/details/${reservationId}`,
-                { params: { user_id: user?.user_id } }
+                {
+                    params: { user_id: user?.user_id },
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                }
             );
 
             if (reservationRes.data.success) {
@@ -72,8 +78,9 @@ const CheckInInterface = () => {
             setError(null);
 
             const response = await axios.post(
-                `${API_BASE_URL}/api/checkin/${reservationId}`,
-                { user_id: user?.user_id }
+                `${API_BASE_URL}/checkin/${reservationId}`,
+                { user_id: user?.user_id },
+                { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }
             );
 
             if (response.data.success) {
@@ -100,8 +107,11 @@ const CheckInInterface = () => {
             setLoading(true);
 
             const response = await axios.delete(
-                `${API_BASE_URL}/api/checkin/${reservationId}`,
-                { data: { user_id: user?.user_id } }
+                `${API_BASE_URL}/checkin/${reservationId}`,
+                {
+                    data: { user_id: user?.user_id },
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                }
             );
 
             if (response.data.success) {
@@ -225,7 +235,7 @@ const CheckInInterface = () => {
                                     </p>
                                 </div>
 
-                                <button 
+                                <button
                                     onClick={handleCancelCheckin}
                                     className="btn-danger"
                                     disabled={loading}

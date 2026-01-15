@@ -13,14 +13,14 @@ import axios from 'axios';
 import WebcamCapture from '../shared/WebcamCapture';
 import './BoardingGate.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 const BoardingGate = () => {
   const [gateNumber, setGateNumber] = useState('');
   const [qrData, setQrData] = useState('');
   const [livePhoto, setLivePhoto] = useState(null);
   const [verificationMode, setVerificationMode] = useState('qr_only'); // 'qr_only' ou 'qr_face'
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [boardingResult, setBoardingResult] = useState(null);
@@ -86,7 +86,8 @@ const BoardingGate = () => {
         boardingData,
         {
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         }
       );
@@ -103,7 +104,7 @@ const BoardingGate = () => {
     } catch (err) {
       console.error('❌ Erreur validation boarding:', err);
       setError(
-        err.response?.data?.error || 
+        err.response?.data?.error ||
         'Erreur lors de la validation'
       );
     } finally {
@@ -127,6 +128,11 @@ const BoardingGate = () => {
         {
           qr_data: qrData,
           gate: gateNumber
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
         }
       );
 
@@ -161,7 +167,7 @@ const BoardingGate = () => {
     <div className="boarding-gate-container">
       <div className="gate-header">
         <h1>🚪 Porte d'Embarquement</h1>
-        
+
         <div className="gate-number-input">
           <label>Numéro de porte :</label>
           <input

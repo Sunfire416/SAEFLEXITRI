@@ -1,5 +1,6 @@
 const SupabaseService = require('../services/SupabaseService');
-const { v4: uuidv4 } = require('uuid');
+const Neo4jService = require('../services/neo4jService');
+const { v4: uuidv4, validate: validateUuid } = require('uuid');
 
 class VoyageController {
   /**
@@ -23,160 +24,262 @@ class VoyageController {
         });
       }
 
-      const voyageId = uuidv4();
-      const reservationNum = `RES-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+      // 1. Validation de l'ID Utilisateur
+      const finalUserId = req.user?.user_id || user_id || id_pmr;
 
-      // 1. Récupérer les informations des stations depuis Neo4j
-      const stationsDetails = [];
-      let prixTotal = 0;
-      let dateDebut = null;
-      let dateFin = null;
-
-      for (const etape of etapes) {
-        if (etape.type === 'transport' && etape.station_start && etape.station_end) {
-          // Récupérer les détails des stations
-          const startStation = await Neo4jService.getStationById(etape.station_start);
-          const endStation = await Neo4jService.getStationById(etape.station_end);
-
-          if (!startStation || !endStation) {
-            return res.status(404).json({
-              error: `Station non trouvée: ${!startStation ? etape.station_start : etape.station_end}`
-            });
-          }
-
-          // Trouver l'itinéraire optimal
-          const route = await Neo4jService.findOptimalRoute(
-            etape.station_start,
-            etape.station_end,
-            {
-              requireAccessibility: pmr_options?.accessibility_required || true,
-              maxTransfers: 3
-            }
-          );
-
-          if (!route) {
-            return res.status(404).json({
-              error: `Aucun itinéraire trouvé entre ${startStation.name} et ${endStation.name}`
-            });
-          }
-
-          stationsDetails.push({
-            start_station: startStation,
-            end_station: endStation,
-            route: route,
-            etape_data: etape
-          });
-
-          prixTotal += route.estimated_price || 0;
-
-          if (!dateDebut && etape.departure_time) {
-            dateDebut = new Date(etape.departure_time);
-          }
-          if (etape.arrival_time) {
-            dateFin = new Date(etape.arrival_time);
-          }
-        } else if (etape.type === 'taxi') {
-          // Pour les taxis, on a juste les adresses
-          prixTotal += etape.price || 15;
-          stationsDetails.push({
-            type: 'taxi',
-            etape_data: etape
-          });
-        }
-      }
-
-      // 2. Préparer les données du voyage pour Supabase
-      const voyageData = {
-        id_voyage: voyageId,
-        id_pmr: id_pmr || user_id,
-        id_accompagnant: id_accompagnant || null,
-        date_debut: dateDebut || new Date(),
-        date_fin: dateFin || new Date(),
-        lieu_depart: stationsDetails[0]?.start_station || etapes[0]?.address_start,
-        lieu_arrivee: stationsDetails[stationsDetails.length - 1]?.end_station || etapes[etapes.length - 1]?.address_end,
-        bagage: req.body.bagage || [],
-        etapes: this.prepareEtapesForStorage(stationsDetails),
-        prix_total: prixTotal
-      };
-
-      // 3. Créer le voyage dans Supabase
-      const voyage = await SupabaseService.createVoyage(voyageData);
-
-      // 4. Créer la réservation
-      const reservationData = {
-        reservation_id: uuidv4(),
-        user_id: id_pmr || user_id,
-        id_voyage: voyageId,
-        num_reza_mmt: reservationNum,
-        num_pax: `PAX-${id_pmr || user_id}-${Date.now()}`,
-        booking_reference: reservationNum,
-        type_transport: this.determineTransportType(etapes),
-        assistance_pmr: Object.keys(pmr_options).length > 0,
-        date_reservation: new Date(),
-        lieu_depart: JSON.stringify(voyageData.lieu_depart),
-        lieu_arrivee: JSON.stringify(voyageData.lieu_arrivee),
-        date_depart: voyageData.date_debut,
-        date_arrivee: voyageData.date_fin,
-        pmr_options: pmr_options,
-        ticket_status: 'pending',
-        statut: 'CONFIRMED'
-      };
-
-      const reservation = await SupabaseService.createReservation(reservationData);
-
-      // 5. Créer la transaction de paiement
-      if (prixTotal > 0) {
-        await SupabaseService.createTransaction({
-          id: uuidv4(),
-          user_id: id_pmr || user_id,
-          reservation_id: reservation.reservation_id,
-          amount: prixTotal,
-          payment_status: 'paid',
-          type: 'Billet_Voyage',
-          date_payement: new Date(),
-          description: `Voyage multimodal ${voyageId}`
+      if (!validateUuid(finalUserId)) {
+        console.error(`❌ ID Utilisateur invalide détecté: ${finalUserId}`);
+        return res.status(400).json({
+          error: "Format user_id invalide (UUID attendu)",
+          details: `ID reçu: "${finalUserId}" doit être un UUID valide`
         });
       }
 
-      // 6. Générer le QR code du billet
-      const qrData = {
-        reservation_id: reservation.reservation_id,
-        num_reza_mmt: reservation.num_reza_mmt,
-        voyage_id: voyageId,
-        user_id: id_pmr || user_id,
-        date_depart: voyageData.date_debut,
-        stations: stationsDetails.map(s => s.start_station?.name).filter(Boolean)
+      const voyageId = uuidv4();
+      const reservationNum = `RES-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+      // 2. Récupérer les informations des stations depuis Neo4j (Parallélisé)
+      // On utilise Promise.all pour accélérer le traitement
+      const stationsPromises = etapes.map(async (etape) => {
+        if (etape.type === 'transport' && etape.station_start && etape.station_end) {
+          try {
+            const [startStation, endStation] = await Promise.all([
+              Neo4jService.getStationById(etape.station_start).catch(e => null),
+              Neo4jService.getStationById(etape.station_end).catch(e => null)
+            ]);
+
+            if (!startStation || !endStation) {
+              return {
+                type: 'transport',
+                etape_data: etape,
+                price: etape.price || 0,
+                start_station: { name: etape.adresse_1 || 'Départ' },
+                end_station: { name: etape.adresse_2 || 'Arrivée' },
+                route: null,
+                date_depart: etape.departure_time ? new Date(etape.departure_time) : null,
+                date_arrivee: etape.arrival_time ? new Date(etape.arrival_time) : null
+              };
+            }
+
+            let route = null;
+            try {
+              route = await Neo4jService.findOptimalRoute(
+                etape.station_start,
+                etape.station_end,
+                {
+                  requireAccessibility: pmr_options?.accessibility_required || true,
+                  maxTransfers: 3
+                }
+              );
+            } catch (neoError) {
+              console.warn(`⚠️ Neo4j route error: ${neoError.message}`);
+              route = {
+                total_duration: etape.duration || 60,
+                estimated_price: etape.price || 0,
+                stations: []
+              };
+            }
+
+            return {
+              type: 'transport',
+              start_station: startStation,
+              end_station: endStation,
+              route: route,
+              etape_data: etape,
+              price: route?.estimated_price || etape.price || 0,
+              date_depart: etape.departure_time ? new Date(etape.departure_time) : null,
+              date_arrivee: etape.arrival_time ? new Date(etape.arrival_time) : null
+            };
+
+          } catch (error) {
+            // Fallback complet
+            return {
+              type: 'transport',
+              etape_data: etape,
+              price: etape.price || 0,
+              start_station: { name: etape.adresse_1 || 'Départ' },
+              end_station: { name: etape.adresse_2 || 'Arrivée' },
+              date_depart: etape.departure_time ? new Date(etape.departure_time) : null,
+              date_arrivee: etape.arrival_time ? new Date(etape.arrival_time) : null
+            };
+          }
+        } else {
+          // Taxi ou autre
+          let price = etape.price || 0;
+          if (etape.type === 'taxi') price = etape.price || 15;
+
+          return {
+            type: etape.type || 'transport',
+            etape_data: etape,
+            price: price,
+            start_station: { name: etape.adresse_1 || 'Départ' },
+            end_station: { name: etape.adresse_2 || 'Arrivée' },
+            date_depart: etape.departure_time ? new Date(etape.departure_time) : new Date(),
+            date_arrivee: etape.arrival_time ? new Date(etape.arrival_time) : new Date(Date.now() + 3600000)
+          };
+        }
+      });
+
+      const stationsDetails = await Promise.all(stationsPromises);
+
+      // Calculs globaux
+      const prixTotal = parseFloat(stationsDetails.reduce((sum, s) => sum + (s.price || 0), 0).toFixed(2));
+      const dateDebut = stationsDetails[0].date_depart || new Date();
+      const dateFin = stationsDetails[stationsDetails.length - 1].date_arrivee || new Date(Date.now() + 3600000);
+
+      // 3. Préparer les données du voyage (Status initial: PENDING_PAYMENT)
+      const firstEtape = etapes[0] || {};
+      const lastEtape = etapes[etapes.length - 1] || {};
+
+      const lieuDepart = stationsDetails[0]?.start_station?.name || firstEtape.adresse_1 || 'Départ inconnu';
+      const lieuArrivee = stationsDetails[stationsDetails.length - 1]?.end_station?.name || lastEtape.adresse_2 || 'Arrivée inconnue';
+
+      const voyageData = {
+        id_voyage: voyageId,
+        id_pmr: finalUserId,
+        id_accompagnant: validateUuid(id_accompagnant) ? id_accompagnant : null,
+        date_debut: dateDebut.toISOString(),
+        date_fin: dateFin.toISOString(),
+        lieu_depart: lieuDepart,
+        lieu_arrivee: lieuArrivee,
+        bagage: req.body.bagage || [],
+        etapes: this.prepareEtapesForStorage(stationsDetails),
+        prix_total: prixTotal,
+        status: prixTotal > 0 ? 'pending_payment' : 'confirmed' // Status temporaire si payant
       };
 
-      await SupabaseService.updateReservationStatus(reservation.reservation_id, {
-        qr_code_data: JSON.stringify(qrData),
-        ticket_status: 'generated',
-        ticket_generated_at: new Date()
-      });
+      // 4. Créer le voyage dans Supabase
+      const { data: voyage, error: vError } = await SupabaseService.client
+        .from('voyages')
+        .insert([voyageData])
+        .select()
+        .single();
+
+      if (vError) throw vError;
+
+      console.log(`✅ Voyage créé (pending): ${voyageId}`);
+
+      // 5. GESTION ATOMIQUE DU PAIEMENT
+      let walletResult = null;
+      let transactionId = null;
+
+      if (prixTotal > 0) {
+        try {
+          console.log(`💰 Tentative de débit: ${finalUserId} -> ${prixTotal}€`);
+          // Appel qui utilise le trigger SQL
+          walletResult = await SupabaseService.updateUserWallet(finalUserId, prixTotal, 'Billet_Voyage');
+          transactionId = walletResult.id;
+          console.log('✅ Paiement accepté, transaction:', transactionId);
+
+          // Mise à jour du statut voyage -> CONFIRMED
+          await SupabaseService.client
+            .from('voyages')
+            .update({ status: 'confirmed' })
+            .eq('id_voyage', voyageId);
+
+        } catch (walletError) {
+          console.error('❌ ECHEC DU PAIEMENT:', walletError.message);
+
+          // Mise à jour du statut voyage -> PAYMENT_FAILED
+          await SupabaseService.client
+            .from('voyages')
+            .update({ status: 'payment_failed' })
+            .eq('id_voyage', voyageId);
+
+          // Interception propre pour renvoyer 400
+          if (walletError.message.includes('Solde insuffisant')) {
+            return res.status(400).json({
+              success: false,
+              error: 'Solde insuffisant',
+              details: 'Le solde de votre portefeuille est insuffisant pour ce voyage.'
+            });
+          }
+
+          throw walletError; // Autre erreur technique -> 500
+        }
+      }
+
+      // 6. Créer la réservation (Seulement si paiement OK ou gratuit)
+      let reservationCreated = false;
+      let reservationId = null;
+
+      try {
+        const reservationData = {
+          reservation_id: uuidv4(),
+          user_id: finalUserId,
+          id_voyage: voyageId,
+          num_reza_mmt: reservationNum,
+          num_pax: `PAX-${finalUserId}-${Date.now()}`,
+          booking_reference: reservationNum,
+          type_transport: this.determineTransportType(etapes),
+          assistance_pmr: Object.keys(pmr_options).length > 0,
+          date_reservation: new Date().toISOString(),
+          lieu_depart: lieuDepart,
+          lieu_arrivee: lieuArrivee,
+          date_depart: voyageData.date_debut,
+          date_arrivee: voyageData.date_fin,
+          pmr_options: pmr_options,
+          ticket_status: 'pending',
+          statut: 'CONFIRMED' // Confirmé car payé
+        };
+
+        reservationId = reservationData.reservation_id;
+
+        const { error: rError } = await SupabaseService.client
+          .from('reservations')
+          .insert([reservationData]);
+
+        if (rError) {
+          console.error('⚠️ Erreur création réservation:', rError.message);
+        } else {
+          reservationCreated = true;
+          console.log(`✅ Réservation créée: ${reservationNum}`);
+        }
+      } catch (e) { console.error('Erreur réservation:', e); }
+
+      // 7. Lier transaction et réservation
+      if (transactionId && reservationId) {
+        SupabaseService.client
+          .from('transactions')
+          .update({ reservation_id: reservationId, description: `Voyage ${reservationNum}` })
+          .eq('id', transactionId)
+          .then(() => console.log('✅ Transaction liée à la réservation'));
+      }
+
+      // 8. Générer QR Code
+      if (reservationCreated && reservationId) {
+        const qrData = {
+          reservation_id: reservationId,
+          num_reza_mmt: reservationNum,
+          voyage_id: voyageId,
+          user_id: finalUserId
+        };
+        SupabaseService.updateReservationStatus(reservationId, {
+          qr_code_data: JSON.stringify(qrData),
+          ticket_status: 'generated',
+          ticket_generated_at: new Date().toISOString()
+        });
+      }
 
       res.status(201).json({
         success: true,
-        voyage: {
-          id: voyageId,
-          ...voyage
+        message: 'Voyage confirmé',
+        voyage: { ...voyage, status: 'confirmed' }, // On renvoie le statut confirmé
+        financial: {
+          amount: prixTotal,
+          paid: prixTotal > 0,
+          transaction_id: transactionId
         },
         reservation: {
-          id: reservation.reservation_id,
-          num_reza_mmt: reservation.num_reza_mmt,
-          ticket_status: 'generated'
-        },
-        price: prixTotal,
-        stations: stationsDetails.map(s => ({
-          start: s.start_station?.name,
-          end: s.end_station?.name,
-          price: s.route?.estimated_price
-        }))
+          id: reservationId,
+          reference: reservationNum
+        }
       });
 
     } catch (error) {
-      console.error('❌ Erreur création voyage:', error);
+      console.error('🔥 Erreur critique création voyage:', error);
       res.status(500).json({
-        error: 'Erreur lors de la création du voyage',
+        error: 'Erreur technique lors de la création du voyage',
         details: error.message
       });
     }
@@ -191,25 +294,27 @@ class VoyageController {
       const userId = req.user?.user_id;
       const userRole = req.user?.role;
 
-      // Récupérer le voyage depuis Supabase
       const voyage = await SupabaseService.getVoyageById(voyageId);
 
       if (!voyage) {
         return res.status(404).json({ error: 'Voyage non trouvé' });
       }
 
-      // Vérifier les permissions
       if (!this.canAccessVoyage(voyage, userId, userRole)) {
         return res.status(403).json({ error: 'Accès non autorisé' });
       }
 
-      // Enrichir avec les données Neo4j si nécessaire
       if (voyage.etapes && Array.isArray(voyage.etapes)) {
         const enrichedEtapes = await Promise.all(
           voyage.etapes.map(async etape => {
             if (etape.start_station_id) {
-              const station = await Neo4jService.getStationById(etape.start_station_id);
-              return { ...etape, station_details: station };
+              try {
+                const station = await Neo4jService.getStationById(etape.start_station_id);
+                return { ...etape, station_details: station };
+              } catch (neoError) {
+                console.warn(`⚠️ Impossible de récupérer station ${etape.start_station_id}:`, neoError.message);
+                return etape;
+              }
             }
             return etape;
           })
@@ -234,14 +339,12 @@ class VoyageController {
       let stations = [];
 
       if (lat && lon) {
-        // Recherche par proximité
         stations = await Neo4jService.findNearbyStations(
           parseFloat(lat),
           parseFloat(lon),
           parseInt(radius)
         );
 
-        // Filtrer par query si fourni
         if (query) {
           stations = stations.filter(station =>
             station.name.toLowerCase().includes(query.toLowerCase()) ||
@@ -249,7 +352,6 @@ class VoyageController {
           );
         }
       } else if (query) {
-        // Recherche par nom
         stations = await Neo4jService.searchStations(query);
       } else {
         return res.status(400).json({ error: 'Query ou coordonnées requis' });
@@ -282,7 +384,6 @@ class VoyageController {
         return res.status(400).json({ error: 'Stations de départ et d\'arrivée requises' });
       }
 
-      // Récupérer les détails des stations
       const startDetails = await Neo4jService.getStationById(start_station);
       const endDetails = await Neo4jService.getStationById(end_station);
 
@@ -294,7 +395,6 @@ class VoyageController {
         });
       }
 
-      // Trouver l'itinéraire optimal
       const route = await Neo4jService.findOptimalRoute(
         start_station,
         end_station,
@@ -311,7 +411,6 @@ class VoyageController {
         });
       }
 
-      // Calculer l'heure d'arrivée estimée
       const departure = departure_time ? new Date(departure_time) : new Date();
       const arrival = new Date(departure.getTime() + (route.total_duration * 60 * 1000));
 
@@ -361,11 +460,82 @@ class VoyageController {
     }
   }
 
+  /**
+   * Mettre à jour un voyage
+   */
+  async updateVoyage(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.user_id;
+      const userRole = req.user?.role;
+
+      const voyage = await SupabaseService.getVoyageById(id);
+      if (!voyage) return res.status(404).json({ error: 'Voyage non trouvé' });
+
+      if (userRole !== 'admin' && userRole !== 'Agent' && voyage.id_pmr !== userId && voyage.id_accompagnant !== userId) {
+        return res.status(403).json({ error: 'Accès non autorisé' });
+      }
+
+      const allowedFields = ['date_debut', 'date_fin', 'lieu_depart', 'lieu_arrivee', 'bagage', 'prix_total', 'id_accompagnant'];
+      const updates = {};
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updates[field] = req.body[field];
+        }
+      }
+
+      const { data, error } = await SupabaseService.client
+        .from('voyages')
+        .update(updates)
+        .eq('id_voyage', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      res.json({ success: true, message: 'Voyage mis à jour', voyage: data });
+
+    } catch (error) {
+      console.error('❌ Erreur update voyage:', error);
+      res.status(500).json({ error: 'Erreur serveur' });
+    }
+  }
+
+  /**
+   * Supprimer un voyage
+   */
+  async deleteVoyage(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.user_id;
+      const userRole = req.user?.role;
+
+      const voyage = await SupabaseService.getVoyageById(id);
+      if (!voyage) return res.status(404).json({ error: 'Voyage non trouvé' });
+
+      if (userRole !== 'admin' && userRole !== 'Agent' && voyage.id_pmr !== userId) {
+        return res.status(403).json({ error: 'Accès non autorisé' });
+      }
+
+      const { error } = await SupabaseService.client
+        .from('voyages')
+        .delete()
+        .eq('id_voyage', id);
+
+      if (error) throw error;
+
+      res.json({ success: true, message: 'Voyage supprimé' });
+    } catch (error) {
+      console.error('❌ Erreur delete voyage:', error);
+      res.status(500).json({ error: 'Erreur serveur' });
+    }
+  }
+
   // ==================== HELPER METHODS ====================
 
   prepareEtapesForStorage(stationsDetails) {
     return stationsDetails.map(detail => ({
-      type: detail.etape_data.type,
+      type: detail.type || detail.etape_data?.type,
       start_station_id: detail.start_station?.id,
       end_station_id: detail.end_station?.id,
       start_station_snapshot: detail.start_station ? {
@@ -385,24 +555,29 @@ class VoyageController {
         zone: detail.end_station.zone
       } : null,
       route_summary: detail.route ? {
-        station_count: detail.route.stations.length,
-        total_duration: detail.route.total_duration,
-        total_distance: detail.route.total_distance,
-        estimated_price: detail.route.estimated_price
+        station_count: detail.route.stations?.length || 0,
+        total_duration: detail.route.total_duration || 0,
+        total_distance: detail.route.total_distance || 0,
+        estimated_price: detail.route.estimated_price || 0
       } : null,
       etape_data: detail.etape_data
     }));
   }
 
   determineTransportType(etapes) {
-    const types = etapes.map(e => e.type);
+    const types = etapes.map(e => e.type?.toLowerCase() || 'transport');
+    const uniqueTypes = [...new Set(types)];
+
+    if (uniqueTypes.length > 1) {
+      return 'multimodal';
+    }
 
     if (types.includes('avion')) return 'avion';
     if (types.includes('train')) return 'train';
     if (types.includes('bus')) return 'bus';
     if (types.includes('taxi')) return 'taxi';
-    if (types.length > 1) return 'multimodal';
-    return 'train'; // default
+
+    return 'train';
   }
 
   canAccessVoyage(voyage, userId, userRole) {

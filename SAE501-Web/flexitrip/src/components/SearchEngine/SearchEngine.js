@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './SearchEngine.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 function SearchEngine() {
     const navigate = useNavigate();
-    
+
     const [searchParams, setSearchParams] = useState({
         departure: '',
         destination: '',
@@ -242,7 +242,7 @@ function SearchEngine() {
                                             <span className="total-duration">⏱️ {trip.total_duration}</span>
                                             <span className="total-price">💰 {formatPrice(trip.total_price)}</span>
                                         </div>
-                                        <button 
+                                        <button
                                             className="select-trip-button"
                                             onClick={() => handleSelectTrip(trip)}
                                         >

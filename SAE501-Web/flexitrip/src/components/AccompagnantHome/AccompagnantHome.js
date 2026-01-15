@@ -2,47 +2,47 @@ import React, { useState, useEffect } from 'react';
 import './AccompagnantHome.css';
 
 const tasks = [
-  { 
-    id: 1, 
-    label: 'Confirmer bagages du PAX', 
+  {
+    id: 1,
+    label: 'Confirmer bagages du PAX',
     expectedStatus: 'Bagage vérifié',
     expectedEvent: 'Bagage Verification',
-    required: true 
+    required: true
   },
-  { 
-    id: 2, 
-    label: 'Scanner QR Code PAX', 
+  {
+    id: 2,
+    label: 'Scanner QR Code PAX',
     expectedStatus: 'E-billet validé',
     expectedEvent: 'E-Billet Verification',
-    required: true 
+    required: true
   },
-  { 
-    id: 3, 
-    label: 'Authentifier PAX', 
+  {
+    id: 3,
+    label: 'Authentifier PAX',
     expectedStatus: 'Authentification réussie',
     expectedEvent: 'Facial Recognition',
-    required: true 
+    required: true
   },
-  { 
-    id: 4, 
-    label: 'Filtrage du PAX', 
+  {
+    id: 4,
+    label: 'Filtrage du PAX',
     expectedStatus: 'Filtrage réussi',
     expectedEvent: 'Security Check',
-    required: true 
+    required: true
   },
-  { 
-    id: 5, 
-    label: 'Exception', 
+  {
+    id: 5,
+    label: 'Exception',
     expectedStatus: 'Exception traitée',
     expectedEvent: 'Exception Handling',
-    required: false 
+    required: false
   },
-  { 
-    id: 6, 
-    label: 'Confirmer dépôt PMR', 
+  {
+    id: 6,
+    label: 'Confirmer dépôt PMR',
     expectedStatus: 'Dépôt confirmé',
     expectedEvent: 'PMR Deposit',
-    required: true 
+    required: true
   }
 ];
 
@@ -61,18 +61,18 @@ function AccompagnantHome() {
   const [groupedNotifications, setGroupedNotifications] = useState({});
   const [loading, setLoading] = useState(true);
 
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+  const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
   const processNotifications = (notifications) => {
     return notifications.reduce((acc, notification) => {
-      const notifData = typeof notification.value === 'string' 
-        ? JSON.parse(notification.value) 
+      const notifData = typeof notification.value === 'string'
+        ? JSON.parse(notification.value)
         : notification;
 
       const reservationId = notifData.reservationId || 'default';
       const agentId = notifData.agentId || 'unknown';
       const groupKey = `${reservationId}-${agentId}`;
-      
+
       if (!acc[groupKey]) {
         acc[groupKey] = {
           reservationId,
@@ -124,7 +124,12 @@ function AccompagnantHome() {
 
   const consumeMessages = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/kafka/messages`);
+      const response = await fetch(`${API_BASE_URL}/kafka/messages`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
       if (response.ok) {
         const data = await response.json();
         const grouped = processNotifications(data);
@@ -170,7 +175,7 @@ function AccompagnantHome() {
               const allRequiredCompleted = areAllRequiredTasksCompleted(reservation.completedTasks);
 
               return (
-                <div 
+                <div
                   key={`${reservation.reservationId}-${reservation.agentId}`}
                   className={`notification-card ${allRequiredCompleted ? 'valid' : 'invalid'}`}
                 >
@@ -193,7 +198,7 @@ function AccompagnantHome() {
 
                     <div className="tasks-list">
                       {tasks.map((task, index) => (
-                        <TaskItem 
+                        <TaskItem
                           key={task.id}
                           task={task}
                           completed={isTaskCompleted(task, reservation.completedTasks)}
@@ -203,7 +208,7 @@ function AccompagnantHome() {
                     </div>
 
                     <div className="validation-status">
-                      {allRequiredCompleted 
+                      {allRequiredCompleted
                         ? 'Notification validée : ✅'
                         : 'Notification non validée : ⏳'}
                     </div>

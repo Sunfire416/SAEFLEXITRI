@@ -11,16 +11,16 @@ import VoyageCard from './VoyageCard';
 import VoyageQRModal from './VoyageQRModal';
 import './VoyageHistory.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 const VoyageHistory = () => {
   const { user } = useContext(AuthContext);
-  
+
   const [voyages, setVoyages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all'); // 'all', 'pending', 'confirmed', 'completed', 'cancelled'
-  
+
   // Modal QR
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [selectedVoyage, setSelectedVoyage] = useState(null);
@@ -36,6 +36,7 @@ const VoyageHistory = () => {
       setError(null);
 
       const response = await axios.get(`${API_BASE_URL}/voyages/history`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         params: {
           user_id: user.user_id,
           status: filter === 'all' ? null : filter
@@ -77,7 +78,8 @@ const VoyageHistory = () => {
     try {
       const response = await axios.patch(
         `${API_BASE_URL}/voyages/cancel-checkin/${reservationId}`,
-        { user_id: user.user_id }
+        { user_id: user.user_id },
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
       );
 
       if (response.data.success) {
@@ -102,7 +104,10 @@ const VoyageHistory = () => {
     try {
       const response = await axios.delete(
         `${API_BASE_URL}/voyages/${voyageId}`,
-        { data: { user_id: user.user_id } }
+        {
+          data: { user_id: user.user_id },
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        }
       );
 
       if (response.data.success) {

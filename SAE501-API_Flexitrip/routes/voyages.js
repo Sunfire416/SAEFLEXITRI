@@ -1,274 +1,66 @@
 const express = require('express');
 const router = express.Router();
-const { v4: uuidv4 } = require('uuid');
-const SupabaseService = require('../services/SupabaseService');
-const Neo4jService = require('../services/neo4jService');
+const voyageController = require('../controllers/voyageController');
 
 /**
  * @swagger
- * /api/voyages:
- *   get:
- *     summary: Liste des voyages de l'utilisateur
- *     tags: [Voyages]
+ * tags:
+ *   name: Voyage
+ *   description: Gestion des voyages optimisée Supabase
  */
-router.get('/', async (req, res) => {
-    try {
-        const voyages = await SupabaseService.getVoyagesByUser(req.userId, req.userRole);
 
-        res.json({
-            success: true,
-            count: voyages.length,
-            voyages
-        });
-
-    } catch (error) {
-        console.error('❌ Erreur liste voyages:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Erreur lors de la récupération des voyages'
-        });
-    }
-});
+// ==========================================
+// ROUTES REST (Standard)
+// ==========================================
 
 /**
- * @swagger
- * /api/voyages:
- *   post:
- *     summary: Créer un nouveau voyage
- *     tags: [Voyages]
+ * GET /api/voyages
+ * Liste des voyages de l'utilisateur
  */
-router.post('/', async (req, res) => {
-    try {
-        const {
-            date_debut,
-            date_fin,
-            lieu_depart,
-            lieu_arrivee,
-            etapes = [],
-            bagage = [],
-            prix_total = 0,
-            id_accompagnant = null
-        } = req.body;
-
-        // Validation
-        if (!date_debut || !date_fin || !lieu_depart || !lieu_arrivee) {
-            return res.status(400).json({
-                success: false,
-                error: 'Dates et lieux de départ/arrivée requis'
-            });
-        }
-
-        // Enrichir les étapes avec les données Neo4j si disponible
-        const enrichedEtapes = [];
-        for (const etape of etapes) {
-            if (etape.station_id) {
-                const stationDetails = await Neo4jService.getStationById(etape.station_id);
-                if (stationDetails) {
-                    enrichedEtapes.push({
-                        ...etape,
-                        station: stationDetails
-                    });
-                } else {
-                    enrichedEtapes.push(etape);
-                }
-            } else {
-                enrichedEtapes.push(etape);
-            }
-        }
-
-        const voyageData = {
-            id_voyage: uuidv4(),
-            id_pmr: req.userId,
-            id_accompagnant,
-            date_debut: new Date(date_debut).toISOString(),
-            date_fin: new Date(date_fin).toISOString(),
-            lieu_depart,
-            lieu_arrivee,
-            etapes: enrichedEtapes,
-            bagage,
-            prix_total
-        };
-
-        const voyage = await SupabaseService.createVoyage(voyageData);
-
-        res.status(201).json({
-            success: true,
-            message: 'Voyage créé avec succès',
-            voyage
-        });
-
-    } catch (error) {
-        console.error('❌ Erreur création voyage:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Erreur lors de la création du voyage'
-        });
-    }
-});
+router.get('/', (req, res) => voyageController.getUserVoyages(req, res));
 
 /**
- * @swagger
- * /api/voyages/:id:
- *   get:
- *     summary: Détails d'un voyage
- *     tags: [Voyages]
+ * POST /api/voyages
+ * Créer un nouveau voyage
  */
-router.get('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        const voyage = await SupabaseService.getVoyageById(id);
-
-        if (!voyage) {
-            return res.status(404).json({
-                success: false,
-                error: 'Voyage non trouvé'
-            });
-        }
-
-        // Vérifier les droits d'accès
-        if (voyage.id_pmr !== req.userId &&
-            voyage.id_accompagnant !== req.userId &&
-            req.userRole !== 'admin' &&
-            req.userRole !== 'Agent') {
-            return res.status(403).json({
-                success: false,
-                error: 'Accès non autorisé'
-            });
-        }
-
-        // Récupérer les réservations associées
-        const { data: reservations } = await SupabaseService.client
-            .from('reservations')
-            .select('*')
-            .eq('id_voyage', id)
-            .order('date_depart', { ascending: true });
-
-        res.json({
-            success: true,
-            voyage: {
-                ...voyage,
-                reservations: reservations || []
-            }
-        });
-
-    } catch (error) {
-        console.error('❌ Erreur get voyage:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Erreur lors de la récupération du voyage'
-        });
-    }
-});
+router.post('/', (req, res) => voyageController.createVoyage(req, res));
 
 /**
- * @swagger
- * /api/voyages/:id:
- *   put:
- *     summary: Modifier un voyage
- *     tags: [Voyages]
+ * GET /api/voyages/:id
+ * Détails d'un voyage
  */
-router.put('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        // Vérifier que le voyage existe et appartient à l'utilisateur
-        const voyage = await SupabaseService.getVoyageById(id);
-
-        if (!voyage) {
-            return res.status(404).json({
-                success: false,
-                error: 'Voyage non trouvé'
-            });
-        }
-
-        if (voyage.id_pmr !== req.userId && req.userRole !== 'admin') {
-            return res.status(403).json({
-                success: false,
-                error: 'Accès non autorisé'
-            });
-        }
-
-        const allowedFields = ['date_debut', 'date_fin', 'lieu_depart', 'lieu_arrivee', 'etapes', 'bagage', 'prix_total', 'id_accompagnant'];
-        const updates = {};
-
-        for (const field of allowedFields) {
-            if (req.body[field] !== undefined) {
-                updates[field] = req.body[field];
-            }
-        }
-
-        const { data, error } = await SupabaseService.client
-            .from('voyages')
-            .update(updates)
-            .eq('id_voyage', id)
-            .select()
-            .single();
-
-        if (error) throw error;
-
-        res.json({
-            success: true,
-            message: 'Voyage mis à jour',
-            voyage: data
-        });
-
-    } catch (error) {
-        console.error('❌ Erreur update voyage:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Erreur lors de la mise à jour du voyage'
-        });
-    }
-});
+router.get('/:id', (req, res) => voyageController.getVoyage(req, res));
 
 /**
- * @swagger
- * /api/voyages/:id:
- *   delete:
- *     summary: Annuler un voyage
- *     tags: [Voyages]
+ * PUT /api/voyages/:id
+ * Modifier un voyage
  */
-router.delete('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
+router.put('/:id', (req, res) => voyageController.updateVoyage(req, res));
 
-        const voyage = await SupabaseService.getVoyageById(id);
+/**
+ * DELETE /api/voyages/:id
+ * Supprimer un voyage
+ */
+router.delete('/:id', (req, res) => voyageController.deleteVoyage(req, res));
 
-        if (!voyage) {
-            return res.status(404).json({
-                success: false,
-                error: 'Voyage non trouvé'
-            });
-        }
 
-        if (voyage.id_pmr !== req.userId && req.userRole !== 'admin') {
-            return res.status(403).json({
-                success: false,
-                error: 'Accès non autorisé'
-            });
-        }
+// ==========================================
+// ALIAS ROUTES (Support Legacy Frontend)
+// ==========================================
 
-        // Soft delete: on pourrait ajouter un champ cancelled mais ici on supprime
-        const { error } = await SupabaseService.client
-            .from('voyages')
-            .delete()
-            .eq('id_voyage', id);
+// Supporte POST /api/voyages/insert
+router.post('/insert', (req, res) => voyageController.createVoyage(req, res));
 
-        if (error) throw error;
+// Supporte GET /api/voyages/getAll
+router.get('/getAll', (req, res) => voyageController.getUserVoyages(req, res));
 
-        res.json({
-            success: true,
-            message: 'Voyage annulé'
-        });
+// Supporte GET /api/voyages/get/:id
+router.get('/get/:id', (req, res) => voyageController.getVoyage(req, res));
 
-    } catch (error) {
-        console.error('❌ Erreur delete voyage:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Erreur lors de l\'annulation du voyage'
-        });
-    }
-});
+// Supporte PUT /api/voyages/update/:id
+router.put('/update/:id', (req, res) => voyageController.updateVoyage(req, res));
+
+// Supporte DELETE /api/voyages/delete/:id
+router.delete('/delete/:id', (req, res) => voyageController.deleteVoyage(req, res));
 
 module.exports = router;

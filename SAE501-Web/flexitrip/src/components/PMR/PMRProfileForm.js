@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './PMRProfileForm.css';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 /**
  * Formulaire de profil PMR détaillé
@@ -51,7 +52,7 @@ const PMRProfileForm = ({ userId, initialProfile = {}, onSave }) => {
             const updated = current.includes(equipment)
                 ? current.filter(e => e !== equipment)
                 : [...current, equipment];
-            
+
             return {
                 ...prev,
                 special_equipment_needed: updated
@@ -65,10 +66,11 @@ const PMRProfileForm = ({ userId, initialProfile = {}, onSave }) => {
         setMessage(null);
 
         try {
-            const response = await fetch(`${process.env.REACT_APP_API_URL}/users/${userId}`, {
+            const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
                 method: 'PATCH',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
                 },
                 body: JSON.stringify({
                     pmr_profile: profile
@@ -106,7 +108,7 @@ const PMRProfileForm = ({ userId, initialProfile = {}, onSave }) => {
                 {/* Aide à la mobilité */}
                 <div className="form-section">
                     <h3>🚶 Aide à la mobilité</h3>
-                    
+
                     <div className="form-group">
                         <label>Type d'aide à la mobilité</label>
                         <select
@@ -138,7 +140,7 @@ const PMRProfileForm = ({ userId, initialProfile = {}, onSave }) => {
                 {/* Déficiences sensorielles */}
                 <div className="form-section">
                     <h3>👁️ Déficiences sensorielles</h3>
-                    
+
                     <div className="checkbox-group">
                         <label className="checkbox-label">
                             <input
@@ -181,7 +183,7 @@ const PMRProfileForm = ({ userId, initialProfile = {}, onSave }) => {
                 {/* Préférences */}
                 <div className="form-section">
                     <h3>⚙️ Préférences</h3>
-                    
+
                     <div className="form-group">
                         <label>Siège préféré</label>
                         <select
@@ -222,7 +224,7 @@ const PMRProfileForm = ({ userId, initialProfile = {}, onSave }) => {
                 {/* Équipements spéciaux */}
                 <div className="form-section">
                     <h3>🛠️ Équipements spéciaux nécessaires</h3>
-                    
+
                     <div className="checkbox-group">
                         {['rampe', 'fauteuil_transfert', 'oxygen', 'planche_transfert', 'aide_auditive'].map(equip => (
                             <label key={equip} className="checkbox-label">
@@ -240,7 +242,7 @@ const PMRProfileForm = ({ userId, initialProfile = {}, onSave }) => {
                 {/* Contact d'urgence */}
                 <div className="form-section">
                     <h3>📞 Contact d'urgence</h3>
-                    
+
                     <div className="form-group">
                         <label>Nom</label>
                         <input
@@ -275,7 +277,7 @@ const PMRProfileForm = ({ userId, initialProfile = {}, onSave }) => {
                 {/* Informations médicales */}
                 <div className="form-section">
                     <h3>🏥 Informations médicales</h3>
-                    
+
                     <div className="form-group">
                         <label>Informations médicales à communiquer aux agents (optionnel)</label>
                         <textarea

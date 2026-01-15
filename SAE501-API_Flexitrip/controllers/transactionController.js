@@ -1,16 +1,13 @@
 const SupabaseService = require('../services/SupabaseService');
 
-/**
- * Transaction Controller - Uses Supabase for wallet/transaction operations
- */
 class TransactionController {
-
     /**
      * Récupérer les transactions de l'utilisateur
      */
     async getUserTransactions(req, res) {
         try {
-            const userId = req.userId;
+            // CORRECTION ICI : utiliser req.user.user_id
+            const userId = req.user.user_id;
             const { limit = 50, type } = req.query;
 
             let query = SupabaseService.client
@@ -48,7 +45,8 @@ class TransactionController {
      */
     async getUserWallet(req, res) {
         try {
-            const userId = req.userId;
+            // CORRECTION ICI
+            const userId = req.user.user_id;
 
             const { data, error } = await SupabaseService.client
                 .from('users')
@@ -81,7 +79,8 @@ class TransactionController {
      */
     async getWalletHistory(req, res) {
         try {
-            const userId = req.userId;
+            // CORRECTION ICI
+            const userId = req.user.user_id;
             const { days = 30 } = req.query;
 
             const since = new Date();
@@ -141,7 +140,9 @@ class TransactionController {
     async creditWallet(req, res) {
         try {
             const { amount, description = 'Rechargement wallet' } = req.body;
-            const userId = req.body.user_id || req.userId;
+            // CORRECTION ICI : utiliser req.user.user_id et req.user.role
+            const userId = req.body.user_id || req.user.user_id;
+            const userRole = req.user.role;
 
             if (!amount || amount <= 0) {
                 return res.status(400).json({
@@ -151,7 +152,7 @@ class TransactionController {
             }
 
             // Vérifier les droits si crédit pour un autre utilisateur
-            if (userId !== req.userId && req.userRole !== 'admin') {
+            if (userId !== req.user.user_id && userRole !== 'admin') {
                 return res.status(403).json({
                     success: false,
                     error: 'Non autorisé'
@@ -159,14 +160,21 @@ class TransactionController {
             }
 
             // Créer la transaction (le trigger met à jour le solde)
-            const transaction = await SupabaseService.createTransaction({
-                user_id: userId,
-                amount: parseFloat(amount),
-                type: 'credit',
-                payment_status: 'paid',
-                date_payement: new Date().toISOString(),
-                description
-            });
+            const { data: transaction, error: transactionError } = await SupabaseService.client
+                .from('transactions')
+                .insert([{
+                    user_id: userId,
+                    amount: parseFloat(amount),
+                    type: 'credit',
+                    description: description,
+                    payment_status: 'paid',
+                    status: 'completed',
+                    date_payement: new Date().toISOString()
+                }])
+                .select()
+                .single();
+
+            if (transactionError) throw transactionError;
 
             // Récupérer le nouveau solde
             const { data: user } = await SupabaseService.client

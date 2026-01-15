@@ -6,6 +6,7 @@ import './AdminDashboard.css';
  */
 const AdminDashboard = () => {
     const [activeTab, setActiveTab] = useState('today');
+    const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
     const [agents, setAgents] = useState([]);
     const [missions, setMissions] = useState([]);
     const [stats, setStats] = useState({
@@ -28,13 +29,17 @@ const AdminDashboard = () => {
             setLoading(true);
 
             // Fetch agents
-            const agentsRes = await fetch(`${process.env.REACT_APP_API_URL}/agent/all`);
+            const agentsRes = await fetch(`${API_BASE_URL}/agent/all`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
             const agentsData = await agentsRes.json();
             setAgents(agentsData.agents || []);
 
             // Fetch missions du jour (simulées pour l'instant)
             const today = new Date().toISOString().split('T')[0];
-            const missionsRes = await fetch(`${process.env.REACT_APP_API_URL}/voyages/history?date=${today}`);
+            const missionsRes = await fetch(`${API_BASE_URL}/voyages/history?date=${today}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
             const missionsData = await missionsRes.json();
             setMissions(missionsData.voyages || []);
 
@@ -55,9 +60,12 @@ const AdminDashboard = () => {
 
     const reassignAgent = async (missionId, newAgentId) => {
         try {
-            const response = await fetch(`${process.env.REACT_APP_API_URL}/api/assistance/reassign`, {
+            const response = await fetch(`${API_BASE_URL}/assistance/reassign`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
                 body: JSON.stringify({
                     mission_id: missionId,
                     new_agent_id: newAgentId
@@ -75,8 +83,8 @@ const AdminDashboard = () => {
     };
 
     const getAgentStatus = (agent) => {
-        const activeMissions = missions.filter(m => 
-            m.assigned_agent_id === agent.agent_id && 
+        const activeMissions = missions.filter(m =>
+            m.assigned_agent_id === agent.agent_id &&
             m.status === 'in_progress'
         );
 
@@ -90,8 +98,8 @@ const AdminDashboard = () => {
             <header className="dashboard-header">
                 <h1>📊 Dashboard Admin PMR</h1>
                 <div className="header-actions">
-                    <select 
-                        value={selectedLocation} 
+                    <select
+                        value={selectedLocation}
                         onChange={(e) => setSelectedLocation(e.target.value)}
                         className="location-filter"
                     >
@@ -144,19 +152,19 @@ const AdminDashboard = () => {
 
             {/* Tabs */}
             <div className="dashboard-tabs">
-                <button 
+                <button
                     className={`tab ${activeTab === 'today' ? 'active' : ''}`}
                     onClick={() => setActiveTab('today')}
                 >
                     📅 Aujourd'hui
                 </button>
-                <button 
+                <button
                     className={`tab ${activeTab === 'agents' ? 'active' : ''}`}
                     onClick={() => setActiveTab('agents')}
                 >
                     👮 Agents
                 </button>
-                <button 
+                <button
                     className={`tab ${activeTab === 'timeline' ? 'active' : ''}`}
                     onClick={() => setActiveTab('timeline')}
                 >
@@ -171,16 +179,16 @@ const AdminDashboard = () => {
                 ) : (
                     <>
                         {activeTab === 'today' && (
-                            <MissionsList 
-                                missions={missions} 
+                            <MissionsList
+                                missions={missions}
                                 agents={agents}
                                 onReassign={reassignAgent}
                             />
                         )}
 
                         {activeTab === 'agents' && (
-                            <AgentsList 
-                                agents={agents} 
+                            <AgentsList
+                                agents={agents}
                                 getAgentStatus={getAgentStatus}
                             />
                         )}
@@ -229,7 +237,7 @@ const MissionsList = ({ missions, agents, onReassign }) => {
 
                     <div className="mission-agent">
                         <span className="agent-label">Agent assigné:</span>
-                        <select 
+                        <select
                             value={mission.assigned_agent_id || ''}
                             onChange={(e) => onReassign(mission.id, e.target.value)}
                             className="agent-select"
@@ -283,7 +291,7 @@ const AgentsList = ({ agents, getAgentStatus }) => {
 
 // Component: Timeline
 const Timeline = ({ missions }) => {
-    const sortedMissions = [...missions].sort((a, b) => 
+    const sortedMissions = [...missions].sort((a, b) =>
         new Date(a.departure_time) - new Date(b.departure_time)
     );
 

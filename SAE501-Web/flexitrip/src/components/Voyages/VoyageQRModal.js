@@ -8,11 +8,11 @@ import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 import './VoyageQRModal.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 const VoyageQRModal = ({ voyage, onClose }) => {
   const { user } = useContext(AuthContext);
-  
+
   const [qrData, setQrData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -29,6 +29,7 @@ const VoyageQRModal = ({ voyage, onClose }) => {
         const response = await axios.get(
           `${API_BASE_URL}/voyages/${voyage.voyage_id}/qr`,
           {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
             params: { user_id: user.user_id }
           }
         );

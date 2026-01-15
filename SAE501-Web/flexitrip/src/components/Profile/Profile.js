@@ -3,7 +3,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { Link } from 'react-router-dom';
 import './Profile.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 const Profile = () => {
     const { user, updateUserProfile } = useContext(AuthContext);
@@ -54,7 +54,7 @@ const Profile = () => {
             .filter(([key, value]) => value === true)
             .map(([key]) => {
                 // Convertir snake_case en texte lisible
-                return key.split('_').map(word => 
+                return key.split('_').map(word =>
                     word.charAt(0).toUpperCase() + word.slice(1)
                 ).join(' ');
             });
@@ -158,7 +158,7 @@ const Profile = () => {
         <div className="profile-container">
             <div className="profile-card">
                 <h2 className="profile-title">Votre profil - {user.name} {user.surname}</h2>
-                
+
                 {/* Photo de profil */}
                 <div className="profile-header">
                     <div className="profile-image-container">
@@ -254,7 +254,7 @@ const Profile = () => {
                                     {user.type_handicap || 'Non renseigné'}
                                 </span>
                             </div>
-                            
+
                             {activeBesoins.length > 0 && (
                                 <div className="detail-row besoins-row">
                                     <span className="detail-label">Besoins spécifiques :</span>

@@ -7,7 +7,7 @@ import axios from 'axios';
 import { ReactComponent as EyeIcon } from '../../assets/icones/cacher-password.svg';
 import PMRInfosForm from '../PMRInfosForm/PMRInfosForm';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 // Liste des pays (les plus courants)
 const PAYS = [
@@ -160,7 +160,7 @@ function Signup() {
         <div className="signup-container">
             <div className="signup-box">
                 <h2>Créer votre compte</h2>
-                
+
                 {errorMessage && <div className="error-message">{errorMessage}</div>}
                 {successMessage && <div className="success-message">{successMessage}</div>}
 
@@ -339,7 +339,7 @@ function Signup() {
                                 required
                             />
                             <span>
-                                J'accepte les <a href="/terms" target="_blank" rel="noopener noreferrer">conditions d'utilisation</a> et 
+                                J'accepte les <a href="/terms" target="_blank" rel="noopener noreferrer">conditions d'utilisation</a> et
                                 la <a href="/privacy" target="_blank" rel="noopener noreferrer">politique de confidentialité</a>
                             </span>
                         </label>

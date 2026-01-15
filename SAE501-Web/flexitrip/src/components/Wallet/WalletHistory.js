@@ -22,7 +22,7 @@ const WalletHistory = () => {
             setLoading(true);
             setError(null);
 
-            const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+            const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
             // Récupérer le solde
             const balanceResponse = await axios.get(
@@ -199,8 +199,8 @@ const WalletHistory = () => {
                                             {isPositive ? 'Reçu de' : 'Envoyé à'}
                                         </span>
                                         <span className="transaction-party">
-                                            {isPositive 
-                                                ? `Utilisateur ${transaction.sender}` 
+                                            {isPositive
+                                                ? `Utilisateur ${transaction.sender}`
                                                 : `Utilisateur ${transaction.receiver}`
                                             }
                                         </span>
@@ -228,7 +228,7 @@ const WalletHistory = () => {
                         <span className="summary-label">Montant total :</span>
                         <span className="summary-value">
                             {formatAmount(
-                                filteredTransactions.reduce((sum, t) => 
+                                filteredTransactions.reduce((sum, t) =>
                                     sum + Math.abs(t.amount), 0
                                 )
                             )}

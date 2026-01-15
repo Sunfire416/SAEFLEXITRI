@@ -11,7 +11,7 @@ const voyageController = require('../controllers/voyageController');
 
 /**
  * @swagger
- * /voyage/insert:
+ * /voyages/insert:
  *   post:
  *     summary: "Créer un nouveau voyage"
  *     tags: [Voyage]
@@ -218,7 +218,7 @@ router.post('/insert', voyageController.createVoyage);
 
 /**
  * @swagger
- * /voyage/getAll:
+ * /voyages/getAll:
  *   get:
  *     summary: Récupérer tous les voyages
  *     tags: [Voyage]
@@ -232,7 +232,7 @@ router.get('/getAll', voyageController.getVoyages);
 
 /**
  * @swagger
- * /voyage/get/{id}:
+ * /voyages/get/{id}:
  *   get:
  *     summary: Récupérer un voyage par ID
  *     tags: [Voyage]
@@ -255,7 +255,7 @@ router.get('/get/:id', voyageController.getVoyageById);
 
 /**
  * @swagger
- * /voyage/update/{id}:
+ * /voyages/update/{id}:
  *   put:
  *     summary: Mettre à jour un voyage
  *     tags: [Voyage]
@@ -286,7 +286,7 @@ router.put('/update/:id', voyageController.updateVoyage);
 
 /**
  * @swagger
- * /voyage/delete/{id}:
+ * /voyages/delete/{id}:
  *   delete:
  *     summary: Supprimer un voyage
  *     tags: [Voyage]

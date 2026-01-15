@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const helmet = require('helmet');
+const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
 // Services
@@ -26,13 +27,17 @@ const userRoutes = require('./routes/users');
 
 // Routes métier
 const voyageRoutes = require('./routes/voyages');
+const voyageHistoryRoutes = require('./routes/voyageHistoryRoutes');
+const boardingRoutes = require('./routes/boardingRoutes');
 const reservationRoutes = require('./routes/reservations');
 const transactionRoutes = require('./routes/transactions');
 const stationRoutes = require('./routes/stations');
+const blockchainRoutes = require('./routes/blockchain');
 
 // Routes spécifiques PMR
 const assistanceRoutes = require('./routes/assistance');
 const bookingRoutes = require('./routes/booking');
+const notificationRoutes = require('./routes/notificationRoutesV2');
 
 // ==========================================
 // INITIALISATION EXPRESS
@@ -49,8 +54,6 @@ const allowedOrigins = [
     'http://127.0.0.1:3000'
 ];
 
-// Si tu veux le piloter via .env (optionnel) :
-// CORS_ORIGIN=http://localhost:3000,http://127.0.0.1:3000
 if (process.env.CORS_ORIGIN) {
     allowedOrigins.push(
         ...process.env.CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean)
@@ -59,11 +62,8 @@ if (process.env.CORS_ORIGIN) {
 
 app.use(cors({
     origin: (origin, cb) => {
-        // Autoriser les appels sans "Origin" (curl, postman, serveur à serveur)
         if (!origin) return cb(null, true);
-
         if (allowedOrigins.includes(origin)) return cb(null, true);
-
         return cb(new Error(`CORS blocked for origin: ${origin}`), false);
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -78,25 +78,17 @@ app.options('*', cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// (optionnel mais utile en debug)
-// app.use((req, res, next) => {
-//   console.log(`${req.method} ${req.originalUrl}`);
-//   next();
-// });
-
 // ==========================================
 // ENDPOINTS DE SANTÉ ET DIAGNOSTIC
 // ==========================================
 
 app.get('/api/health', async (req, res) => {
     try {
-        // Test Supabase
         const { error: supabaseError } = await SupabaseService.client
             .from('users')
             .select('count', { count: 'exact' })
             .limit(1);
 
-        // Test Neo4j
         const neo4jHealth = await Neo4jService.testConnection();
 
         const services = {
@@ -129,42 +121,30 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // ROUTES PUBLIQUES (pas d'authentification requise)
 // ==========================================
 
-// Authentification
 app.use('/api/auth', authRoutes);
-
-// Stations (public)
 app.use('/api/stations', stationRoutes);
 
 // ==========================================
 // ROUTES PROTÉGÉES (authentification requise)
 // ==========================================
 
-// Middleware d'authentification pour toutes les routes suivantes
 app.use(authMiddleware.authenticate);
 
-// Utilisateurs
 app.use('/api/users', userRoutes);
-
-// Voyages
 app.use('/api/voyages', voyageRoutes);
-
-// Réservations
+app.use('/api/voyages', voyageHistoryRoutes);
+app.use('/api/boarding', boardingRoutes);
 app.use('/api/reservations', reservationRoutes);
-
-// Transactions et wallet
 app.use('/api/transactions', transactionRoutes);
-
-// Assistance PMR
 app.use('/api/assistance', assistanceRoutes);
-
-// Booking multimodal
 app.use('/api/booking', bookingRoutes);
+app.use('/api/notification', notificationRoutes);
+app.use('/api/blockchain', blockchainRoutes); // ✅ CORRECT
 
 // ==========================================
 // ENDPOINTS SPÉCIAUX POUR INTÉGRATION
 // ==========================================
 
-// Recherche d'itinéraire accessible PMR
 app.post('/api/routes/find-accessible', authMiddleware.authenticate, async (req, res) => {
     try {
         const {
@@ -247,7 +227,6 @@ app.post('/api/routes/find-accessible', authMiddleware.authenticate, async (req,
     }
 });
 
-// Helper score
 function calculateRouteScore(route, startStation, endStation) {
     let score = 0;
 
@@ -270,10 +249,33 @@ function calculateRouteScore(route, startStation, endStation) {
 }
 
 // ==========================================
-// ENDPOINT DE MIGRATION (pour développement)
+// ENDPOINTS DE TEST (dev uniquement)
 // ==========================================
 
 if (process.env.NODE_ENV === 'development') {
+    // ✅ Route pour tester les transactions (utilise le système transaction existant)
+    app.post('/api/test/wallet-debit', authMiddleware.authenticate, async (req, res) => {
+        try {
+            const { user_id, amount } = req.body;
+
+            const result = await SupabaseService.updateUserWallet(
+                user_id || req.user.user_id,
+                amount || 10,
+                'debit'
+            );
+
+            res.json({
+                success: true,
+                message: 'Test de débit effectué',
+                result
+            });
+
+        } catch (error) {
+            console.error('❌ Test wallet error:', error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
     app.post('/api/dev/init-test-data', async (req, res) => {
         try {
             const { data: existingUsers } = await SupabaseService.client
@@ -296,7 +298,7 @@ if (process.env.NODE_ENV === 'development') {
                     email: 'pmr@flexitrip.fr',
                     phone: '+33612345678',
                     role: 'PMR',
-                    password: '$2b$10$YourHashedPasswordHere',
+                    password: '$2b$10$h9JqoBZz3T6w7Y8u9i0vR.LkMnOpQrStUvWxYzAbCdEfGhIjKlMnO',
                     pmr_profile: {
                         mobility_aid: 'wheelchair',
                         wheelchair_type: 'electric',
@@ -315,7 +317,7 @@ if (process.env.NODE_ENV === 'development') {
                     email: 'accompagnant@flexitrip.fr',
                     phone: '+33687654321',
                     role: 'Accompagnant',
-                    password: '$2b$10$YourHashedPasswordHere',
+                    password: '$2b$10$pQrStUvWxYzAbCdEfGhIjK.LkMnOpQrStUvWxYzAbCdEfGhIjKlMnO',
                     solde: 500.00
                 },
                 {
@@ -325,7 +327,7 @@ if (process.env.NODE_ENV === 'development') {
                     email: 'agent@flexitrip.fr',
                     phone: '+33123456789',
                     role: 'Agent',
-                    password: '$2b$10$YourHashedPasswordHere',
+                    password: '$2b$10$AbCdEfGhIjKlMnOpQrStUv.WxYzAbCdEfGhIjKlMnOpQrStUvWxYz',
                     solde: 1000.00
                 }
             ];
@@ -361,7 +363,6 @@ if (process.env.NODE_ENV === 'development') {
 // GESTION DES ERREURS ET 404
 // ==========================================
 
-// 404 API
 app.use('/api/*', (req, res) => {
     res.status(404).json({
         error: 'Route API non trouvée',
@@ -371,7 +372,6 @@ app.use('/api/*', (req, res) => {
     });
 });
 
-// Middleware de gestion des erreurs
 app.use(errorHandler);
 
 // ==========================================
@@ -409,6 +409,9 @@ const startServer = async () => {
             console.log(`  • GET    http://localhost:${PORT}/api/stations/search?query=nation`);
             console.log(`  • POST   http://localhost:${PORT}/api/routes/find-accessible`);
             console.log(`  • GET    http://localhost:${PORT}/api/docs (Documentation)`);
+            console.log(`  • GET    http://localhost:${PORT}/api/blockchain/history (Blockchain)`);
+            console.log(`  • GET    http://localhost:${PORT}/api/blockchain/balance (Solde)`);
+            console.log(`  • POST   http://localhost:${PORT}/api/transactions/pay (Paiement)`);
             console.log('\n✅ Prêt à recevoir des requêtes');
         });
 

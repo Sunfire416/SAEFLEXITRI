@@ -2,7 +2,7 @@ import { useState, useEffect, useContext } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 function EditReservation() {
   const { id } = useParams(); // ID de la réservation
@@ -30,7 +30,8 @@ function EditReservation() {
       try {
         // Récupération de la réservation
         const reservationResponse = await axios.get(
-          `${API_BASE_URL}/reservations/voyage-of-reservation/${id}`
+          `${API_BASE_URL}/reservations/voyage-of-reservation/${id}`,
+          { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
         );
 
         if (!reservationResponse.data) {
@@ -100,6 +101,7 @@ function EditReservation() {
         {
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem('token')}`
           },
         }
       );

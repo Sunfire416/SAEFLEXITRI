@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlane, faTaxi, faTrain, faBus } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 function ModifyReservation() {
   const { user } = useContext(AuthContext);
@@ -17,7 +17,8 @@ function ModifyReservation() {
   const fetchReservations = async (userId) => {
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/reservations/getByUser/${userId}`
+        `${API_BASE_URL}/reservations/getByUser/${userId}`,
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
       );
       const reservationsWithDetails = await Promise.all(
         response.data.map(async (reservation) => {
@@ -49,7 +50,8 @@ function ModifyReservation() {
   const fetchVoyageDetails = async (reservationId) => {
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/reservations/voyage-of-reservation/${reservationId}`
+        `${API_BASE_URL}/reservations/voyage-of-reservation/${reservationId}`,
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
       );
       return response.data;
     } catch (error) {
@@ -95,7 +97,7 @@ function ModifyReservation() {
                 onClick={() => navigate(`/edit-reservation/${reservations[0].reservation_id}`)}
               >
                 Enregistrer le voyage
-              </button>              
+              </button>
             </div>
 
             <div style={styles.etapesContainer}>
@@ -103,23 +105,23 @@ function ModifyReservation() {
                 <div key={reservation.reservation_id} style={styles.etapeCard}>
                   <h3 style={styles.etapeTitle}>Étape {reservation.etape_voyage}</h3>
                   <div style={styles.etapeDetails}>
-  <p style={styles.transportType}>
-    <FontAwesomeIcon 
-      icon={
-        reservation.Type_Transport === "avion" ? faPlane :
-        reservation.Type_Transport === "taxi" ? faTaxi :
-        reservation.Type_Transport === "train" ? faTrain : faBus
-      }
-      style={styles.icon}
-    />
-    {reservation.Type_Transport.charAt(0).toUpperCase() + reservation.Type_Transport.slice(1)}
-  </p>
-  <p style={styles.reservationStatus}>
-    <span style={reservation.Enregistré ? styles.confirmed : styles.pending}>
-      {reservation.Enregistré ? "Confirmé ✅" : "En attente ⏳"}
-    </span>
-  </p>
-</div>
+                    <p style={styles.transportType}>
+                      <FontAwesomeIcon
+                        icon={
+                          reservation.Type_Transport === "avion" ? faPlane :
+                            reservation.Type_Transport === "taxi" ? faTaxi :
+                              reservation.Type_Transport === "train" ? faTrain : faBus
+                        }
+                        style={styles.icon}
+                      />
+                      {reservation.Type_Transport.charAt(0).toUpperCase() + reservation.Type_Transport.slice(1)}
+                    </p>
+                    <p style={styles.reservationStatus}>
+                      <span style={reservation.Enregistré ? styles.confirmed : styles.pending}>
+                        {reservation.Enregistré ? "Confirmé ✅" : "En attente ⏳"}
+                      </span>
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>

@@ -8,7 +8,7 @@ import axios from 'axios';
 import WebcamCapture from '../shared/WebcamCapture';
 import './CheckInKiosk.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 const CheckInKiosk = () => {
   const [mode, setMode] = useState('kiosk'); // 'kiosk' ou 'agent'
@@ -84,7 +84,8 @@ const CheckInKiosk = () => {
         checkinData,
         {
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         }
       );
@@ -97,7 +98,7 @@ const CheckInKiosk = () => {
     } catch (err) {
       console.error('❌ Erreur check-in:', err);
       setError(
-        err.response?.data?.error || 
+        err.response?.data?.error ||
         'Erreur lors du check-in'
       );
     } finally {
@@ -120,7 +121,12 @@ const CheckInKiosk = () => {
 
       const response = await axios.post(
         `${API_BASE_URL}/checkin/manual`,
-        manualData
+        manualData,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
       );
 
       console.log('✅ Check-in manuel réussi:', response.data);
@@ -440,9 +446,9 @@ const CheckInKiosk = () => {
                   <div className="bp-row">
                     <span>Vol/Train :</span>
                     <strong>
-                      {checkInResult.boarding_pass.flight_train || 
-                       checkInResult.boarding_pass.flight_train_number || 
-                       'N/A'}
+                      {checkInResult.boarding_pass.flight_train ||
+                        checkInResult.boarding_pass.flight_train_number ||
+                        'N/A'}
                     </strong>
                   </div>
                   <div className="bp-row">

@@ -2,12 +2,10 @@
  * Service Notifications
  * Gère la création et l'envoi de notifications utilisateur
  * 
- * Intégré avec Kafka pour notifications temps réel
- * MongoDB pour stockage persistant
+ * Migré vers Supabase
  */
 
-const Notification = require('../models/NotificationMongo');
-// const { produceMessage } = require('./kafkaService');
+const SupabaseService = require('./SupabaseService');
 const crypto = require('crypto');
 
 /**
@@ -44,9 +42,7 @@ const createNotification = async (data) => {
       throw new Error('Champs requis manquants: user_id, type, title, message');
     }
 
-    // Créer notification
-    const notification = await Notification.create({
-      notification_id: generateNotificationId(user_id),
+    const notificationData = {
       user_id,
       type,
       title,
@@ -56,34 +52,14 @@ const createNotification = async (data) => {
       priority,
       icon,
       action_url,
-      expires_at: new Date(Date.now() + expires_in_days * 24 * 60 * 60 * 1000),
-      metadata: {
-        source: additionalData.source || 'system',
-        reservation_id: additionalData.reservation_id || null,
-        voyage_id: additionalData.voyage_id || null
-      }
-    });
+      expires_at: new Date(Date.now() + expires_in_days * 24 * 60 * 60 * 1000).toISOString(),
+      read: false
+    };
+
+    // Créer notification via Supabase
+    const notification = await SupabaseService.createNotification(notificationData);
 
     console.log(`✅ Notification créée: ${notification.notification_id}`);
-
-    // // Envoyer via Kafka (optionnel)
-    // try {
-    //   await produceMessage('pmr-notifications', {
-    //     notification_id: notification.notification_id,
-    //     user_id,
-    //     type,
-    //     title,
-    //     message,
-    //     created_at: notification.created_at
-    //   });
-    //   console.log(`📤 Notification envoyée via Kafka`);
-    // } catch (kafkaError) {
-    //   console.warn(
-    //     '⚠️ Erreur Kafka (notification stockée quand même):',
-    //     kafkaError.message
-    //   );
-    // }
-
 
     return notification;
 
@@ -263,23 +239,7 @@ const getUserNotifications = async (userId, options = {}) => {
       type = null
     } = options;
 
-    const query = { user_id: userId };
-    if (unread_only) query.read = false;
-    if (type) query.type = type;
-
-    const notifications = await Notification.find(query)
-      .sort({ created_at: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    const unread_count = await Notification.countUnreadByUser(userId);
-
-    return {
-      notifications,
-      unread_count,
-      total: await Notification.countDocuments({ user_id: userId })
-    };
-
+    return await SupabaseService.getUserNotifications(userId, limit, skip, unread_only, type);
   } catch (error) {
     console.error('❌ Erreur récupération notifications:', error);
     throw error;
@@ -295,9 +255,12 @@ const markAsRead = async (notificationIds) => {
       notificationIds = [notificationIds];
     }
 
-    const result = await Notification.markAsRead(notificationIds);
-    console.log(`✅ ${result.modifiedCount} notification(s) marquée(s) comme lue(s)`);
-    return result;
+    // Pour l'instant on boucle, mais on pourrait ajouter une méthode bulk dans SupabaseService
+    const results = [];
+    for (const id of notificationIds) {
+      results.push(await SupabaseService.markNotificationAsRead(id));
+    }
+    return results;
 
   } catch (error) {
     console.error('❌ Erreur marquage notification:', error);
@@ -310,14 +273,7 @@ const markAsRead = async (notificationIds) => {
  */
 const markAllAsRead = async (userId) => {
   try {
-    const result = await Notification.updateMany(
-      { user_id: userId, read: false },
-      { $set: { read: true, read_at: new Date() } }
-    );
-
-    console.log(`✅ ${result.modifiedCount} notifications marquées comme lues pour user ${userId}`);
-    return result;
-
+    return await SupabaseService.markAllNotificationsAsRead(userId);
   } catch (error) {
     console.error('❌ Erreur marquage toutes notifications:', error);
     throw error;
@@ -329,10 +285,7 @@ const markAllAsRead = async (userId) => {
  */
 const deleteNotification = async (notificationId) => {
   try {
-    const result = await Notification.deleteOne({ notification_id: notificationId });
-    console.log(`✅ Notification ${notificationId} supprimée`);
-    return result;
-
+    return await SupabaseService.deleteNotification(notificationId);
   } catch (error) {
     console.error('❌ Erreur suppression notification:', error);
     throw error;
@@ -344,10 +297,7 @@ const deleteNotification = async (notificationId) => {
  */
 const cleanExpiredNotifications = async () => {
   try {
-    const result = await Notification.deleteExpired();
-    console.log(`🗑️ ${result.deletedCount} notification(s) expirée(s) supprimée(s)`);
-    return result;
-
+    return await SupabaseService.deleteExpiredNotifications();
   } catch (error) {
     console.error('❌ Erreur nettoyage notifications:', error);
     throw error;

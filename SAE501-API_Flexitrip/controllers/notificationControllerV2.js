@@ -1,12 +1,12 @@
 /**
- * Controller Notifications V2 - MongoDB (Point 4)
+ * Controller Notifications V2 - Supabase
  * 
- * Ce controller utilise MongoDB au lieu de MySQL
+ * Ce controller utilise Supabase via notificationService
  * Routes: /notifications/* (avec 's')
  */
 
 const notificationService = require('../services/notificationService');
-const Notification = require('../models/NotificationMongo'); // ✅ CORRIGÉ
+const SupabaseService = require('../services/SupabaseService');
 
 /**
  * GET /notifications?user_id=4&limit=50&skip=0&unread_only=false&type=null
@@ -46,8 +46,11 @@ exports.getUnreadNotifications = async (req, res) => {
       return res.status(400).json({ success: false, error: 'user_id requis' });
     }
 
-    const notifications = await Notification.findUnreadByUser(user_id);
-    const unread_count = await Notification.countUnreadByUser(user_id);
+    const { notifications } = await notificationService.getUserNotifications(user_id, {
+      unread_only: true,
+      limit: 100
+    });
+    const unread_count = await SupabaseService.countUnreadNotifications(user_id);
 
     res.json({ success: true, notifications, unread_count });
   } catch (error) {
@@ -67,7 +70,7 @@ exports.getUnreadCount = async (req, res) => {
       return res.status(400).json({ success: false, error: 'user_id requis' });
     }
 
-    const unread_count = await Notification.countUnreadByUser(user_id);
+    const unread_count = await SupabaseService.countUnreadNotifications(user_id);
     res.json({ success: true, unread_count });
   } catch (error) {
     console.error('❌ Erreur getUnreadCount:', error);
@@ -81,8 +84,8 @@ exports.getUnreadCount = async (req, res) => {
  */
 exports.getNotificationById = async (req, res) => {
   try {
-    const notification = await Notification.findOne({ notification_id: req.params.id });
-    
+    const notification = await SupabaseService.getNotificationById(req.params.id);
+
     if (!notification) {
       return res.status(404).json({ success: false, error: 'Notification introuvable' });
     }
@@ -114,13 +117,7 @@ exports.createNotification = async (req, res) => {
  */
 exports.markAsRead = async (req, res) => {
   try {
-    const notification = await Notification.findOne({ notification_id: req.params.id });
-    
-    if (!notification) {
-      return res.status(404).json({ success: false, error: 'Notification introuvable' });
-    }
-    
-    await notification.markRead();
+    const notification = await SupabaseService.markNotificationAsRead(req.params.id);
     res.json({ success: true, notification });
   } catch (error) {
     console.error('❌ Erreur markAsRead:', error);
@@ -135,13 +132,13 @@ exports.markAsRead = async (req, res) => {
 exports.markAllAsRead = async (req, res) => {
   try {
     const user_id = req.user?.user_id || req.body.user_id;
-    
+
     if (!user_id) {
       return res.status(400).json({ success: false, error: 'user_id requis' });
     }
 
-    const result = await notificationService.markAllAsRead(user_id);
-    res.json({ success: true, modified_count: result.modifiedCount });
+    await notificationService.markAllAsRead(user_id);
+    res.json({ success: true, message: 'All notifications marked as read' });
   } catch (error) {
     console.error('❌ Erreur markAllAsRead:', error);
     res.status(500).json({ success: false, error: 'Erreur serveur', details: error.message });
@@ -154,12 +151,7 @@ exports.markAllAsRead = async (req, res) => {
  */
 exports.deleteNotification = async (req, res) => {
   try {
-    const result = await notificationService.deleteNotification(req.params.id);
-    
-    if (result.deletedCount === 0) {
-      return res.status(404).json({ success: false, error: 'Notification introuvable' });
-    }
-    
+    await notificationService.deleteNotification(req.params.id);
     res.status(204).send();
   } catch (error) {
     console.error('❌ Erreur deleteNotification:', error);

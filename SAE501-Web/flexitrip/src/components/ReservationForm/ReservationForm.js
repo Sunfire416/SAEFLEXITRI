@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 function ReservationForm() {
     const [reservation, setReservation] = useState({
@@ -41,7 +41,7 @@ function ReservationForm() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         if (!reservation.num_reza_MMT || !reservation.transportType || !reservation.company) {
             setError("Veuillez remplir tous les champs requis.");
             return;

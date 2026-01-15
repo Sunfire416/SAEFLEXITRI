@@ -4,13 +4,13 @@ import { AuthContext } from '../../context/AuthContext';
 import axios from 'axios';
 import './TripBuilder.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 function TripBuilder() {
     const location = useLocation();
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
-    
+
     const [selectedTrip] = useState(location.state?.selectedTrip);
     const [pmrOptions, setPmrOptions] = useState({});
     const [loading, setLoading] = useState(false);
@@ -223,7 +223,7 @@ function TripBuilder() {
             )}
 
             <div className="trip-actions">
-                <button 
+                <button
                     className="proceed-button"
                     onClick={handleProceedToPayment}
                     disabled={loading}

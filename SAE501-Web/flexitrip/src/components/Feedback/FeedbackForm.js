@@ -44,7 +44,7 @@ const FeedbackForm = () => {
 
     const fetchData = async () => {
         try {
-            const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+            const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
             const token = localStorage.getItem('token');
 
             // Récupérer la réservation
@@ -57,7 +57,7 @@ const FeedbackForm = () => {
             // Vérifier si un avis existe déjà
             try {
                 const reviewResponse = await axios.get(
-                    `${API_URL}/api/review/reservation/${reservationId}?userId=${user.user_id}`,
+                    `${API_URL}/review/reservation/${reservationId}?userId=${user.user_id}`,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
                 setExistingReview(reviewResponse.data);
@@ -104,7 +104,7 @@ const FeedbackForm = () => {
         setLoading(true);
 
         try {
-            const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+            const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
             const token = localStorage.getItem('token');
 
             const payload = {
@@ -116,7 +116,7 @@ const FeedbackForm = () => {
             if (existingReview) {
                 // Mise à jour
                 await axios.put(
-                    `${API_URL}/api/review/${existingReview._id}`,
+                    `${API_URL}/review/${existingReview._id}`,
                     payload,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
@@ -124,7 +124,7 @@ const FeedbackForm = () => {
             } else {
                 // Création
                 await axios.post(
-                    `${API_URL}/api/review`,
+                    `${API_URL}/review`,
                     payload,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
@@ -257,9 +257,9 @@ const FeedbackForm = () => {
                         <input
                             type="checkbox"
                             checked={formData.wouldRecommend}
-                            onChange={(e) => setFormData({ 
-                                ...formData, 
-                                wouldRecommend: e.target.checked 
+                            onChange={(e) => setFormData({
+                                ...formData,
+                                wouldRecommend: e.target.checked
                             })}
                         />
                         <span>Je recommande ce service à d'autres personnes PMR</span>
@@ -268,16 +268,16 @@ const FeedbackForm = () => {
 
                 {/* Boutons */}
                 <div className="form-actions">
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         onClick={() => navigate('/user/voyages')}
                         className="cancel-btn"
                         disabled={loading}
                     >
                         Annuler
                     </button>
-                    <button 
-                        type="submit" 
+                    <button
+                        type="submit"
                         className="submit-btn"
                         disabled={loading}
                     >
