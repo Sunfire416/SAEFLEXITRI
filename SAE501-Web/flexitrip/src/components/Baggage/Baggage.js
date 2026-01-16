@@ -1,10 +1,10 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { useBaggage } from "../../context/BaggageContext";
-import { useQrCode } from "../../context/QrCodeContext";
 import "./Baggage.css";
 
-function Ewallet() {
+// Simple baggage QR generator/manager; kept separate from the e-wallet UI
+function BaggageTracking() {
   const { baggageQrCodes, setBaggageQrCodes } = useBaggage();
   const [baggageWeight, setBaggageWeight] = useState("");
   const [baggageDescription, setBaggageDescription] = useState("");
@@ -106,4 +106,4 @@ function Ewallet() {
   );
 }
 
-export default Ewallet;
+export default BaggageTracking;
