@@ -168,7 +168,6 @@ class TransactionController {
                     type: 'credit',
                     description: description,
                     payment_status: 'paid',
-                    status: 'completed',
                     date_payement: new Date().toISOString()
                 }])
                 .select()

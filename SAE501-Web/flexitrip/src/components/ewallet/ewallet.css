@@ -173,21 +173,50 @@
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  text-align: left; /* Alignement à gauche pour une meilleure lecture */
-  width: 250px; /* Largeur ajustée pour mieux afficher les informations */
+  text-align: center;
+  width: 250px;
   margin: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  word-wrap: break-word;
+  box-sizing: border-box;
+}
+
+.qr-card svg {
+  margin-bottom: 15px;
+}
+
+.qr-card-info {
+  width: 100%;
+  text-align: left;
+  font-size: 12px;
+  color: #555;
+  line-height: 1.6;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+.qr-card-info p {
+  margin: 5px 0;
+  font-size: 12px;
+  word-break: break-word;
 }
 
 .qr-card p {
-  font-size: 14px;
-  color: #333;
-  margin: 8px 0; /* Espacement entre les lignes */
-  line-height: 1.4; /* Amélioration de la lisibilité */
+  font-size: 12px;
+  color: #666;
+  margin: 5px 0;
+  line-height: 1.5;
+  word-wrap: break-word;
+  max-width: 100%;
 }
 
 .qr-card strong {
   font-weight: bold;
-  color: #2c3e50; /* Couleur plus foncée pour les titres */
+  color: #2c3e50;
 }
 
 .clear-qr-button {
@@ -244,20 +273,47 @@
   border-radius: 10px;
   padding: 15px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  text-align: left; /* Alignement à gauche pour une meilleure lecture */
-  width: 250px; /* Largeur ajustée */
+  text-align: center;
+  width: 250px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.baggage-qr-card svg {
+  margin-bottom: 10px;
 }
 
 .baggage-qr-card p {
   font-size: 14px;
   color: #333;
-  margin: 8px 0; /* Espacement entre les lignes */
-  line-height: 1.4; /* Amélioration de la lisibilité */
+  margin: 8px 0;
+  line-height: 1.4;
 }
 
 .baggage-qr-card strong {
   font-weight: bold;
-  color: #2c3e50; /* Couleur plus foncée pour les titres */
+  color: #2c3e50;
+}
+
+.delete-baggage-qr-button {
+  width: 100%;
+  text-align: center;
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 18px;
+  margin-top: 10px;
+  transition: background 0.3s ease;
+}
+
+.delete-baggage-qr-button:hover {
+  background: #c0392b;
 }
 
 .no-baggage-qr-message {

@@ -102,7 +102,6 @@ router.post('/pay', async (req, res) => {
                 type: 'Billet_Voyage',
                 description: description,
                 payment_status: 'paid',
-                status: 'completed',
                 date_payement: new Date().toISOString()
             }]);
 
@@ -122,7 +121,6 @@ router.post('/pay', async (req, res) => {
                     type: 'credit',
                     description: `Réception paiement de ${sender}`,
                     payment_status: 'paid',
-                    status: 'completed',
                     date_payement: new Date().toISOString()
                 }]);
 

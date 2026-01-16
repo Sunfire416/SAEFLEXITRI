@@ -71,7 +71,7 @@ router.get('/balance', async (req, res) => {
 
         res.json({
             success: true,
-            balance: user.solde || 0,
+            balance: parseFloat(user.solde) || 0, // Force la conversion en nombre
             currency: 'EUR',
             history: result.success ? result.transactions : [],
             last_updated: new Date().toISOString()

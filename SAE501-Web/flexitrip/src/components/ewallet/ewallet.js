@@ -26,35 +26,36 @@ function Ewallet() {
     }
   }, []);
 
-  // Fetch balance and payment history
+  // Define fetch functions outside useEffect so they can be reused
+  const fetchBalance = async () => {
+    try {
+      const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
+      const response = await axios.get(
+        `${API_BASE_URL}/blockchain/balance`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setBalance(response.data.balance);
+    } catch (err) {
+      console.error("Erreur lors de la récupération du solde:", err);
+    }
+  };
+
+  const fetchPaymentHistory = async () => {
+    try {
+      const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
+      const response = await axios.get(
+        `${API_BASE_URL}/blockchain/history`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setPaymentHistory(response.data);
+    } catch (err) {
+      console.error("Erreur lors de la récupération de l'historique:", err);
+    }
+  };
+
+  // Fetch balance and payment history on token change
   useEffect(() => {
     if (!token || !user || !user.user_id) return;
-    const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
-
-    const fetchBalance = async () => {
-      try {
-        const response = await axios.get(
-          `${API_BASE_URL}/blockchain/balance`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        setBalance(response.data.balance);
-      } catch {
-        setError("❌ Impossible de récupérer le solde.");
-      }
-    };
-
-    const fetchPaymentHistory = async () => {
-      try {
-        const response = await axios.get(
-          `${API_BASE_URL}/blockchain/history`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        setPaymentHistory(response.data);
-      } catch {
-        setError("❌ Impossible de récupérer l'historique des paiements.");
-      }
-    };
-
 
     fetchBalance();
     fetchPaymentHistory();
@@ -88,19 +89,14 @@ function Ewallet() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      if (response.status === 200) {
-        setBalance((prevBalance) => prevBalance - paymentAmount);
-        setPaymentHistory((prevHistory) => [
-          {
-            id: Date.now(),
-            date: new Date().toISOString(),
-            amount: paymentAmount,
-            receiver: receiverId,
-          },
-          ...prevHistory,
-        ]);
+      if (response.status === 200 || response.data.success) {
+        // ✅ ACTION : Recharger les données depuis le serveur pour être sûr du solde
+        fetchBalance();
+        fetchPaymentHistory();
+
         setError(null);
         setPaymentAmount(0);
+        alert("Paiement réussi !");
       }
     } catch (error) {
       console.error("Erreur lors du paiement :", error);
@@ -128,6 +124,37 @@ function Ewallet() {
     return new Date(dateString).toLocaleDateString("fr-FR", {
       timeZone: "Europe/Paris",
     });
+  };
+
+  // Parse and format QR code data
+  const parseQRData = (qrData) => {
+    try {
+      const data = JSON.parse(qrData);
+      const labels = {
+        departure: "Départ",
+        destination: "Destination",
+        transportType: "Type de transport",
+        needTaxiToAirport: "Taxi à l'aéroport",
+        needTaxiToDestination: "Taxi à destination",
+        totalPrice: "Prix total",
+        id_voyage: "ID Voyage"
+      };
+      
+      return (
+        <div className="qr-card-info">
+          {Object.entries(data).map(([key, value]) => (
+            <p key={key}>
+              <strong>{labels[key] || key}:</strong> {
+                typeof value === 'boolean' ? (value ? 'Oui' : 'Non') : value
+              }
+            </p>
+          ))}
+        </div>
+      );
+    } catch (error) {
+      // Si ce n'est pas du JSON, retourner le texte brut
+      return <p>{qrData}</p>;
+    }
   };
 
   return (
@@ -171,9 +198,9 @@ function Ewallet() {
               return (
                 <div key={payment.id || index} className="payment-history-item">
                   {formattedDate && <p><strong>Date :</strong> {formattedDate}</p>}
-                  <p><strong>Montant :</strong> {payment.amount} $</p>
-                  <p><strong>Destinataire :</strong> {payment.receiver}</p>
-
+                  <p><strong>Type :</strong> {payment.transaction_type}</p>
+                  <p><strong>Montant :</strong> {payment.amount} €</p>
+                  <p><strong>Date :</strong> {formatDate(payment.created_at)}</p>
                 </div>
               );
             })}
@@ -191,7 +218,7 @@ function Ewallet() {
             {qrCodes.map((qr, index) => (
               <div key={index} className="qr-card">
                 <QRCodeSVG value={qr} size={150} />
-                <p>{qr}</p>
+                {parseQRData(qr)}
               </div>
             ))}
           </div>
@@ -210,14 +237,14 @@ function Ewallet() {
           <div className="baggage-qr-container">
             {baggageQrCodes.map((qrCode, index) => (
               <div key={index} className="baggage-qr-card">
+                <QRCodeSVG value={qrCode} size={150} />
+                <p>Bagage {index + 1}</p>
                 <button
                   className="delete-baggage-qr-button"
                   onClick={() => handleDeleteBaggageQr(index)}
                 >
                   ×
                 </button>
-                <QRCodeSVG value={qrCode} size={150} />
-                <p>Bagage {index + 1}</p>
               </div>
             ))}
           </div>

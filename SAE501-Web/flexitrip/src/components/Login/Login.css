@@ -201,6 +201,7 @@
 .input-group {
     margin-bottom: 20px;
     text-align: left;
+    position: relative;
 }
 
 .input-group label {
@@ -211,13 +212,14 @@
 }
 
 .input-group input {
-    width: 93%;
+    width: 100%;
     padding: 12px;
     border-radius: 20px;
     border: 1px solid #ddd;
     font-size: 15px;
     background-color: #f9f9f9;
     transition: border-color 0.3s ease;
+    box-sizing: border-box;
 }
 
 .input-group input:focus {
@@ -242,29 +244,36 @@
 
 .input-group input {
   width: 100%;
-  padding: 10px 10px 10px 35px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 16px;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  font-size: 15px;
+  background-color: #f9f9f9;
+  box-sizing: border-box;
 }
 
 .input-group input:focus {
   outline: none;
   border-color: #007bff;
+  background-color: #ffffff;
 }
 
 .input-group button {
     position: absolute;
-    bottom: -10px; /* Descend le bouton en dessous du conteneur */
-    right: 10px; /* Distance par rapport au bord droit */
-    background-color: #666;
+    bottom: auto;
+    top: 32px;
+    right: 15px;
+    background-color: transparent;
     color: #666;
-    border: 1px solid #333;
+    border: none;
     border-radius: 5px;
     font-size: medium;
-    padding: 8px 12px;
+    padding: 5px 8px;
     cursor: pointer;
-    transform: none; /* Supprime tout ajustement de décalage inutile */
+    transform: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 

@@ -111,7 +111,8 @@ class SupabaseService {
     }
 
     async updateUserWallet(userId, amount, type = 'debit') {
-        console.log(`🔍 SupabaseService.updateUserWallet (Trigger Mode): ${userId}, ${amount}, ${type}`);
+        const normalizedType = this.normalizeTransactionType(type);
+        console.log(`🔍 SupabaseService.updateUserWallet (Trigger Mode): ${userId}, ${amount}, ${normalizedType}`);
 
         try {
             // Simplification radicale : on insère juste une transaction
@@ -121,9 +122,9 @@ class SupabaseService {
             const transactionData = {
                 user_id: userId,
                 amount: parseFloat(amount),
-                type: type,
+                type: normalizedType,
                 payment_status: 'paid',
-                description: type === 'credit' ? 'Rechargement (Trigger)' : 'Débit (Trigger)',
+                description: type === 'credit' ? 'Rechargement (Trigger)' : 'Paiement voyage (Trigger)',
                 date_payement: new Date().toISOString()
             };
 
