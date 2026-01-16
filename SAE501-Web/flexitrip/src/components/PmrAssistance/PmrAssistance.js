@@ -1,144 +1,179 @@
-import { useState, useEffect, useContext } from "react";
-import axios from "axios";
-import { AuthContext } from "../../context/AuthContext";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlane, faTaxi, faTrain, faBus } from "@fortawesome/free-solid-svg-icons";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { QRCodeSVG } from "qrcode.react";
+import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker } from "react-leaflet";
+import L from "leaflet";
+import "./PmrAssistance.css";
+import "leaflet/dist/leaflet.css";
 
-const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
+// Fix pour les icônes Leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
+  iconUrl: require("leaflet/dist/images/marker-icon.png"),
+  shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
+});
 
-function ModifyReservation() {
-  const { user } = useContext(AuthContext);
-  const navigate = useNavigate();
-  const [groupedReservations, setGroupedReservations] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+function PMRTracking() {
+  const [status, setStatus] = useState("en_route");
+  const [agentPosition, setAgentPosition] = useState([48.8809, 2.3553]);
+  const [helpRequested, setHelpRequested] = useState(false);
 
-  const fetchReservations = async (userId) => {
-    try {
-      const response = await axios.get(
-        `${API_BASE_URL}/reservations/getByUser/${userId}`,
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-      );
-      const reservationsWithDetails = await Promise.all(
-        response.data.map(async (reservation) => {
-          const voyageDetails = await fetchVoyageDetails(reservation.reservation_id);
-          return { ...reservation, ...voyageDetails };
-        })
-      );
+  const qrPayload = "PMR-SEGMENT-001";
+  const meetingPoint = [48.886, 2.345];
+  const destination = [50.637, 3.077];
+  const routeCoordinates = [[48.8809, 2.3553], meetingPoint, destination];
 
-      // Grouper les réservations par num_reza_mmt
-      const grouped = reservationsWithDetails.reduce((acc, reservation) => {
-        const key = reservation.num_reza_mmt;
-        if (!acc[key]) {
-          acc[key] = [];
-        }
-        acc[key].push(reservation);
-        acc[key].sort((a, b) => a.etape_voyage - b.etape_voyage);
-        return acc;
-      }, {});
-
-      setGroupedReservations(grouped);
-      setLoading(false);
-    } catch (error) {
-      console.error("Erreur:", error);
-      setError("Impossible de charger les réservations");
-      setLoading(false);
-    }
-  };
-
-  const fetchVoyageDetails = async (reservationId) => {
-    try {
-      const response = await axios.get(
-        `${API_BASE_URL}/reservations/voyage-of-reservation/${reservationId}`,
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Erreur lors de la récupération des détails du voyage:", error);
-      return {};
-    }
+  const statusConfig = {
+    en_route: {
+      text: "Agent en route",
+      color: "#f1c40f",
+      position: [48.8809, 2.3553],
+    },
+    arrived: {
+      text: "Agent arrivé au point de rendez-vous",
+      color: "#2ecc71",
+      position: meetingPoint,
+    },
+    in_mission: {
+      text: "Prise en charge en cours",
+      color: "#3498db",
+      position: meetingPoint,
+    },
   };
 
   useEffect(() => {
-    if (user && user.user_id) {
-      fetchReservations(user.user_id);
-    } else {
-      setLoading(false);
-    }
-  }, [user]);
+    setAgentPosition(statusConfig[status].position);
+  }, [status]);
 
-  if (loading) return <div style={styles.loading}>Chargement...</div>;
-  if (!user) return <div style={styles.error}>Veuillez vous connecter pour accéder à vos réservations.</div>;
-  if (error) return <div style={styles.error}>{error}</div>;
+  const handleStatusChange = (newStatus) => {
+    setStatus(newStatus);
+  };
+
+  const handleHelpRequest = () => {
+    setHelpRequested(true);
+    setTimeout(() => setHelpRequested(false), 3000);
+  };
+
+  const currentConfig = statusConfig[status];
 
   return (
-    <div style={styles.container}>
-      <h1 style={styles.title}>Mes Réservations</h1>
+    <div className="pmr-container">
+      <h1>Suivi de prise en charge PMR</h1>
 
-      {Object.entries(groupedReservations).length > 0 ? (
-        Object.entries(groupedReservations).map(([rezaMmt, reservations]) => (
-          <div key={rezaMmt} style={styles.voyageGroup}>
-            <h2 style={styles.voyageGroupTitle}>Voyage #{rezaMmt}</h2>
-            <div style={styles.voyageDetails}>
-              <p style={styles.voyageDate}>
-                <strong>Date de début :</strong> {new Date(reservations[0].date_debut).toLocaleDateString()}
-              </p>
-              <p style={styles.voyageDate}>
-                <strong>Date de fin :</strong> {new Date(reservations[0].date_fin).toLocaleDateString()}
-              </p>
-              <p style={styles.voyagePrice}>
-                <strong>Prix total :</strong> {reservations.reduce((sum, res) => sum + res.prix_total, 0)} €
-              </p>
+      <section>
+        <h3>Trajet en cours</h3>
+        <p>
+          <strong id="from">Paris Gare du Nord</strong> →{" "}
+          <strong id="to">Lille Europe</strong>
+        </p>
 
-              {/* Bouton pour rediriger avec l'ID du voyage */}
-              <button
-                style={styles.saveButton}
-                onClick={() => navigate(`/edit-reservation/${reservations[0].reservation_id}`)}
-              >
-                Enregistrer le voyage
-              </button>
-            </div>
+        <MapContainer
+          center={[49.3, 2.7]}
+          zoom={7}
+          style={{ height: "300px", borderRadius: "12px" }}
+          className="pmr-map"
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='© OpenStreetMap'
+            maxZoom={19}
+          />
 
-            <div style={styles.etapesContainer}>
-              {reservations.map((reservation) => (
-                <div key={reservation.reservation_id} style={styles.etapeCard}>
-                  <h3 style={styles.etapeTitle}>Étape {reservation.etape_voyage}</h3>
-                  <div style={styles.etapeDetails}>
-                    <p style={styles.transportType}>
-                      <FontAwesomeIcon
-                        icon={
-                          reservation.Type_Transport === "avion" ? faPlane :
-                            reservation.Type_Transport === "taxi" ? faTaxi :
-                              reservation.Type_Transport === "train" ? faTrain : faBus
-                        }
-                        style={styles.icon}
-                      />
-                      {reservation.Type_Transport.charAt(0).toUpperCase() + reservation.Type_Transport.slice(1)}
-                    </p>
-                    <p style={styles.reservationStatus}>
-                      <span style={reservation.Enregistré ? styles.confirmed : styles.pending}>
-                        {reservation.Enregistré ? "Confirmé ✅" : "En attente ⏳"}
-                      </span>
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))
-      ) : (
-        <div style={styles.error}>Aucune réservation trouvée.</div>
-      )}
+          {/* Markers */}
+          <Marker position={[48.8809, 2.3553]}>
+            <Popup>Départ: Paris Gare du Nord</Popup>
+          </Marker>
+          <Marker position={meetingPoint}>
+            <Popup>Point RDV: Voie 5</Popup>
+          </Marker>
+          <Marker position={destination}>
+            <Popup>Destination: Lille Europe</Popup>
+          </Marker>
 
-      <button style={styles.homeButton} onClick={() => navigate('/')}>
-        Retour à l'accueil
-      </button>
+          {/* Agent circle marker */}
+          <CircleMarker
+            center={agentPosition}
+            radius={10}
+            fillColor={currentConfig.color}
+            color={currentConfig.color}
+            weight={2}
+            opacity={1}
+            fillOpacity={1}
+          >
+            <Popup>Agent PMR - {currentConfig.text}</Popup>
+          </CircleMarker>
+
+          {/* Route polyline */}
+          <Polyline positions={routeCoordinates} color="blue" weight={3} />
+        </MapContainer>
+
+        <p id="meetingPointText">
+          📍 Point de rendez-vous :{" "}
+          <span id="meetingPoint">Voie 5 – Zone Assistance PMR</span>
+        </p>
+      </section>
+
+      <section>
+        <h3>Agent PMR</h3>
+        <p>
+          👤 <span id="agentName">Sophie Dupont</span>
+        </p>
+        <p>
+          ⏱️ Temps estimé : <span id="eta">3</span> min
+        </p>
+
+        <p id="status" className="status-indicator">
+          <svg width="16" height="16" className="status-circle">
+            <circle cx="8" cy="8" r="8" fill={currentConfig.color} />
+          </svg>
+          <span id="statusText">{currentConfig.text}</span>
+        </p>
+
+        <div className="button-group">
+          <button
+            className="btn-status"
+            onClick={() => handleStatusChange("arrived")}
+          >
+            Simuler arrivée agent
+          </button>
+          <button
+            className="btn-status"
+            onClick={() => handleStatusChange("in_mission")}
+          >
+            Simuler prise en charge
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <h3>QR Code Voyageur</h3>
+        <div className="qrcode-container">
+          <QRCodeSVG
+            value={qrPayload}
+            size={128}
+            level="H"
+            includeMargin={true}
+          />
+        </div>
+        <p>
+          ID : <span id="qrPayload">{qrPayload}</span>
+        </p>
+      </section>
+
+      <section>
+        <h3>Support</h3>
+        <button className="btn-help" onClick={handleHelpRequest}>
+          🚨 Demander de l'aide
+        </button>
+        {helpRequested && (
+          <p className="help-message">✅ Un agent a été alerté.</p>
+        )}
+      </section>
     </div>
   );
 }
 
-export default ModifyReservation;
+export default PMRTracking;
 
 // ✅ Styles mis à jour
 const styles = {
