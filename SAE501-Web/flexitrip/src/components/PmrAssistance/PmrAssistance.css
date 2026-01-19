@@ -3,12 +3,17 @@
 /* ============================================= */
 
 :root {
-  --primary-color: #3498db;
-  --secondary-color: #2ecc71;
+  --primary-color: #2eb378;
+  --primary-hover: #27985a;
+  --secondary-color: #5bbcea;
   --background-color: #f4f7f6;
-  --text-color: #2c3e50;
-  --accent-color: #e74c3c;
+  --text-color: #393839;
+  --text-light: #666666;
+  --accent-color-warning: #F97316;
+  --accent-color-error: #EF4444;
   --transition-speed: 0.3s;
+  --border-radius: 12px;
+  --font-family: 'Inter', 'Stem Extra Light', 'Segoe UI', Roboto, sans-serif;
 }
 
 .pmr-container {
@@ -18,8 +23,9 @@
   background-color: white;
   border-radius: 20px;
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-  font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-family);
   color: var(--text-color);
+  font-weight: 300;
 }
 
 .pmr-container h1 {
@@ -60,12 +66,17 @@
 /* ============================================= */
 
 .pmr-map {
-  border-radius: 12px;
+  border-radius: var(--border-radius);
   margin-top: 1rem;
   margin-bottom: 0.5rem;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   position: relative;
   z-index: 1;
+  border: 3px solid var(--secondary-color);
+  width: 100%;
+  height: 300px;
+  overflow: hidden;
+  background-color: #f0f0f0;
 }
 
 /* Isoler la carte dans un conteneur */
@@ -77,23 +88,27 @@
   margin-bottom: 0.5rem;
 }
 
-.pmr-map .leaflet-container {
-  z-index: 1;
-  position: relative;
+.pmr-map .mapboxgl-canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
 
-.pmr-map .leaflet-popup {
+.pmr-map .mapboxgl-ctrl {
+  z-index: 5;
+}
+
+.pmr-map .mapboxgl-popup {
   z-index: 10;
 }
 
-.pmr-map .leaflet-control {
-  z-index: 5;
+.pmr-map .mapboxgl-marker {
+  z-index: 3;
 }
 
 #meetingPointText {
   text-align: center;
   font-size: 0.9rem;
-  color: #555;
+  color: var(--text-light);
   margin: 1rem 0;
 }
 
@@ -126,12 +141,13 @@
 
 button {
   padding: 10px 20px;
-  border-radius: 12px;
+  border-radius: var(--border-radius);
   border: none;
   cursor: pointer;
   transition: all var(--transition-speed) ease;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 14px;
+  font-family: var(--font-family);
 }
 
 button:hover {
@@ -148,20 +164,22 @@ button:active {
   color: white;
   flex: 1;
   min-width: 150px;
+  border-radius: var(--border-radius);
 }
 
 .btn-status:hover {
-  background-color: #2980b9;
+  background-color: var(--primary-hover);
 }
 
 .btn-help {
-  background-color: var(--accent-color);
+  background-color: var(--accent-color-error);
   color: white;
   width: 100%;
+  border-radius: var(--border-radius);
 }
 
 .btn-help:hover {
-  background-color: #c0392b;
+  background-color: #d63030;
 }
 
 /* ============================================= */
@@ -194,7 +212,7 @@ button:active {
 /* ============================================= */
 
 .help-message {
-  color: var(--secondary-color);
+  color: var(--primary-color);
   font-weight: bold;
   margin-top: 0.8rem;
   animation: slideIn 0.3s ease;

@@ -1,33 +1,29 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker } from "react-leaflet";
-import L from "leaflet";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
 import "./PmrAssistance.css";
-import "leaflet/dist/leaflet.css";
 
-// Fix pour les icônes Leaflet
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
-  iconUrl: require("leaflet/dist/images/marker-icon.png"),
-  shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
-});
+// Mapbox access token
+mapboxgl.accessToken = 'pk.eyJ1IjoianJpcHBlcjc5IiwiYSI6ImNsaW9kYmozNDBldmszcHBjamZhaG00ZjUifQ.pTtXkitNS0RjYw3LGvf1CQ';
 
 function PMRTracking() {
   const [status, setStatus] = useState("en_route");
-  const [agentPosition, setAgentPosition] = useState([48.8809, 2.3553]);
+  const [agentPosition, setAgentPosition] = useState([2.3553, 48.8809]);
   const [helpRequested, setHelpRequested] = useState(false);
+  const mapContainer = useRef(null);
+  const map = useRef(null);
 
   const qrPayload = "PMR-SEGMENT-001";
-  const meetingPoint = [48.886, 2.345];
-  const destination = [50.637, 3.077];
-  const routeCoordinates = [[48.8809, 2.3553], meetingPoint, destination];
+  const meetingPoint = [2.345, 48.886];
+  const destination = [3.077, 50.637];
+  const departurePoint = [2.3553, 48.8809];
 
   const statusConfig = {
     en_route: {
       text: "Agent en route",
       color: "#f1c40f",
-      position: [48.8809, 2.3553],
+      position: departurePoint,
     },
     arrived: {
       text: "Agent arrivé au point de rendez-vous",
@@ -56,6 +52,144 @@ function PMRTracking() {
 
   const currentConfig = statusConfig[status];
 
+  // Initialisation et mise à jour de la carte MapBox
+  useEffect(() => {
+    if (!mapContainer.current) return;
+
+    // Attendre que le DOM soit bien rendu
+    const timer = setTimeout(() => {
+      if (!map.current) {
+        try {
+          map.current = new mapboxgl.Map({
+            container: mapContainer.current,
+            style: "mapbox://styles/mapbox/streets-v12",
+            center: [2.7, 49.3],
+            zoom: 7,
+            pitch: 0,
+            bearing: 0,
+            antialias: true,
+          });
+
+          map.current.on("load", () => {
+            // Ajouter les sources de données
+            map.current.addSource("route", {
+              type: "geojson",
+              data: {
+                type: "Feature",
+                properties: {},
+                geometry: {
+                  type: "LineString",
+                  coordinates: [departurePoint, meetingPoint, destination],
+                },
+              },
+            });
+
+            map.current.addSource("agent", {
+              type: "geojson",
+              data: {
+                type: "FeatureCollection",
+                features: [
+                  {
+                    type: "Feature",
+                    properties: {},
+                    geometry: {
+                      type: "Point",
+                      coordinates: agentPosition,
+                    },
+                  },
+                ],
+              },
+            });
+
+            // Ajouter la couche de route
+            map.current.addLayer({
+              id: "route",
+              type: "line",
+              source: "route",
+              layout: {
+                "line-join": "round",
+                "line-cap": "round",
+              },
+              paint: {
+                "line-color": "#5bbcea",
+                "line-width": 3,
+              },
+            });
+
+            // Ajouter les marqueurs de départ, RDV et destination
+            new mapboxgl.Marker({ color: "#2eb378" })
+              .setLngLat(departurePoint)
+              .setPopup(new mapboxgl.Popup().setHTML("<strong>Départ:</strong> Paris Gare du Nord"))
+              .addTo(map.current);
+
+            new mapboxgl.Marker({ color: "#5bbcea" })
+              .setLngLat(meetingPoint)
+              .setPopup(new mapboxgl.Popup().setHTML("<strong>Point RDV:</strong> Voie 5"))
+              .addTo(map.current);
+
+            new mapboxgl.Marker({ color: "#EF4444" })
+              .setLngLat(destination)
+              .setPopup(new mapboxgl.Popup().setHTML("<strong>Destination:</strong> Lille Europe"))
+              .addTo(map.current);
+
+            // Ajouter la couche de l'agent
+            map.current.addLayer({
+              id: "agent-marker",
+              type: "circle",
+              source: "agent",
+              paint: {
+                "circle-radius": 10,
+                "circle-color": currentConfig.color,
+                "circle-opacity": 1,
+                "circle-stroke-width": 2,
+                "circle-stroke-color": "#fff",
+              },
+            });
+
+            // Ajouter un contrôle de navigation
+            map.current.addControl(new mapboxgl.NavigationControl());
+          });
+
+          map.current.on("error", (e) => {
+            console.error("MapBox error:", e);
+          });
+        } catch (error) {
+          console.error("MapBox initialization error:", error);
+        }
+      } else {
+        // Mettre à jour la position de l'agent
+        if (map.current.getSource("agent")) {
+          map.current.getSource("agent").setData({
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                properties: {},
+                geometry: {
+                  type: "Point",
+                  coordinates: agentPosition,
+                },
+              },
+            ],
+          });
+        }
+
+        // Mettre à jour la couleur du marqueur de l'agent
+        if (map.current.getLayer("agent-marker")) {
+          map.current.setPaintProperty("agent-marker", "circle-color", currentConfig.color);
+        }
+      }
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
+  }, [currentConfig.color]);
+
   return (
     <div className="pmr-container">
       <h1>Suivi de prise en charge PMR</h1>
@@ -67,45 +201,11 @@ function PMRTracking() {
           <strong id="to">Lille Europe</strong>
         </p>
 
-        <MapContainer
-          center={[49.3, 2.7]}
-          zoom={7}
-          style={{ height: "300px", borderRadius: "12px" }}
+        <div
+          ref={mapContainer}
           className="pmr-map"
-        >
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='© OpenStreetMap'
-            maxZoom={19}
-          />
-
-          {/* Markers */}
-          <Marker position={[48.8809, 2.3553]}>
-            <Popup>Départ: Paris Gare du Nord</Popup>
-          </Marker>
-          <Marker position={meetingPoint}>
-            <Popup>Point RDV: Voie 5</Popup>
-          </Marker>
-          <Marker position={destination}>
-            <Popup>Destination: Lille Europe</Popup>
-          </Marker>
-
-          {/* Agent circle marker */}
-          <CircleMarker
-            center={agentPosition}
-            radius={10}
-            fillColor={currentConfig.color}
-            color={currentConfig.color}
-            weight={2}
-            opacity={1}
-            fillOpacity={1}
-          >
-            <Popup>Agent PMR - {currentConfig.text}</Popup>
-          </CircleMarker>
-
-          {/* Route polyline */}
-          <Polyline positions={routeCoordinates} color="blue" weight={3} />
-        </MapContainer>
+          style={{ height: "300px", borderRadius: "12px" }}
+        />
 
         <p id="meetingPointText">
           📍 Point de rendez-vous :{" "}
