@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './ewallet.css';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
@@ -17,7 +18,12 @@ import {
   Alert,
   Divider
 } from '@mui/material';
-import { Download as DownloadIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import {
+  Download as DownloadIcon,
+  Delete as DeleteIcon,
+  ArrowForward as ArrowForwardIcon,
+  Add as AddIcon
+} from '@mui/icons-material';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -29,6 +35,7 @@ function Ewallet() {
   const { user } = useContext(AuthContext);
   const { qrCodes, setQrCodes } = useQrCode();
   const { baggageQrCodes, setBaggageQrCodes } = useBaggage();
+  const navigate = useNavigate();
   const [token, setToken] = useState(null);
   const [balance, setBalance] = useState(0);
   const [error, setError] = useState(null);
@@ -36,7 +43,6 @@ function Ewallet() {
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [receiverId, setReceiverId] = useState(1);
   const [qrPage, setQrPage] = useState(1);
-  const [baggagePage, setBaggagePage] = useState(1);
 
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
@@ -78,8 +84,7 @@ function Ewallet() {
 
   useEffect(() => {
     setQrPage(1);
-    setBaggagePage(1);
-  }, [qrCodes, baggageQrCodes]);
+  }, [qrCodes]);
 
   const handlePayment = async () => {
     if (!paymentAmount || paymentAmount <= 0) {
@@ -136,7 +141,7 @@ function Ewallet() {
         totalPrice: 'Prix total',
         id_voyage: 'ID Voyage'
       };
-      
+
       return (
         <div className="qr-card-info">
           {Object.entries(data).map(([key, value]) => {
@@ -164,17 +169,17 @@ function Ewallet() {
     try {
       const data = JSON.parse(qrData);
       const doc = new jsPDF();
-      
+
       // Titre
       doc.setFontSize(16);
       doc.text('Résumé de Trajet', 20, 20);
-      
+
       // Contenu
       doc.setFontSize(11);
       let yPosition = 35;
       const lineHeight = 7;
       const pageHeight = doc.internal.pageSize.height;
-      
+
       const fields = [
         { label: 'Départ', value: extractCity(data.departure) },
         { label: 'Destination', value: extractCity(data.destination) },
@@ -183,7 +188,7 @@ function Ewallet() {
         { label: 'Taxi à destination', value: data.needTaxiToDestination ? 'Oui' : 'Non' },
         { label: 'Prix total', value: `${data.totalPrice}€` }
       ];
-      
+
       fields.forEach((field) => {
         if (yPosition + lineHeight > pageHeight - 10) {
           doc.addPage();
@@ -193,7 +198,7 @@ function Ewallet() {
         doc.text(String(field.value), 100, yPosition);
         yPosition += lineHeight;
       });
-      
+
       // QR Code
       const qrElement = document.getElementById(`qr-${index}`);
       if (qrElement) {
@@ -206,7 +211,7 @@ function Ewallet() {
         const imgData = canvas.toDataURL('image/png');
         doc.addImage(imgData, 'PNG', 20, yPosition, 50, 50);
       }
-      
+
       doc.save(`trajet-${index}.pdf`);
     } catch (error) {
       console.error('Erreur lors de la génération du PDF:', error);
@@ -273,7 +278,7 @@ function Ewallet() {
                   >
                     Mon Profil
                   </Typography>
-                  
+
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="caption" sx={{ color: 'rgba(57, 56, 57, 0.6)' }}>
                       Nom
@@ -506,7 +511,7 @@ function Ewallet() {
                     mb: 2
                   }}
                 >
-                  Mes QR Codes
+                  QR Codes des Voyages
                 </Typography>
 
                 <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -623,118 +628,172 @@ function Ewallet() {
               </Box>
             )}
 
-            {/* QR CODES BAGAGES */}
-            {baggageQrCodes && baggageQrCodes.length > 0 && (
-              <Box>
+            {/* QR CODES BAGAGES - APERÇU */}
+            <Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography
                   variant="h6"
                   sx={{
                     fontFamily: '"Inter", sans-serif',
                     fontWeight: 600,
-                    color: '#393839',
-                    mb: 2
+                    color: '#393839'
                   }}
                 >
-                  QR Codes des Bagages
+                  Mes Bagages
                 </Typography>
-
-                <Grid container spacing={2}>
-                  {baggageQrCodes
-                    .slice((baggagePage - 1) * PAGE_SIZE_BAGGAGE, baggagePage * PAGE_SIZE_BAGGAGE)
-                    .map((qr, index) => {
-                      const globalIndex = (baggagePage - 1) * PAGE_SIZE_BAGGAGE + index;
-                      try {
-                        const baggageData = JSON.parse(qr);
-                        return (
-                          <Grid item xs={12} sm={6} md={6} key={globalIndex}>
-                            <Card
-                              sx={{
-                                borderRadius: 2,
-                                border: '1px solid rgba(57, 56, 57, 0.10)',
-                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
-                              }}
-                            >
-                              <CardContent sx={{ textAlign: 'center' }}>
-                                <Box
-                                  sx={{
-                                    display: 'flex',
-                                    justifyContent: 'center',
-                                    mb: 1.5,
-                                    p: 1,
-                                    bgcolor: '#F7F9FB',
-                                    borderRadius: 1
-                                  }}
-                                >
-                                  <QRCodeSVG value={qr} size={100} />
-                                </Box>
-
-                                <Box sx={{ textAlign: 'left', fontSize: '0.85rem' }}>
-                                  <Box sx={{ mb: 1 }}>
-                                    <Typography variant="caption" sx={{ color: 'rgba(57, 56, 57, 0.6)', display: 'block' }}>
-                                      Poids
-                                    </Typography>
-                                    <Typography sx={{ fontWeight: 500, color: '#393839' }}>
-                                      {baggageData.weight || 'N/A'} kg
-                                    </Typography>
-                                  </Box>
-                                  <Box sx={{ mb: 1 }}>
-                                    <Typography variant="caption" sx={{ color: 'rgba(57, 56, 57, 0.6)', display: 'block' }}>
-                                      Parcours
-                                    </Typography>
-                                    <Typography sx={{ fontWeight: 500, color: '#393839', fontSize: '0.8rem' }}>
-                                      {baggageData.departure || 'N/A'} → {baggageData.arrival || 'N/A'}
-                                    </Typography>
-                                  </Box>
-                                </Box>
-
-                                <Button
-                                  size="small"
-                                  startIcon={<DeleteIcon />}
-                                  onClick={() => setBaggageQrCodes(baggageQrCodes.filter((_, i) => i !== globalIndex))}
-                                  sx={{
-                                    mt: 1.5,
-                                    color: '#EF4444',
-                                    border: '1px solid #EF4444',
-                                    borderRadius: '8px',
-                                    fontSize: '0.7rem',
-                                    textTransform: 'none',
-                                    width: '100%'
-                                  }}
-                                >
-                                  Supprimer
-                                </Button>
-                              </CardContent>
-                            </Card>
-                          </Grid>
-                        );
-                      } catch (e) {
-                        return null;
-                      }
-                    })}
-                </Grid>
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 2 }}>
-                  <Button
+                {baggageQrCodes && baggageQrCodes.length > 0 && (
+                  <Chip
+                    label={`${baggageQrCodes.length} bagage${baggageQrCodes.length > 1 ? 's' : ''}`}
                     size="small"
-                    disabled={baggagePage === 1}
-                    onClick={() => setBaggagePage((p) => Math.max(1, p - 1))}
-                    sx={{ textTransform: 'none' }}
-                  >
-                    Précédent
-                  </Button>
-                  <Button
-                    size="small"
-                    disabled={baggagePage >= Math.ceil(baggageQrCodes.length / PAGE_SIZE_BAGGAGE)}
-                    onClick={() => setBaggagePage((p) => Math.min(Math.ceil(baggageQrCodes.length / PAGE_SIZE_BAGGAGE), p + 1))}
-                    sx={{ textTransform: 'none' }}
-                  >
-                    Suivant
-                  </Button>
-                  <Typography variant="caption" sx={{ color: 'rgba(57, 56, 57, 0.7)' }}>
-                    Page {baggagePage} / {Math.max(1, Math.ceil(baggageQrCodes.length / PAGE_SIZE_BAGGAGE))}
-                  </Typography>
-                </Box>
+                    sx={{
+                      bgcolor: '#E3F2FD',
+                      color: '#5bbcea',
+                      fontWeight: 500
+                    }}
+                  />
+                )}
               </Box>
-            )}
+
+              {baggageQrCodes && baggageQrCodes.length > 0 ? (
+                <>
+                  <Grid container spacing={2} sx={{ mb: 2 }}>
+                    {baggageQrCodes
+                      .slice(0, 3)
+                      .map((qr, index) => {
+                        try {
+                          const baggageData = JSON.parse(qr);
+                          return (
+                            <Grid item xs={12} sm={6} md={4} key={index}>
+                              <Card
+                                sx={{
+                                  borderRadius: 2,
+                                  border: '1px solid rgba(57, 56, 57, 0.10)',
+                                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+                                  height: '100%'
+                                }}
+                              >
+                                <CardContent sx={{ textAlign: 'center' }}>
+                                  <Box
+                                    sx={{
+                                      display: 'flex',
+                                      justifyContent: 'center',
+                                      mb: 1.5,
+                                      p: 1,
+                                      bgcolor: '#F7F9FB',
+                                      borderRadius: 1
+                                    }}
+                                  >
+                                    <QRCodeSVG value={qr} size={80} />
+                                  </Box>
+
+                                  <Box sx={{ textAlign: 'left', fontSize: '0.85rem' }}>
+                                    <Box sx={{ mb: 0.5 }}>
+                                      <Typography variant="caption" sx={{ color: 'rgba(57, 56, 57, 0.6)', display: 'block' }}>
+                                        Poids
+                                      </Typography>
+                                      <Typography sx={{ fontWeight: 500, color: '#393839', fontSize: '0.85rem' }}>
+                                        {baggageData.weight || 'N/A'} kg
+                                      </Typography>
+                                    </Box>
+                                    <Box>
+                                      <Typography variant="caption" sx={{ color: 'rgba(57, 56, 57, 0.6)', display: 'block' }}>
+                                        Parcours
+                                      </Typography>
+                                      <Typography sx={{ fontWeight: 500, color: '#393839', fontSize: '0.75rem' }}>
+                                        {baggageData.departure || 'N/A'} → {baggageData.arrival || 'N/A'}
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+                                </CardContent>
+                              </Card>
+                            </Grid>
+                          );
+                        } catch (e) {
+                          return null;
+                        }
+                      })}
+                  </Grid>
+
+                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                    <Button
+                      variant="contained"
+                      endIcon={<ArrowForwardIcon />}
+                      onClick={() => navigate('/user/baggage-tracking')}
+                      sx={{
+                        flex: 1,
+                        minWidth: '200px',
+                        bgcolor: '#2eb378',
+                        color: 'white',
+                        borderRadius: '12px',
+                        fontFamily: '"Inter", sans- serif',
+                        fontWeight: 600,
+                        py: 1.2,
+                        textTransform: 'none',
+                        '&:hover': { bgcolor: '#26a566' }
+                      }}
+                    >
+                      Voir tous mes bagages
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<AddIcon />}
+                      onClick={() => navigate('/user/baggage-tracking')}
+                      sx={{
+                        flex: 1,
+                        minWidth: '200px',
+                        color: '#2eb378',
+                        borderColor: '#2eb378',
+                        borderRadius: '12px',
+                        fontFamily: '"Inter", sans-serif',
+                        fontWeight: 600,
+                        py: 1.2,
+                        textTransform: 'none',
+                        '&:hover': {
+                          borderColor: '#26a566',
+                          bgcolor: 'rgba(46, 179, 120, 0.04)'
+                        }
+                      }}
+                    >
+                      Ajouter un bagage
+                    </Button>
+                  </Box>
+                </>
+              ) : (
+                <Card
+                  sx={{
+                    borderRadius: 2,
+                    border: '1px solid rgba(57, 56, 57, 0.10)',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+                    textAlign: 'center',
+                    py: 4
+                  }}
+                >
+                  <CardContent>
+                    <Typography variant="body2" sx={{ color: 'rgba(57, 56, 57, 0.5)', mb: 2 }}>
+                      Aucun bagage enregistré pour le moment
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      startIcon={<AddIcon />}
+                      onClick={() => navigate('/user/baggage-tracking')}
+                      sx={{
+                        bgcolor: '#2eb378',
+                        color: 'white',
+                        borderRadius: '12px',
+                        fontFamily: '"Inter", sans-serif',
+                        fontWeight: 600,
+                        py: 1.2,
+                        px: 3,
+                        textTransform: 'none',
+                        '&:hover': { bgcolor: '#26a566' }
+                      }}
+                    >
+                      Ajouter mon premier bagage
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </Box>
           </Grid>
         </Grid>
       </Container>

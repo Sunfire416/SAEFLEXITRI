@@ -119,7 +119,7 @@ function Ewallet() {
         totalPrice: 'Prix total',
         id_voyage: 'ID Voyage'
       };
-      
+
       return (
         <div className="qr-card-info">
           {Object.entries(data).map(([key, value]) => (
@@ -207,7 +207,7 @@ function Ewallet() {
                   >
                     Mon Profil
                   </Typography>
-                  
+
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="caption" sx={{ color: 'rgba(57, 56, 57, 0.6)' }}>
                       Nom
@@ -440,7 +440,7 @@ function Ewallet() {
                     mb: 2
                   }}
                 >
-                  Mes QR Codes
+                  QR Codes des Voyages
                 </Typography>
 
                 <Grid container spacing={2} sx={{ mb: 2 }}>
