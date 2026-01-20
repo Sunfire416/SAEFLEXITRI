@@ -106,9 +106,10 @@ function PMRTracking() {
     ? Math.ceil(missionData.eta_seconds / 60)
     : 3;
 
-  // Initialisation et mise à jour de la carte MapBox - MOVED BEFORE EARLY RETURNS
+  // ⬇️ HOOK TOUJOURS APPELÉ (avant early returns)
+  // Initialisation et mise à jour de la carte MapBox
   useEffect(() => {
-    // Internal guard: only proceed if we have the necessary data
+    // Vérifier à l'intérieur pour éviter avant que les données soient prêtes
     if (!mapContainer.current || loading || !missionData) return;
 
     const timer = setTimeout(() => {
@@ -170,7 +171,7 @@ function PMRTracking() {
 
             new mapboxgl.Marker({ color: "#2eb378" })
               .setLngLat(departurePoint)
-              .setPopup(new mapboxgl.Popup().setHTML(`<strong>Départ:</strong> ${missionData.reservation?.lieu_depart || 'Départ'}`))
+              .setPopup(new mapboxgl.Popup().setHTML(`<strong>Départ:</strong> ${departurePointName}`))
               .addTo(map.current);
 
             new mapboxgl.Marker({ color: "#5bbcea" })
@@ -180,7 +181,7 @@ function PMRTracking() {
 
             new mapboxgl.Marker({ color: "#EF4444" })
               .setLngLat(destination)
-              .setPopup(new mapboxgl.Popup().setHTML(`<strong>Destination:</strong> ${missionData.reservation?.lieu_arrivee || 'Destination'}`))
+              .setPopup(new mapboxgl.Popup().setHTML(`<strong>Destination:</strong> ${destinationName}`))
               .addTo(map.current);
 
             map.current.addLayer({
@@ -231,9 +232,9 @@ function PMRTracking() {
     return () => {
       clearTimeout(timer);
     };
-  }, [currentConfig.color, agentPosition, loading, missionData]);
+  }, [currentConfig.color, agentPosition, loading, missionData, departurePoint, destination, meetingPoint, departurePointName, destinationName]);
 
-  // Affichage Loading - MOVED AFTER ALL HOOKS
+  // ⬇️ EARLY RETURNS APRÈS TOUS LES HOOKS
   if (loading) {
     return (
       <div className="pmr-container">
@@ -245,7 +246,6 @@ function PMRTracking() {
     );
   }
 
-  // Affichage Erreur - MOVED AFTER ALL HOOKS
   if (error) {
     return (
       <div className="pmr-container">
@@ -258,7 +258,6 @@ function PMRTracking() {
     );
   }
 
-  // Affichage Pas de donnée - MOVED AFTER ALL HOOKS
   if (!missionData) {
     return (
       <div className="pmr-container">
@@ -270,29 +269,17 @@ function PMRTracking() {
     );
   }
 
+  // ⬇️ JSX PRINCIPAL
   return (
     <div className="pmr-container">
       <h1>Suivi de prise en charge PMR</h1>
 
       <section>
         <h3>Trajet en cours</h3>
-        <div className="route-display">
-          <div className="route-item route-start">
-            <span className="route-icon">📍</span>
-            <div className="route-info">
-              <p className="route-label">Départ</p>
-              <p className="route-location">{missionData.reservation?.lieu_depart || 'Départ'}</p>
-            </div>
-          </div>
-          <div className="route-arrow">↓</div>
-          <div className="route-item route-end">
-            <span className="route-icon">🎯</span>
-            <div className="route-info">
-              <p className="route-label">Destination</p>
-              <p className="route-location">{missionData.reservation?.lieu_arrivee || 'Destination'}</p>
-            </div>
-          </div>
-        </div>
+        <p>
+          <strong id="from">{departurePointName}</strong> →{" "}
+          <strong id="to">{destinationName}</strong>
+        </p>
 
         <div
           ref={mapContainer}
@@ -301,7 +288,7 @@ function PMRTracking() {
         />
 
         <p id="meetingPointText">
-          📍 Point de rendez-vous : <span id="meetingPoint">Non défini</span>
+          📍 Point de rendez-vous : <span id="meetingPoint">Estimé</span>
         </p>
       </section>
 

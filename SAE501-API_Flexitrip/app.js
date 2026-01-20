@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const helmet = require('helmet');
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
+console.log('SERVICE_ROLE_KEY:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 // Services
 const Neo4jService = require('./services/neo4jService');
@@ -38,6 +39,7 @@ const blockchainRoutes = require('./routes/blockchain');
 const assistanceRoutes = require('./routes/assistance');
 const bookingRoutes = require('./routes/booking');
 const notificationRoutes = require('./routes/notificationRoutesV2');
+const devPmrRoutes = require('./routes/devPmrRoutes');
 
 // ==========================================
 // INITIALISATION EXPRESS
@@ -123,6 +125,7 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/stations', stationRoutes);
+app.use('/api/dev', devPmrRoutes);
 
 // ==========================================
 // ROUTES PROTÉGÉES (authentification requise)
