@@ -32,7 +32,7 @@ const ProtectedRoutes = () => {
                 element={<RouteProtect><PmrAssisPage /></RouteProtect>}
             />
             <Route
-                path="/user/bagage-tracking"
+                path="/user/baggage-tracking"
                 element={<RouteProtect><BagagePage /></RouteProtect>}
             />
             <Route

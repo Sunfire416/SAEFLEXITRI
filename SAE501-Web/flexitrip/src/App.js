@@ -62,6 +62,8 @@ import WalletHistory from "./components/Wallet/WalletHistory";
 import FeedbackForm from "./components/Feedback/FeedbackForm";
 import VoyageTracking from "./components/Tracking/VoyageTracking";
 import AgentDashboard from "./components/Agent/AgentDashboard";
+import UserAccessPage from "./pages/UserAccessPage";
+
 
 
 function App() {
@@ -116,6 +118,7 @@ function App() {
                         <Route path="/user/pmr-assistance" element={<RouteProtect><PmrAssisPage /></RouteProtect>} />
                         <Route path="/user/baggage-tracking" element={<RouteProtect><BagagePage /></RouteProtect>} />
                         <Route path="/user/ewallet" element={<RouteProtect><EwalletPage /></RouteProtect>} />
+                        <Route path="/user/access" element={<RouteProtect><UserAccessPage /></RouteProtect>} />
                         <Route path="/user/support" element={<RouteProtect><Support /></RouteProtect>} />
                         <Route path="/user/profile" element={<RouteProtect><ProfilePage /></RouteProtect>} />
                         <Route path="/user/edit-profile" element={<RouteProtect><EditUser /></RouteProtect>} />

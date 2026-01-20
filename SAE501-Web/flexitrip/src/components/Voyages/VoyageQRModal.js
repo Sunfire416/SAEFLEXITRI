@@ -27,7 +27,7 @@ const VoyageQRModal = ({ voyage, onClose }) => {
         setError(null);
 
         const response = await axios.get(
-          `${API_BASE_URL}/voyages/${voyage.voyage_id}/qr`,
+          `${API_BASE_URL}/voyages/${voyage.id_voyage}/qr`,
           {
             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
             params: { user_id: user.user_id }
@@ -135,7 +135,7 @@ const VoyageQRModal = ({ voyage, onClose }) => {
                 <div className="info-row">
                   <span className="info-label">Date départ :</span>
                   <span className="info-value">
-                    {new Date(voyage.date_debut).toLocaleDateString('fr-FR')}
+                    {voyage.date_debut ? new Date(voyage.date_debut).toLocaleDateString('fr-FR') : 'N/A'}
                   </span>
                 </div>
                 {qrData.qr_payload?.train_vol && (

@@ -20,6 +20,7 @@ import {
 import { Download as DownloadIcon, Delete as DeleteIcon } from '@mui/icons-material';
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
+const PAGE_SIZE_BAGGAGE = 4;
 
 function Ewallet() {
   const { user } = useContext(AuthContext);
@@ -31,6 +32,7 @@ function Ewallet() {
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [receiverId, setReceiverId] = useState(1);
+  const [baggagePage, setBaggagePage] = useState(1);
 
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
@@ -38,6 +40,10 @@ function Ewallet() {
       setToken(storedToken);
     }
   }, []);
+
+  useEffect(() => {
+    setBaggagePage(1);
+  }, [baggageQrCodes.length]);
 
   // Fetch balance et historique
   const fetchBalance = async () => {
@@ -147,6 +153,12 @@ function Ewallet() {
       link.click();
     }
   };
+
+  const totalBaggagePages = Math.max(1, Math.ceil(baggageQrCodes.length / PAGE_SIZE_BAGGAGE));
+  const paginatedBaggage = baggageQrCodes.slice(
+    (baggagePage - 1) * PAGE_SIZE_BAGGAGE,
+    baggagePage * PAGE_SIZE_BAGGAGE
+  );
 
   return (
     <Box className="ewallet-page" sx={{ bgcolor: '#F7F9FB', py: 5, minHeight: '100vh' }}>
@@ -480,11 +492,18 @@ function Ewallet() {
                               onClick={() => handleDownloadQR(qr, index)}
                               sx={{
                                 flex: 1,
-                                borderRadius: '8px',
+                                borderRadius: '12px',
                                 color: '#2eb378',
                                 border: '1px solid #2eb378',
                                 fontSize: '0.75rem',
-                                textTransform: 'none'
+                                textTransform: 'none',
+                                fontFamily: '"Inter", sans-serif',
+                                fontWeight: 500,
+                                py: 0.75,
+                                '&:hover': {
+                                  bgcolor: 'rgba(46, 179, 120, 0.10)',
+                                  borderColor: '#26a566'
+                                }
                               }}
                             >
                               Télécharger
@@ -495,14 +514,21 @@ function Ewallet() {
                               onClick={() => setQrCodes(qrCodes.filter((_, i) => i !== index))}
                               sx={{
                                 flex: 1,
-                                borderRadius: '8px',
+                                borderRadius: '12px',
                                 color: '#EF4444',
                                 border: '1px solid #EF4444',
                                 fontSize: '0.75rem',
-                                textTransform: 'none'
+                                textTransform: 'none',
+                                fontFamily: '"Inter", sans-serif',
+                                fontWeight: 500,
+                                py: 0.75,
+                                '&:hover': {
+                                  bgcolor: 'rgba(239, 68, 68, 0.12)',
+                                  borderColor: '#f87171'
+                                }
                               }}
                             >
-                              Supprimer
+                              Masquer
                             </Button>
                           </Box>
                         </CardContent>
@@ -524,7 +550,7 @@ function Ewallet() {
                       fontWeight: 500
                     }}
                   >
-                    Supprimer tous les codes
+                    Masquer tous les voyages
                   </Button>
                 </Box>
               </Box>
@@ -546,11 +572,12 @@ function Ewallet() {
                 </Typography>
 
                 <Grid container spacing={2}>
-                  {baggageQrCodes.map((qr, index) => {
+                  {paginatedBaggage.map((qr, index) => {
                     try {
+                      const globalIndex = (baggagePage - 1) * PAGE_SIZE_BAGGAGE + index;
                       const baggageData = JSON.parse(qr);
                       return (
-                        <Grid item xs={12} sm={6} md={6} key={index}>
+                        <Grid item xs={12} sm={6} md={6} key={globalIndex}>
                           <Card
                             sx={{
                               borderRadius: 2,
@@ -594,18 +621,25 @@ function Ewallet() {
                               <Button
                                 size="small"
                                 startIcon={<DeleteIcon />}
-                                onClick={() => setBaggageQrCodes(baggageQrCodes.filter((_, i) => i !== index))}
+                                onClick={() => setBaggageQrCodes(baggageQrCodes.filter((_, i) => i !== globalIndex))}
                                 sx={{
                                   mt: 1.5,
                                   color: '#EF4444',
                                   border: '1px solid #EF4444',
-                                  borderRadius: '8px',
-                                  fontSize: '0.7rem',
+                                  borderRadius: '12px',
+                                  fontSize: '0.75rem',
                                   textTransform: 'none',
-                                  width: '100%'
+                                  fontFamily: '"Inter", sans-serif',
+                                  fontWeight: 500,
+                                  py: 0.75,
+                                  width: '100%',
+                                  '&:hover': {
+                                    bgcolor: 'rgba(239, 68, 68, 0.12)',
+                                    borderColor: '#f87171'
+                                  }
                                 }}
                               >
-                                Supprimer
+                                Retirer du tracking
                               </Button>
                             </CardContent>
                           </Card>
@@ -616,6 +650,80 @@ function Ewallet() {
                     }
                   })}
                 </Grid>
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, mt: 3, flexWrap: 'wrap' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Button
+                      size="small"
+                      disabled={baggagePage === 1}
+                      onClick={() => setBaggagePage((p) => Math.max(1, p - 1))}
+                      sx={{ textTransform: 'none' }}
+                    >
+                      Précédent
+                    </Button>
+                    <Button
+                      size="small"
+                      disabled={baggagePage >= totalBaggagePages}
+                      onClick={() => setBaggagePage((p) => Math.min(totalBaggagePages, p + 1))}
+                      sx={{ textTransform: 'none' }}
+                    >
+                      Suivant
+                    </Button>
+                    <Typography variant="caption" sx={{ color: 'rgba(57, 56, 57, 0.7)' }}>
+                      Page {baggagePage} / {totalBaggagePages}
+                    </Typography>
+                  </Box>
+
+                  <Button
+                    onClick={() => setBaggageQrCodes([])}
+                    startIcon={<DeleteIcon />}
+                    sx={{
+                      color: '#EF4444',
+                      border: '1px solid #EF4444',
+                      borderRadius: '12px',
+                      textTransform: 'none',
+                      fontFamily: '"Inter", sans-serif',
+                      fontWeight: 500
+                    }}
+                  >
+                    Retirer tous du tracking
+                  </Button>
+                </Box>
+
+                <Box sx={{ display: 'flex', gap: 2, mt: 3, flexWrap: 'wrap' }}>
+                  <Button
+                    variant="outlined"
+                    component="a"
+                    href="/user/baggage-tracking"
+                    sx={{
+                      textTransform: 'none',
+                      borderRadius: '12px',
+                      fontFamily: '"Inter", sans-serif',
+                      fontWeight: 600,
+                      px: 2.5,
+                      py: 1
+                    }}
+                  >
+                    Voir tous mes bagages
+                  </Button>
+                  <Button
+                    variant="contained"
+                    component="a"
+                    href="/user/baggage-tracking#creation"
+                    sx={{
+                      textTransform: 'none',
+                      borderRadius: '12px',
+                      fontFamily: '"Inter", sans-serif',
+                      fontWeight: 600,
+                      px: 2.5,
+                      py: 1,
+                      bgcolor: '#2eb378',
+                      '&:hover': { bgcolor: '#26a566' }
+                    }}
+                  >
+                    Ajouter un bagage
+                  </Button>
+                </Box>
               </Box>
             )}
           </Grid>

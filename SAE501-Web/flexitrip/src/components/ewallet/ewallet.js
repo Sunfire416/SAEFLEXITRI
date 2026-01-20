@@ -1,11 +1,8 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ewallet.css';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
-import { useQrCode } from '../../context/QrCodeContext';
-import { useBaggage } from '../../context/BaggageContext';
-import { QRCodeSVG } from 'qrcode.react';
 import {
   Container,
   Box,
@@ -16,785 +13,636 @@ import {
   Grid,
   Chip,
   Alert,
-  Divider
+  Divider,
+  TextField,
+  Select,
+  MenuItem,
+  ToggleButtonGroup,
+  ToggleButton,
+  CircularProgress,
+  Snackbar,
+  Pagination,
+  Stack,
+  InputAdornment
 } from '@mui/material';
 import {
+  QrCode2 as QrCodeIcon,
+  Payment as PaymentIcon,
+  Apple as AppleIcon,
+  Google as GoogleIcon,
+  CreditCard as CreditCardIcon,
   Download as DownloadIcon,
-  Delete as DeleteIcon,
-  ArrowForward as ArrowForwardIcon,
-  Add as AddIcon
+  FileDownload as FileDownloadIcon,
+  History as HistoryIcon,
+  AccountBalanceWallet as WalletIcon
 } from '@mui/icons-material';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
-const PAGE_SIZE_QR = 6;
-const PAGE_SIZE_BAGGAGE = 4;
+const TOPUP_RECEIVER_ID = "2462094f-0ed6-4cb0-946a-427d615c008f";
+
+// Taux fixes
+const EXCHANGE_RATES = {
+  EUR: 1.00,
+  USD: 0.92,
+  GBP: 1.17
+};
+
+const PROCESSING_FEE_PERCENT = 0.015; // 1.5%
 
 function Ewallet() {
   const { user } = useContext(AuthContext);
-  const { qrCodes, setQrCodes } = useQrCode();
-  const { baggageQrCodes, setBaggageQrCodes } = useBaggage();
   const navigate = useNavigate();
   const [token, setToken] = useState(null);
   const [balance, setBalance] = useState(0);
   const [error, setError] = useState(null);
+
+  // Historique state
   const [paymentHistory, setPaymentHistory] = useState([]);
-  const [paymentAmount, setPaymentAmount] = useState(0);
-  const [receiverId, setReceiverId] = useState(1);
-  const [qrPage, setQrPage] = useState(1);
+  const [historyFilter, setHistoryFilter] = useState('all'); // all, recharge, payment
+  const [page, setPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  // Recharge state
+  const [paymentMethod, setPaymentMethod] = useState('paypal');
+  const [amountInput, setAmountInput] = useState('');
+  const [currency, setCurrency] = useState('EUR');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Feedback
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [lastTopup, setLastTopup] = useState(null); // Pour le reçu PDF
 
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
-    if (storedToken) {
-      setToken(storedToken);
-    }
+    if (storedToken) setToken(storedToken);
   }, []);
 
-  // Fetch balance et historique
+  // --- 1. Calculs Centralisés (Math.round 2 décimales) ---
+  const calculateTotals = useCallback(() => {
+    const val = parseFloat(amountInput);
+    if (!val || isNaN(val) || val <= 0) {
+      return { converted: 0, fee: 0, credited: 0, rate: 0, isValid: false };
+    }
+
+    const rate = EXCHANGE_RATES[currency] || 1;
+
+    // Règle: converted = input * rate (arrondi 2 déc)
+    const convertedRaw = val * rate;
+    const converted = Math.round(convertedRaw * 100) / 100;
+
+    // Règle: fee = converted * 0.015 (arrondi 2 déc)
+    const feeRaw = converted * PROCESSING_FEE_PERCENT;
+    const fee = Math.round(feeRaw * 100) / 100;
+
+    // Règle: credited = converted - fee (arrondi 2 déc)
+    const creditedRaw = converted - fee;
+    const credited = Math.round(creditedRaw * 100) / 100;
+
+    return {
+      converted,
+      fee,
+      credited,
+      rate,
+      isValid: true
+    };
+  }, [amountInput, currency]);
+
+  const totals = calculateTotals();
+
+  // --- 2. Normalisation Historique ---
+  const normalizeTx = (tx) => {
+    if (!tx) return null;
+
+    // Date fallback
+    const dateStr = tx.date_payement || tx.date || tx.timestamp || tx.created_at || new Date().toISOString();
+
+    // Description logic
+    let description = tx.metadata?.description || tx.description || tx.label || tx.memo || 'Transaction';
+    const descLower = description.toLowerCase();
+
+    // Règle Spéciale Prompt : Transformation Label Système
+    // Si c'est un crédit venant de l'admin (TOPUP_RECEIVER_ID), c'est une recharge démo
+    let isRecharge = descLower.includes('recharge') || (tx.type === 'credit' && description.includes(TOPUP_RECEIVER_ID));
+
+    if (isRecharge) {
+      description = "Recharge portefeuille (DEMO)";
+    }
+
+    // Montant fallback
+    const rawAmt = tx.amount ?? tx.value ?? tx.total ?? 0;
+    const amountVal = Number(rawAmt);
+
+    // Détection type
+    const isCreditType = tx.type === 'credit' || (tx.metadata && tx.metadata.original_type === 'credit');
+
+    // Logique "Direction" (Crédit ou Débit pour l'utilisateur)
+    // - Si je suis le receiver => Crédit
+    // - Si c'est marqué 'recharge' => Crédit
+    // - Si je suis le sender et pas recharge => Débit
+
+    let direction = 'debit';
+    if (tx.receiver === user.user_id || isRecharge || isCreditType) {
+      direction = 'credit';
+    } else if (tx.sender === user.user_id) {
+      direction = 'debit';
+    }
+
+    // Catégorie pour filtres
+    let category = 'payment';
+    if (isRecharge) category = 'recharge';
+
+    // UI Props
+    const sign = direction === 'credit' ? '+' : '-';
+    // Vert pour crédit/recharge, Rouge pour débit
+    const color = direction === 'credit' ? '#2eb378' : '#EF4444';
+
+    return {
+      id: tx.id || Math.random().toString(36),
+      date: new Date(dateStr),
+      description: description,
+      amount: amountVal,
+      currency: tx.currency || 'EUR',
+      type: direction === 'credit' ? (isRecharge ? 'Recharge' : 'Crédit') : 'Débit',
+      category: category,
+      sign: sign,
+      color: color,
+      isDemo: isRecharge || descLower.includes('demo')
+    };
+  };
+
   const fetchBalance = async () => {
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/blockchain/balance`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setBalance(response.data.balance);
+      const res = await axios.get(`${API_BASE_URL}/blockchain/balance`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Backend source of truth
+      setBalance(Number(res.data.balance) || 0);
+
+      if (process.env.NODE_ENV !== 'production') {
+        console.log("BALANCE API RAW:", res.data);
+      }
     } catch (err) {
-      console.error("Erreur lors de la récupération du solde:", err);
+      console.error("Fetch Balance Error:", err);
     }
   };
 
   const fetchPaymentHistory = async () => {
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/blockchain/history`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setPaymentHistory(response.data);
+      const res = await axios.get(`${API_BASE_URL}/blockchain/history`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const raw = res.data;
+      // Normalisation API response structure
+      const arr = Array.isArray(raw) ? raw : (raw.transactions || raw.history || raw.data || []);
+
+      const normalized = arr.map(normalizeTx).filter(x => x !== null);
+      // Tri date DESC
+      normalized.sort((a, b) => b.date - a.date);
+
+      setPaymentHistory(normalized);
     } catch (err) {
-      console.error("Erreur lors de la récupération de l'historique:", err);
+      console.error("Fetch History Error:", err);
+      // Fallback vide pas d'erreur fatale
+      setPaymentHistory([]);
     }
   };
 
   useEffect(() => {
-    if (!token || !user || !user.user_id) return;
-    fetchBalance();
-    fetchPaymentHistory();
+    if (token && user?.user_id) {
+      fetchBalance();
+      fetchPaymentHistory();
+    }
   }, [token, user]);
 
-  useEffect(() => {
-    setQrPage(1);
-  }, [qrCodes]);
+  // --- 3. Recharge (Strict Guard) ---
+  const handleTopup = async () => {
+    // GUARD STRICT : PREMIÈRE LIGNE
+    if (isProcessing) return;
 
-  const handlePayment = async () => {
-    if (!paymentAmount || paymentAmount <= 0) {
-      setError("❌ Veuillez entrer un montant valide.");
-      return;
-    }
-    if (paymentAmount > balance) {
-      setError("❌ Solde insuffisant.");
+    if (!totals.isValid) {
+      setSnackbar({ open: true, message: "❌ Montant invalide.", severity: 'error' });
       return;
     }
 
-    try {
-      const paymentData = {
-        sender: user.user_id,
-        receiver: receiverId,
-        amount: paymentAmount,
-        description: "Paiement"
-      };
+    setIsProcessing(true);
+    setError(null);
 
-      const response = await axios.post(
-        `${API_BASE_URL}/transactions/pay`,
-        paymentData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+    const methodLabel = {
+      paypal: 'PayPal', card: 'Carte Bancaire', applepay: 'Apple Pay', googlepay: 'Google Pay'
+    }[paymentMethod] || 'Paiement';
 
-      if (response.status === 200 || response.data.success) {
-        fetchBalance();
-        fetchPaymentHistory();
-        setError(null);
-        setPaymentAmount(0);
-        alert("Paiement réussi !");
-      }
-    } catch (error) {
-      console.error("Erreur lors du paiement :", error);
-      setError("❌ Erreur lors du paiement. Veuillez réessayer.");
+    // Payload Admin -> User
+    const payload = {
+      sender: TOPUP_RECEIVER_ID,
+      receiver: user.user_id,
+      amount: totals.credited, // Montant net
+      description: `Recharge portefeuille (DEMO) - ${methodLabel} - ${currency}`
+    };
+
+    // Logging Dev (avant POST)
+    if (process.env.NODE_ENV !== 'production') {
+      console.group("TOPUP DEBUG");
+      console.log("Input:", { amount: amountInput, currency, method: paymentMethod });
+      console.log("Calculated:", {
+        rate: totals.rate,
+        convertedEUR: totals.converted,
+        feeEUR: totals.fee,
+        creditedEUR: totals.credited
+      });
+      console.log("Payload:", payload);
+      console.groupEnd();
     }
-  };
 
-  const extractCity = (locationStr) => {
-    if (!locationStr) return 'N/A';
-    const parts = locationStr.split(',');
-    return parts[0].trim();
-  };
-
-  const parseQRData = (qrData) => {
     try {
-      const data = JSON.parse(qrData);
-      const labels = {
-        departure: 'Départ',
-        destination: 'Destination',
-        transportType: 'Type de transport',
-        needTaxiToAirport: 'Taxi à aéroport',
-        needTaxiToDestination: 'Taxi à destination',
-        totalPrice: 'Prix total',
-        id_voyage: 'ID Voyage'
-      };
+      // Simulation délai ux
+      await new Promise(r => setTimeout(r, 800));
 
-      return (
-        <div className="qr-card-info">
-          {Object.entries(data).map(([key, value]) => {
-            let displayValue = value;
-            if (typeof value === 'boolean') {
-              displayValue = value ? 'Oui' : 'Non';
-            } else if ((key === 'departure' || key === 'destination') && typeof value === 'string') {
-              displayValue = extractCity(value);
-            }
-            return (
-              <div key={key} className="qr-info-row">
-                <span className="qr-label">{labels[key] || key}:</span>
-                <span className="qr-value">{displayValue}</span>
-              </div>
-            );
-          })}
-        </div>
-      );
-    } catch (error) {
-      return <p>{qrData}</p>;
-    }
-  };
-
-  const handleDownloadQR = async (qrData, index) => {
-    try {
-      const data = JSON.parse(qrData);
-      const doc = new jsPDF();
-
-      // Titre
-      doc.setFontSize(16);
-      doc.text('Résumé de Trajet', 20, 20);
-
-      // Contenu
-      doc.setFontSize(11);
-      let yPosition = 35;
-      const lineHeight = 7;
-      const pageHeight = doc.internal.pageSize.height;
-
-      const fields = [
-        { label: 'Départ', value: extractCity(data.departure) },
-        { label: 'Destination', value: extractCity(data.destination) },
-        { label: 'Type de transport', value: data.transportType },
-        { label: 'Taxi à aéroport', value: data.needTaxiToAirport ? 'Oui' : 'Non' },
-        { label: 'Taxi à destination', value: data.needTaxiToDestination ? 'Oui' : 'Non' },
-        { label: 'Prix total', value: `${data.totalPrice}€` }
-      ];
-
-      fields.forEach((field) => {
-        if (yPosition + lineHeight > pageHeight - 10) {
-          doc.addPage();
-          yPosition = 20;
-        }
-        doc.text(`${field.label}:`, 20, yPosition);
-        doc.text(String(field.value), 100, yPosition);
-        yPosition += lineHeight;
+      await axios.post(`${API_BASE_URL}/transactions/pay`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
       });
 
-      // QR Code
-      const qrElement = document.getElementById(`qr-${index}`);
-      if (qrElement) {
-        yPosition += 5;
-        if (yPosition + 60 > pageHeight - 10) {
-          doc.addPage();
-          yPosition = 20;
-        }
-        const canvas = await html2canvas(qrElement);
-        const imgData = canvas.toDataURL('image/png');
-        doc.addImage(imgData, 'PNG', 20, yPosition, 50, 50);
-      }
+      // SUCCÈS : Refresh Only (Pas de setBalance local)
+      await fetchBalance();
+      await fetchPaymentHistory();
 
-      doc.save(`trajet-${index}.pdf`);
-    } catch (error) {
-      console.error('Erreur lors de la génération du PDF:', error);
-      alert('Erreur lors du téléchargement du PDF');
+      // Sauvegarde pour le reçu
+      setLastTopup({
+        date: new Date(),
+        method: methodLabel,
+        amountInput: parseFloat(amountInput),
+        currency: currency,
+        rate: totals.rate,
+        fee: totals.fee,
+        credited: totals.credited,
+        txId: `DEMO-${Date.now()}`
+      });
+
+      setSnackbar({ open: true, message: "✅ Recharge effectuée avec succès !", severity: 'success' });
+      setAmountInput(''); // Reset champ
+
+    } catch (err) {
+      console.error("TOPUP ERROR RAW:", err.response || err);
+      const msg = err.response?.data?.error || err.response?.data?.message || "Erreur lors de la recharge.";
+      setSnackbar({ open: true, message: `❌ ${msg}`, severity: 'error' });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
+  const handleQuick = (val) => {
+    setAmountInput(prev => (parseFloat(prev || 0) + val).toString());
+  };
+
+  // --- 4. Export & PDF ---
+  const exportCSV = () => {
+    if (!paymentHistory.length) {
+      setSnackbar({ open: true, message: "Aucune transaction à exporter.", severity: 'info' });
+      return;
+    }
+    const header = "Date,Type,Montant,Devise,Description";
+    const rows = paymentHistory.map(tx =>
+      `${tx.date.toLocaleDateString('fr-FR')},${tx.type},${tx.sign}${tx.amount.toFixed(2)},${tx.currency},"${tx.description.replace(/"/g, '""')}"`
+    );
+    // AJOUT BOM \uFEFF pour Excel UTF-8
+    const csvContent = "\uFEFF" + [header, ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `historique_flexitrip_${Date.now()}.csv`;
+    link.click();
+  };
+
+  const generateReceiptPDF = () => {
+    if (!lastTopup) return;
+    const doc = new jsPDF();
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.text("Reçu de Transaction (DÉMO)", 105, 20, { align: "center" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text("Ce document est une simulation. Aucune valeur réelle.", 105, 28, { align: "center" });
+
+    let y = 50;
+    const addLine = (label, val, bold = false) => {
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      doc.text(label, 20, y);
+      doc.text(val, 190, y, { align: "right" });
+      y += 10;
+    };
+
+    addLine("ID Transaction", lastTopup.txId);
+    addLine("Date", lastTopup.date.toLocaleString());
+    addLine("Utilisateur", user.email);
+    y += 5;
+    addLine("Méthode", lastTopup.method);
+
+    // Détails financiers
+    if (lastTopup.currency !== 'EUR') {
+      addLine(`Montant (${lastTopup.currency})`, `${lastTopup.amountInput.toFixed(2)} ${lastTopup.currency}`);
+      addLine("Taux de change", lastTopup.rate.toString());
+    }
+
+    doc.line(20, y, 190, y); y += 10;
+
+    addLine("Montant converti (EUR)", `${(lastTopup.credited + lastTopup.fee).toFixed(2)} EUR`); // Reconstitution
+    addLine("Frais de service (1.5%)", `-${lastTopup.fee.toFixed(2)} EUR`);
+
+    doc.line(20, y, 190, y); y += 10;
+    doc.setFontSize(14);
+    addLine("TOTAL CRÉDITÉ", `+${lastTopup.credited.toFixed(2)} EUR`, true);
+
+    doc.save(`recu_${lastTopup.txId}.pdf`);
+  };
+
+  // --- UI Helpers ---
+  const filteredHistory = paymentHistory.filter(tx => {
+    if (historyFilter === 'all') return true;
+    return tx.category === historyFilter;
+  });
+  const pageCount = Math.ceil(filteredHistory.length / ITEMS_PER_PAGE);
+  const displayedHistory = filteredHistory.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
   return (
-    <Box sx={{ bgcolor: '#F7F9FB', width: '100%', minHeight: '100vh', py: 5 }}>
-      <Container maxWidth="lg" sx={{ width: '100%' }}>
+    <Box sx={{ bgcolor: '#F7F9FB', minHeight: '100vh', py: 5 }}>
+      <Container maxWidth="lg">
         {/* Header */}
-        <Box sx={{ mb: 5 }}>
-          <Typography
-            variant="h4"
-            sx={{
-              fontFamily: '"Inter", "Stem Extra Light", sans-serif',
-              fontWeight: 600,
-              color: '#393839',
-              mb: 1
-            }}
-          >
-            Mon Portefeuille
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" fontWeight={700} color="#393839" sx={{ fontFamily: 'Inter, sans-serif' }}>
+            Portefeuille
           </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              color: 'rgba(57, 56, 57, 0.7)',
-              fontFamily: '"Inter", sans-serif'
-            }}
-          >
-            Gérez votre solde, historique et vos codes d'accès
+          <Typography variant="body2" color="text.secondary">
+            Gérez votre solde et vos transactions en toute simplicité
           </Typography>
         </Box>
 
-        {/* Error Alert */}
-        {error && (
-          <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
-            {error}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert severity={snackbar.severity} variant="filled" onClose={() => setSnackbar({ ...snackbar, open: false })}>
+            {snackbar.message}
           </Alert>
-        )}
+        </Snackbar>
 
         <Grid container spacing={3}>
-          {/* === COLONNE 1 : PROFIL + PAIEMENT === */}
+
+          {/* === COLONNE GAUCHE (MD=5) : Profil === */}
           <Grid item xs={12} md={5}>
-            {/* CARD PROFIL */}
-            {user && (
-              <Card
-                sx={{
-                  borderRadius: 2,
-                  border: '1px solid rgba(57, 56, 57, 0.10)',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-                  mb: 3
-                }}
-              >
-                <CardContent>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontFamily: '"Inter", sans-serif',
-                      fontWeight: 600,
-                      color: '#393839',
-                      mb: 2
-                    }}
-                  >
-                    Mon Profil
+            <Card sx={{ borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.03)', border: 'none', mb: 3 }}>
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="h6" fontWeight={600} sx={{ fontFamily: 'Inter' }}>
+                    {user?.name} {user?.surname}
                   </Typography>
+                  <Chip label={user?.role || 'User'} size="small" sx={{ bgcolor: '#E3F2FD', color: '#1976d2', fontWeight: 600 }} />
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>{user?.email}</Typography>
+                {user?.phone && <Typography variant="body2" color="text.secondary">{user.phone}</Typography>}
 
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="caption" sx={{ color: 'rgba(57, 56, 57, 0.6)' }}>
-                      Nom
-                    </Typography>
-                    <Typography sx={{ fontWeight: 500, color: '#393839' }}>
-                      {user.prenom && user.nom ? `${user.prenom} ${user.nom}` : user.nom || user.prenom || 'Non renseigné'}
+                <Button
+                  onClick={() => navigate('/user/access')}
+                  variant="outlined"
+                  fullWidth
+                  startIcon={<QrCodeIcon />}
+                  sx={{ mt: 3, borderRadius: 2, textTransform: 'none', fontWeight: 600, borderColor: '#e0e0e0', color: '#555' }}
+                >
+                  Mes QR Codes & Bagages
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Note additionnelle */}
+            <Alert severity="info" sx={{ borderRadius: 2 }}>
+              Ce portefeuille est en mode <strong>DÉMO</strong>. Aucune transaction réelle n'est effectuée sur vos comptes bancaires.
+            </Alert>
+          </Grid>
+
+          {/* === COLONNE DROITE (MD=7) : Solde & Recharge === */}
+          <Grid item xs={12} md={7}>
+            <Stack spacing={3}>
+
+              {/* Carte Solde */}
+              <Card sx={{
+                borderRadius: 3,
+                background: 'linear-gradient(135deg, #2eb378 0%, #259f62 100%)',
+                color: 'white',
+                boxShadow: '0 8px 24px rgba(46, 179, 120, 0.25)'
+              }}>
+                <CardContent sx={{ p: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box>
+                    <Typography variant="caption" sx={{ opacity: 0.9, fontWeight: 500, letterSpacing: 0.5 }}>SOLDE DISPONIBLE</Typography>
+                    <Typography variant="h3" fontWeight={700} sx={{ mt: 1, fontFamily: 'Inter' }}>
+                      {balance.toFixed(2)} €
                     </Typography>
                   </Box>
-
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="caption" sx={{ color: 'rgba(57, 56, 57, 0.6)' }}>
-                      Email
-                    </Typography>
-                    <Typography sx={{ fontWeight: 500, color: '#393839', wordBreak: 'break-all' }}>
-                      {user.email}
-                    </Typography>
-                  </Box>
-
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="caption" sx={{ color: 'rgba(57, 56, 57, 0.6)' }}>
-                      Téléphone
-                    </Typography>
-                    <Typography sx={{ fontWeight: 500, color: '#393839' }}>
-                      {user.phone || 'Non renseigné'}
-                    </Typography>
-                  </Box>
-
-                  <Divider sx={{ my: 2 }} />
-
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="caption" sx={{ color: 'rgba(57, 56, 57, 0.6)' }}>
-                      Rôle:
-                    </Typography>
-                    <Chip
-                      label={user.role || 'Utilisateur'}
-                      size="small"
-                      sx={{
-                        bgcolor: user.role === 'PMR' ? '#E3F2FD' : '#F3E5F5',
-                        color: user.role === 'PMR' ? '#1976d2' : '#7b1fa2',
-                        fontWeight: 500
-                      }}
-                    />
-                  </Box>
+                  <WalletIcon sx={{ fontSize: 48, opacity: 0.2 }} />
                 </CardContent>
               </Card>
-            )}
 
-            {/* CARD SOLDE */}
-            <Card
-              sx={{
-                borderRadius: 2,
-                border: '1px solid rgba(57, 56, 57, 0.10)',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-                background: 'linear-gradient(135deg, #2eb378 0%, #26a566 100%)',
-                color: 'white',
-                mb: 3
-              }}
-            >
-              <CardContent>
-                <Typography variant="caption" sx={{ opacity: 0.85 }}>
-                  Solde disponible
-                </Typography>
-                <Typography
-                  variant="h3"
-                  sx={{
-                    fontFamily: '"Inter", sans-serif',
-                    fontWeight: 700,
-                    mt: 1
-                  }}
-                >
-                  {balance.toFixed(2)} €
-                </Typography>
-              </CardContent>
-            </Card>
+              {/* Carte Recharge */}
+              <Card sx={{ borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.03)', border: 'none' }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Typography variant="h6" fontWeight={600} mb={3}>Recharger (DÉMO)</Typography>
 
-            {/* CARD PAIEMENT */}
-            <Card
-              sx={{
-                borderRadius: 2,
-                border: '1px solid rgba(57, 56, 57, 0.10)',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
-              }}
-            >
-              <CardContent>
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontFamily: '"Inter", sans-serif',
-                    fontWeight: 600,
-                    color: '#393839',
-                    mb: 2
-                  }}
-                >
-                  Effectuer un paiement
-                </Typography>
-
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <Box>
-                    <Typography variant="caption" sx={{ color: 'rgba(57, 56, 57, 0.6)', display: 'block', mb: 0.5 }}>
-                      Montant (€)
-                    </Typography>
-                    <input
-                      type="number"
-                      value={paymentAmount}
-                      onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
-                      placeholder="0.00"
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(57, 56, 57, 0.15)',
-                        fontFamily: 'Inter, sans-serif',
-                        fontSize: '14px',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </Box>
-
-                  <Box>
-                    <Typography variant="caption" sx={{ color: 'rgba(57, 56, 57, 0.6)', display: 'block', mb: 0.5 }}>
-                      ID Destinataire
-                    </Typography>
-                    <input
-                      type="number"
-                      value={receiverId}
-                      onChange={(e) => setReceiverId(parseInt(e.target.value) || 1)}
-                      placeholder="1"
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(57, 56, 57, 0.15)',
-                        fontFamily: 'Inter, sans-serif',
-                        fontSize: '14px',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </Box>
-
-                  <Button
-                    onClick={handlePayment}
+                  {/* Méthodes */}
+                  <Typography variant="caption" color="text.secondary" mb={1} display="block">Méthode de paiement</Typography>
+                  <ToggleButtonGroup
+                    value={paymentMethod}
+                    exclusive
+                    onChange={(e, v) => v && setPaymentMethod(v)}
                     fullWidth
-                    sx={{
-                      bgcolor: '#2eb378',
-                      color: 'white',
-                      borderRadius: '12px',
-                      fontFamily: '"Inter", sans-serif',
-                      fontWeight: 600,
-                      py: 1.2,
-                      '&:hover': { bgcolor: '#26a566' }
-                    }}
+                    sx={{ mb: 3 }}
                   >
-                    Payer
-                  </Button>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
+                    <ToggleButton value="paypal" sx={{ flex: 1, textTransform: 'none' }}>PayPal</ToggleButton>
+                    <ToggleButton value="card" sx={{ flex: 1, textTransform: 'none' }}>Carte</ToggleButton>
+                    <ToggleButton value="applepay" sx={{ flex: 1, textTransform: 'none' }}>Apple</ToggleButton>
+                  </ToggleButtonGroup>
 
-          {/* === COLONNE 2 : HISTORIQUE + QR === */}
-          <Grid item xs={12} md={7}>
-            {/* HISTORIQUE PAIEMENTS */}
-            <Card
-              sx={{
-                borderRadius: 2,
-                border: '1px solid rgba(57, 56, 57, 0.10)',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-                mb: 3
-              }}
-            >
-              <CardContent>
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontFamily: '"Inter", sans-serif',
-                    fontWeight: 600,
-                    color: '#393839',
-                    mb: 2
-                  }}
-                >
-                  Historique des Paiements
-                </Typography>
-
-                {paymentHistory && paymentHistory.length > 0 ? (
-                  <Box sx={{ maxHeight: '300px', overflowY: 'auto' }}>
-                    {paymentHistory.map((payment, index) => (
-                      <Box
-                        key={index}
-                        sx={{
-                          p: 1.5,
-                          mb: 1,
-                          bgcolor: '#F7F9FB',
-                          borderRadius: 1,
-                          borderLeft: '4px solid #2eb378'
+                  {/* Montant & Devise */}
+                  <Grid container spacing={2} mb={2}>
+                    <Grid item xs={8}>
+                      <TextField
+                        label="Montant"
+                        placeholder="0.00"
+                        type="number"
+                        fullWidth
+                        value={amountInput}
+                        onChange={(e) => setAmountInput(e.target.value)}
+                        InputProps={{
+                          startAdornment: <InputAdornment position="start">{currency === 'EUR' ? '€' : currency === 'USD' ? '$' : '£'}</InputAdornment>
                         }}
-                      >
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                          <Typography sx={{ fontWeight: 500, color: '#393839', fontSize: '0.95rem' }}>
-                            {payment.description || 'Paiement'}
-                          </Typography>
-                          <Typography sx={{ fontWeight: 600, color: '#2eb378' }}>
-                            +{payment.amount}€
-                          </Typography>
-                        </Box>
-                        <Typography variant="caption" sx={{ color: 'rgba(57, 56, 57, 0.6)' }}>
-                          {new Date(payment.date || Date.now()).toLocaleDateString('fr-FR')}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Box>
-                ) : (
-                  <Box sx={{ textAlign: 'center', py: 4 }}>
-                    <Typography variant="body2" sx={{ color: 'rgba(57, 56, 57, 0.5)' }}>
-                      Aucune transaction pour le moment
-                    </Typography>
-                  </Box>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* QR CODES TRAJETS */}
-            {qrCodes && qrCodes.length > 0 && (
-              <Box sx={{ mb: 3 }}>
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontFamily: '"Inter", sans-serif',
-                    fontWeight: 600,
-                    color: '#393839',
-                    mb: 2
-                  }}
-                >
-                  QR Codes des Voyages
-                </Typography>
-
-                <Grid container spacing={2} sx={{ mb: 2 }}>
-                  {qrCodes
-                    .slice((qrPage - 1) * PAGE_SIZE_QR, qrPage * PAGE_SIZE_QR)
-                    .map((qr, index) => {
-                      const globalIndex = (qrPage - 1) * PAGE_SIZE_QR + index;
-                      return (
-                        <Grid item xs={12} sm={6} md={4} key={globalIndex}>
-                          <Card
-                            sx={{
-                              borderRadius: 2,
-                              border: '1px solid rgba(57, 56, 57, 0.10)',
-                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              height: '100%'
-                            }}
-                          >
-                            <CardContent sx={{ textAlign: 'center', flexGrow: 1 }}>
-                              <Box
-                                id={`qr-${globalIndex}`}
-                                sx={{
-                                  display: 'flex',
-                                  justifyContent: 'center',
-                                  mb: 2,
-                                  p: 1.5,
-                                  bgcolor: '#F7F9FB',
-                                  borderRadius: 1
-                                }}
-                              >
-                                <QRCodeSVG value={qr} size={120} />
-                              </Box>
-
-                              {parseQRData(qr)}
-
-                              <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-                                <Button
-                                  size="small"
-                                  startIcon={<DownloadIcon />}
-                                  onClick={() => handleDownloadQR(qr, globalIndex)}
-                                  sx={{
-                                    flex: 1,
-                                    borderRadius: '8px',
-                                    color: '#2eb378',
-                                    border: '1px solid #2eb378',
-                                    fontSize: '0.75rem',
-                                    textTransform: 'none'
-                                  }}
-                                >
-                                  Télécharger
-                                </Button>
-                                <Button
-                                  size="small"
-                                  startIcon={<DeleteIcon />}
-                                  onClick={() => setQrCodes(qrCodes.filter((_, i) => i !== globalIndex))}
-                                  sx={{
-                                    flex: 1,
-                                    borderRadius: '8px',
-                                    color: '#EF4444',
-                                    border: '1px solid #EF4444',
-                                    fontSize: '0.75rem',
-                                    textTransform: 'none'
-                                  }}
-                                >
-                                  Supprimer
-                                </Button>
-                              </Box>
-                            </CardContent>
-                          </Card>
-                        </Grid>
-                      );
-                    })}
-                </Grid>
-
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                      size="small"
-                      disabled={qrPage === 1}
-                      onClick={() => setQrPage((p) => Math.max(1, p - 1))}
-                      sx={{ textTransform: 'none' }}
-                    >
-                      Précédent
-                    </Button>
-                    <Button
-                      size="small"
-                      disabled={qrPage >= Math.ceil(qrCodes.length / PAGE_SIZE_QR)}
-                      onClick={() => setQrPage((p) => Math.min(Math.ceil(qrCodes.length / PAGE_SIZE_QR), p + 1))}
-                      sx={{ textTransform: 'none' }}
-                    >
-                      Suivant
-                    </Button>
-                    <Typography variant="caption" sx={{ color: 'rgba(57, 56, 57, 0.7)', alignSelf: 'center' }}>
-                      Page {qrPage} / {Math.max(1, Math.ceil(qrCodes.length / PAGE_SIZE_QR))}
-                    </Typography>
-                  </Box>
-
-                  <Button
-                    onClick={() => setQrCodes([])}
-                    startIcon={<DeleteIcon />}
-                    sx={{
-                      color: '#EF4444',
-                      border: '1px solid #EF4444',
-                      borderRadius: '12px',
-                      textTransform: 'none',
-                      fontFamily: '"Inter", sans-serif',
-                      fontWeight: 500
-                    }}
-                  >
-                    Supprimer tous les codes
-                  </Button>
-                </Box>
-              </Box>
-            )}
-
-            {/* QR CODES BAGAGES - APERÇU */}
-            <Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontFamily: '"Inter", sans-serif',
-                    fontWeight: 600,
-                    color: '#393839'
-                  }}
-                >
-                  Mes Bagages
-                </Typography>
-                {baggageQrCodes && baggageQrCodes.length > 0 && (
-                  <Chip
-                    label={`${baggageQrCodes.length} bagage${baggageQrCodes.length > 1 ? 's' : ''}`}
-                    size="small"
-                    sx={{
-                      bgcolor: '#E3F2FD',
-                      color: '#5bbcea',
-                      fontWeight: 500
-                    }}
-                  />
-                )}
-              </Box>
-
-              {baggageQrCodes && baggageQrCodes.length > 0 ? (
-                <>
-                  <Grid container spacing={2} sx={{ mb: 2 }}>
-                    {baggageQrCodes
-                      .slice(0, 3)
-                      .map((qr, index) => {
-                        try {
-                          const baggageData = JSON.parse(qr);
-                          return (
-                            <Grid item xs={12} sm={6} md={4} key={index}>
-                              <Card
-                                sx={{
-                                  borderRadius: 2,
-                                  border: '1px solid rgba(57, 56, 57, 0.10)',
-                                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-                                  height: '100%'
-                                }}
-                              >
-                                <CardContent sx={{ textAlign: 'center' }}>
-                                  <Box
-                                    sx={{
-                                      display: 'flex',
-                                      justifyContent: 'center',
-                                      mb: 1.5,
-                                      p: 1,
-                                      bgcolor: '#F7F9FB',
-                                      borderRadius: 1
-                                    }}
-                                  >
-                                    <QRCodeSVG value={qr} size={80} />
-                                  </Box>
-
-                                  <Box sx={{ textAlign: 'left', fontSize: '0.85rem' }}>
-                                    <Box sx={{ mb: 0.5 }}>
-                                      <Typography variant="caption" sx={{ color: 'rgba(57, 56, 57, 0.6)', display: 'block' }}>
-                                        Poids
-                                      </Typography>
-                                      <Typography sx={{ fontWeight: 500, color: '#393839', fontSize: '0.85rem' }}>
-                                        {baggageData.weight || 'N/A'} kg
-                                      </Typography>
-                                    </Box>
-                                    <Box>
-                                      <Typography variant="caption" sx={{ color: 'rgba(57, 56, 57, 0.6)', display: 'block' }}>
-                                        Parcours
-                                      </Typography>
-                                      <Typography sx={{ fontWeight: 500, color: '#393839', fontSize: '0.75rem' }}>
-                                        {baggageData.departure || 'N/A'} → {baggageData.arrival || 'N/A'}
-                                      </Typography>
-                                    </Box>
-                                  </Box>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          );
-                        } catch (e) {
-                          return null;
-                        }
-                      })}
+                      />
+                    </Grid>
+                    <Grid item xs={4}>
+                      <Select value={currency} fullWidth onChange={(e) => setCurrency(e.target.value)}>
+                        <MenuItem value="EUR">EUR</MenuItem>
+                        <MenuItem value="USD">USD</MenuItem>
+                        <MenuItem value="GBP">GBP</MenuItem>
+                      </Select>
+                    </Grid>
                   </Grid>
 
-                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  {/* Quick Amounts */}
+                  <Stack direction="row" spacing={1} mb={3}>
+                    {[10, 20, 50, 100].map(val => (
+                      <Chip
+                        key={val}
+                        label={`+${val}`}
+                        onClick={() => handleQuick(val)}
+                        variant="outlined"
+                        color="primary"
+                        clickable
+                      />
+                    ))}
+                  </Stack>
+
+                  {/* Résumé Dynamique */}
+                  {totals.isValid && (
+                    <Box sx={{ bgcolor: '#F5F9FF', p: 2, borderRadius: 2, mb: 3, border: '1px solid #E3F2FD' }}>
+                      {currency !== 'EUR' && (
+                        <>
+                          <Stack direction="row" justifyContent="space-between" mb={0.5}>
+                            <Typography variant="body2" color="text.secondary">Montant original</Typography>
+                            <Typography variant="body2" fontWeight={500}>{parseFloat(amountInput).toFixed(2)} {currency}</Typography>
+                          </Stack>
+                          <Stack direction="row" justifyContent="space-between" mb={1}>
+                            <Typography variant="body2" color="text.secondary">Taux conversion</Typography>
+                            <Typography variant="body2" fontWeight={500}>{totals.rate}</Typography>
+                          </Stack>
+                          <Divider sx={{ my: 1, borderStyle: 'dashed' }} />
+                        </>
+                      )}
+
+                      <Stack direction="row" justifyContent="space-between" mb={0.5}>
+                        <Typography variant="body2" color="text.secondary">
+                          {currency === 'EUR' ? "Montant" : "Montant converti (EUR)"}
+                        </Typography>
+                        <Typography variant="body2" fontWeight={500}>{totals.converted.toFixed(2)} EUR</Typography>
+                      </Stack>
+                      <Stack direction="row" justifyContent="space-between" mb={1}>
+                        <Typography variant="body2" color="text.secondary">Frais (1.5%)</Typography>
+                        <Typography variant="body2" color="error" fontWeight={500}>-{totals.fee.toFixed(2)} EUR</Typography>
+                      </Stack>
+                      <Divider sx={{ my: 1 }} />
+                      <Stack direction="row" justifyContent="space-between" alignItems="center">
+                        <Typography variant="subtitle2" fontWeight={700}>À CRÉDITER</Typography>
+                        <Typography variant="h6" fontWeight={700} color="#2eb378">+{totals.credited.toFixed(2)} EUR</Typography>
+                      </Stack>
+                    </Box>
+                  )}
+
+                  {/* Actions */}
+                  <Button
+                    onClick={handleTopup}
+                    disabled={isProcessing || !totals.isValid}
+                    fullWidth
+                    variant="contained"
+                    size="large"
+                    sx={{
+                      bgcolor: '#2eb378',
+                      '&:hover': { bgcolor: '#26a566' },
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontWeight: 700
+                    }}
+                  >
+                    {isProcessing ? <CircularProgress size={24} color="inherit" /> : `Confirmer la recharge`}
+                  </Button>
+
+                  {lastTopup && (
                     <Button
-                      variant="contained"
-                      endIcon={<ArrowForwardIcon />}
-                      onClick={() => navigate('/user/baggage-tracking')}
-                      sx={{
-                        flex: 1,
-                        minWidth: '200px',
-                        bgcolor: '#2eb378',
-                        color: 'white',
-                        borderRadius: '12px',
-                        fontFamily: '"Inter", sans- serif',
-                        fontWeight: 600,
-                        py: 1.2,
-                        textTransform: 'none',
-                        '&:hover': { bgcolor: '#26a566' }
-                      }}
+                      onClick={generateReceiptPDF}
+                      fullWidth
+                      startIcon={<DownloadIcon />}
+                      variant="text"
+                      sx={{ mt: 1, textTransform: 'none' }}
                     >
-                      Voir tous mes bagages
+                      Télécharger le reçu
                     </Button>
-                    <Button
-                      variant="outlined"
-                      startIcon={<AddIcon />}
-                      onClick={() => navigate('/user/baggage-tracking')}
-                      sx={{
-                        flex: 1,
-                        minWidth: '200px',
-                        color: '#2eb378',
-                        borderColor: '#2eb378',
-                        borderRadius: '12px',
-                        fontFamily: '"Inter", sans-serif',
-                        fontWeight: 600,
-                        py: 1.2,
-                        textTransform: 'none',
-                        '&:hover': {
-                          borderColor: '#26a566',
-                          bgcolor: 'rgba(46, 179, 120, 0.04)'
-                        }
-                      }}
-                    >
-                      Ajouter un bagage
-                    </Button>
-                  </Box>
-                </>
-              ) : (
-                <Card
-                  sx={{
-                    borderRadius: 2,
-                    border: '1px solid rgba(57, 56, 57, 0.10)',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-                    textAlign: 'center',
-                    py: 4
-                  }}
-                >
-                  <CardContent>
-                    <Typography variant="body2" sx={{ color: 'rgba(57, 56, 57, 0.5)', mb: 2 }}>
-                      Aucun bagage enregistré pour le moment
-                    </Typography>
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={() => navigate('/user/baggage-tracking')}
-                      sx={{
-                        bgcolor: '#2eb378',
-                        color: 'white',
-                        borderRadius: '12px',
-                        fontFamily: '"Inter", sans-serif',
-                        fontWeight: 600,
-                        py: 1.2,
-                        px: 3,
-                        textTransform: 'none',
-                        '&:hover': { bgcolor: '#26a566' }
-                      }}
-                    >
-                      Ajouter mon premier bagage
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </Stack>
           </Grid>
+
+          {/* === LIGNE 2 (MD=12) : Historique Full Width === */}
+          <Grid item xs={12}>
+            <Card sx={{ borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.03)', border: 'none' }}>
+              <Box sx={{ p: 2, px: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, borderBottom: '1px solid #f0f0f0' }}>
+                <Stack direction="row" alignItems="center" spacing={2}>
+                  <Typography variant="h6" fontWeight={600}>Historique</Typography>
+                  {/* Filtres Type Banque */}
+                  <ToggleButtonGroup
+                    value={historyFilter}
+                    exclusive
+                    onChange={(e, v) => v && setHistoryFilter(v)}
+                    size="small"
+                    sx={{ bgcolor: '#f5f5f5' }}
+                  >
+                    <ToggleButton value="all" sx={{ px: 2, textTransform: 'none' }}>Tout</ToggleButton>
+                    <ToggleButton value="recharge" sx={{ px: 2, textTransform: 'none' }}>Recharges</ToggleButton>
+                    <ToggleButton value="payment" sx={{ px: 2, textTransform: 'none' }}>Paiements</ToggleButton>
+                  </ToggleButtonGroup>
+                </Stack>
+                <Button startIcon={<FileDownloadIcon />} onClick={exportCSV} variant="outlined" size="small" sx={{ borderRadius: 2, textTransform: 'none' }}>
+                  Export CSV
+                </Button>
+              </Box>
+
+              <CardContent sx={{ p: 0 }}>
+                {displayedHistory.length > 0 ? (
+                  displayedHistory.map((tx, idx) => (
+                    <Box
+                      key={tx.id}
+                      sx={{
+                        p: 2, px: 3,
+                        borderBottom: '1px solid #f9f9f9',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'background 0.2s',
+                        '&:hover': { bgcolor: '#fafafa' }
+                      }}
+                    >
+                      <Box>
+                        <Stack direction="row" alignItems="center" spacing={1} mb={0.5}>
+                          <Typography variant="body1" fontWeight={500} color="#333">
+                            {tx.description}
+                          </Typography>
+                          {tx.isDemo && <Chip label="DÉMO" size="small" sx={{ height: 20, fontSize: '10px', bgcolor: '#e3f2fd', color: '#1976d2' }} />}
+                        </Stack>
+                        <Typography variant="caption" color="text.secondary">
+                          {tx.date.toLocaleDateString('fr-FR')} à {tx.date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                        </Typography>
+                      </Box>
+
+                      <Typography variant="body1" fontWeight={600} sx={{ color: tx.color }}>
+                        {tx.sign}{tx.amount.toFixed(2)} {tx.currency}
+                      </Typography>
+                    </Box>
+                  ))
+                ) : (
+                  <Box sx={{ p: 6, textAlign: 'center' }}>
+                    <HistoryIcon sx={{ fontSize: 48, color: '#e0e0e0', mb: 2 }} />
+                    <Typography color="text.secondary">Aucune transaction trouvée.</Typography>
+                  </Box>
+                )}
+              </CardContent>
+
+              {/* Pagination */}
+              {pageCount > 1 && (
+                <Box sx={{ p: 2, display: 'flex', justifyContent: 'center', borderTop: '1px solid #f0f0f0' }}>
+                  <Pagination count={pageCount} page={page} onChange={(e, v) => setPage(v)} color="primary" />
+                </Box>
+              )}
+            </Card>
+          </Grid>
+
         </Grid>
       </Container>
     </Box>

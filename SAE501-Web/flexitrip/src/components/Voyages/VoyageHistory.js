@@ -28,6 +28,46 @@ const VoyageHistory = () => {
   /**
    * Récupérer historique voyages
    */
+  const normalizeLocation = (loc) => {
+    if (!loc) return 'N/A';
+    if (typeof loc === 'string') return loc;
+    if (typeof loc === 'object') {
+      return loc.ville || loc.gare || loc.name || JSON.stringify(loc);
+    }
+    return String(loc);
+  };
+
+  const normalizeEtapes = (etapes = []) => {
+    return etapes.map((e) => {
+      const data = e.etape_data || {};
+      return {
+        type: e.type || e.transport || data.type,
+        compagnie: data.compagnie,
+        adresse_1: data.adresse_1 || e.start_station_snapshot?.name,
+        adresse_2: data.adresse_2 || e.end_station_snapshot?.name,
+        id: data.id
+      };
+    });
+  };
+
+  const normalizeVoyage = (v) => {
+    const id = v.id_voyage || v.voyage_id || v.id;
+    return {
+      id,
+      voyage_id: id,
+      id_voyage: id,
+      depart: normalizeLocation(v.depart || v.lieu_depart || v.Lieu_depart || v.start_station_snapshot),
+      arrivee: normalizeLocation(v.arrivee || v.lieu_arrivee || v.Lieu_arrivee || v.end_station_snapshot),
+      date_debut: v.date_debut || v.Date_depart,
+      date_fin: v.date_fin || v.Date_arrivee,
+      prix_total: v.prix_total,
+      status: v.status || v.statut,
+      etapes: normalizeEtapes(v.etapes),
+      reservations: v.reservations || [],
+      raw: v,
+    };
+  };
+
   const fetchVoyages = async () => {
     if (!user?.user_id) return;
 
@@ -44,7 +84,8 @@ const VoyageHistory = () => {
       });
 
       if (response.data.success) {
-        setVoyages(response.data.voyages);
+        const normalized = (response.data.voyages || []).map(normalizeVoyage);
+        setVoyages(normalized);
       }
 
     } catch (err) {

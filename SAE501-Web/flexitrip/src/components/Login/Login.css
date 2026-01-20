@@ -5,7 +5,8 @@
     align-items: center;
     justify-content: center;
     height: 100vh;
-    background-color: #f0f2f5; /* Subtle light background */
+    background-color: #f0f2f5;
+    /* Subtle light background */
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 
@@ -15,7 +16,8 @@
     background-color: #ffffff;
     padding: 40px;
     border-radius: 10px;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1); /* Softer shadow for depth */
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    /* Softer shadow for depth */
     max-width: 400px;
     width: 100%;
     text-align: center;
@@ -30,7 +32,8 @@
 .login-box h2 {
     margin-bottom: 25px;
     font-size: 15px;
-    color: #333; /* Darker font color */
+    color: #333;
+    /* Darker font color */
     font-weight: 600;
 }
 
@@ -41,7 +44,8 @@
 
 .input-group label {
     font-size: 14px;
-    color: #555; /* Medium gray label color */
+    color: #555;
+    /* Medium gray label color */
     margin-bottom: 5px;
     display: block;
 }
@@ -50,14 +54,16 @@
     width: 93%;
     padding: 12px;
     border-radius: 20px;
-    border: 1px solid #ddd; /* Light gray border */
+    border: 1px solid #ddd;
+    /* Light gray border */
     font-size: 15px;
     background-color: #f9f9f9;
     transition: border-color 0.3s ease;
 }
 
 .input-group input:focus {
-    border-color: #007bff; /* Blue border on focus */
+    border-color: #007bff;
+    /* Blue border on focus */
     background-color: #ffffff;
     outline: none;
     transform: translateY(-2px);
@@ -66,7 +72,8 @@
 .login-button {
     width: 100%;
     padding: 12px;
-    background-color: #007bff; /* Blue button */
+    background-color: #007bff;
+    /* Blue button */
     color: #ffffff;
     border: none;
     border-radius: 20px;
@@ -76,7 +83,8 @@
 }
 
 .login-button:hover {
-    background-color: #0056b3; /* Darker blue on hover */
+    background-color: #0056b3;
+    /* Darker blue on hover */
 }
 
 .login-footer {
@@ -171,10 +179,14 @@
 .icon-login {
     width: 20px;
     height: 20px;
-    margin-right: 10px; /* Espace à droite */
-    margin-top: 2px; /* Descend l'icône légèrement */
-    display: inline-block; /* S'assure que le margin-top fonctionne */
-    vertical-align: middle; /* Centre avec le texte environnant */
+    margin-right: 10px;
+    /* Espace à droite */
+    margin-top: 2px;
+    /* Descend l'icône légèrement */
+    display: inline-block;
+    /* S'assure que le margin-top fonctionne */
+    vertical-align: middle;
+    /* Centre avec le texte environnant */
 }
 
 
@@ -230,32 +242,32 @@
 }
 
 .input-group {
-  position: relative;
-  margin-bottom: 20px;
+    position: relative;
+    margin-bottom: 20px;
 }
 
 .input-group .icon {
-  position: absolute;
-  top: 65%;
-  left: 10px;
-  transform: translateY(-50%);
-  color: #2d4373;
+    position: absolute;
+    top: 65%;
+    left: 10px;
+    transform: translateY(-50%);
+    color: #2d4373;
 }
 
 .input-group input {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 20px;
-  font-size: 15px;
-  background-color: #f9f9f9;
-  box-sizing: border-box;
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    font-size: 15px;
+    background-color: #f9f9f9;
+    box-sizing: border-box;
 }
 
 .input-group input:focus {
-  outline: none;
-  border-color: #007bff;
-  background-color: #ffffff;
+    outline: none;
+    border-color: #007bff;
+    background-color: #ffffff;
 }
 
 .input-group button {
@@ -280,15 +292,17 @@
 
 .button-login {
     position: absolute;
-    bottom: -10px; /* Positionne le bouton plus bas */
-    right: 10px; /* Distance par rapport au bord droit */
+    bottom: -10px;
+    /* Positionne le bouton plus bas */
+    right: 10px;
+    /* Distance par rapport au bord droit */
     background-color: #666;
     color: #666;
     border: 1px solid #333;
     border-radius: 0px;
     font-size: medium;
     padding: 8px 12px;
-    cursor: pointer; 
+    cursor: pointer;
 }
 
 .image {
@@ -320,4 +334,3 @@
         font-size: 14px;
     }
 }
-

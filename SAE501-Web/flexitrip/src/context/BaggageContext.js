@@ -10,7 +10,17 @@ export const useBaggage = () => useContext(BaggageContext);
 export const BaggageProvider = ({ children }) => {
   const [baggageQrCodes, setBaggageQrCodes] = useState(() => {
     const savedBaggageQrCodes = localStorage.getItem("baggageQrCodes");
-    return savedBaggageQrCodes ? JSON.parse(savedBaggageQrCodes) : [];
+
+    // Parse en sécurité pour éviter de casser la page si le JSON est corrompu
+    if (!savedBaggageQrCodes) return [];
+    try {
+      const parsed = JSON.parse(savedBaggageQrCodes);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (err) {
+      console.warn("baggageQrCodes localStorage invalide, on réinitialise", err);
+      localStorage.removeItem("baggageQrCodes");
+      return [];
+    }
   });
 
   // Sauvegarder les QR codes dans localStorage lorsqu'ils changent
