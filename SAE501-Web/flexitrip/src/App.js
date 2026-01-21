@@ -30,6 +30,7 @@ import Signup from "./components/Signup/Signup";
 import EditUser from './components/EditerProfil/EditProfil';
 import PriseEnChargeValidation from './pages/PriseEnChargeValidation';
 import SuiviPriseEnCharge from './pages/SuiviPriseEnCharge';
+import AgentAssignmentPage from './pages/AgentAssignmentPage';
 
 
 function App() {
@@ -78,6 +79,7 @@ function App() {
                       <Route path="/user/voyages" element={<RouteProtect><VoyageHistory /></RouteProtect>} />
                       <Route path="/user/booking-result" element={<RouteProtect><BookingResult /></RouteProtect>} />
                       <Route path="/suivi-prise-en-charge/:reservationId" element={<RouteProtect><SuiviPriseEnCharge /></RouteProtect>} />
+                      <Route path="/user/agent-assignment" element={<RouteProtect><AgentAssignmentPage /></RouteProtect>} />
                     </Routes>
                     <Footer />
                   </>

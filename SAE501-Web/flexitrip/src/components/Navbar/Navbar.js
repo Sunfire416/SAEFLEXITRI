@@ -145,6 +145,9 @@ function Navbar() {
                             <li className="nav-item">
                                 <a href="/user/ewallet" className="nav-links">💰 Wallet</a>
                             </li>
+                            <li className="nav-item">
+                                <a href="/user/agent-assignment" className="nav-links">🤖 Agent IA</a>
+                            </li>
                         </>
                     )}
                 </ul>
@@ -174,6 +177,7 @@ function Navbar() {
                                 <a href="/user/boarding">🎫 Boarding Pass <AngleRightIcon className="icon-Drop" /></a>
                                 <a href="/user/boarding-gate">🚪 Porte Embarquement <AngleRightIcon className="icon-Drop" /></a>
                                 <a href="/user/ewallet">💰 Wallet <AngleRightIcon className="icon-Drop" /></a>
+                                <a href="/user/agent-assignment">🤖 Agent IA <AngleRightIcon className="icon-Drop" /></a>
                                 <label className="upload-label">
                                     Changer l’image de profil
                                     <input
@@ -272,6 +276,9 @@ function Navbar() {
                             </li>
                             <li className="nav-item">
                                 <a href="/user/ewallet" className="nav-links" onClick={toggleMobileMenu}>Wallet<AngleRightIcon className="icon-angle"/></a>
+                            </li>
+                            <li className="nav-item">
+                                <a href="/user/agent-assignment" className="nav-links" onClick={toggleMobileMenu}>Agent IA<AngleRightIcon className="icon-angle"/></a>
                             </li>
                         </>
                     )}
