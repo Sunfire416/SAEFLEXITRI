@@ -202,6 +202,13 @@ const VoyageHistory = () => {
           </div>
         </div>
         <div className="stat-card">
+          <div className="stat-icon">♿</div>
+          <div className="stat-content">
+            <span className="stat-value">{voyages.filter(v => v.reservations?.some(r => r.assistance_PMR === 'Oui')).length}</span>
+            <span className="stat-label">Avec assistance PMR</span>
+          </div>
+        </div>
+        <div className="stat-card">
           <div className="stat-icon">⏳</div>
           <div className="stat-content">
             <span className="stat-value">{stats.pending}</span>

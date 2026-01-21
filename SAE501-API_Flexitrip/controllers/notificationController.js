@@ -1,74 +1,171 @@
-const Notification = require('../models/Notification'); // MongoDB model
+/**
+ * Controller Notifications - MongoDB Unifié
+ * 
+ * ✅ SYSTÈME UNIFIÉ : MongoDB uniquement
+ * Ce controller remplace l'ancien système MySQL
+ * Routes: /notifications/*
+ */
 
-// Créer une nouvelle notification
-exports.createNotification = async (req, res) => {
-  try {
-    const newNotification = await Notification.create(req.body);
-    res.status(201).json(newNotification);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Erreur lors de la création de la notification' });
-  }
-};
+const notificationService = require('../services/notificationService');
+const Notification = require('../models/Notification');
 
-// Récupérer toutes les notifications
+/**
+ * GET /notifications?user_id=4&limit=50&skip=0&unread_only=false&type=null
+ * Récupérer toutes les notifications d'un utilisateur
+ */
 exports.getNotifications = async (req, res) => {
   try {
-    const notifications = await Notification.find();
-    res.status(200).json(notifications);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Erreur lors de la récupération des notifications' });
-  }
-};
-
-// Récupérer une notification par son ID
-exports.getNotificationById = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const notification = await Notification.findById(id);
-    if (!notification) {
-      return res.status(404).json({ error: 'Notification non trouvée' });
+    const user_id = req.user?.user_id || req.query.user_id;
+    if (!user_id) {
+      return res.status(400).json({ success: false, error: 'user_id requis' });
     }
-    res.status(200).json(notification);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Erreur lors de la récupération de la notification' });
-  }
-};
 
-// Mettre à jour une notification
-exports.updateNotification = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const updatedNotification = await Notification.findByIdAndUpdate(
-      id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-    if (!updatedNotification) {
-      return res.status(404).json({ error: 'Notification non trouvée' });
-    }
-    res.status(200).json(updatedNotification);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Erreur lors de la mise à jour de la notification' });
-  }
-};
+    const { limit = 50, skip = 0, unread_only = false, type = null } = req.query;
 
-// Supprimer une notification
-exports.deleteNotification = async (req, res) => {
-  const { id } = req.params; // Récupérer l'ID depuis les paramètres de la requête
-  try {
-    const deleted = await Notification.destroy({
-      where: { id },
+    const result = await notificationService.getUserNotifications(user_id, {
+      limit: parseInt(limit),
+      skip: parseInt(skip),
+      unread_only: unread_only === 'true',
+      type
     });
-    if (!deleted) {
-      return res.status(404).json({ error: 'Notification non trouvée' });
-    }
-    res.status(204).send(); // Suppression réussie, ne retourne rien
+
+    res.json({ success: true, ...result });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Erreur lors de la suppression de la notification' });
+    console.error('❌ Erreur getNotifications:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur', details: error.message });
   }
 };
+
+/**
+ * GET /notifications/unread?user_id=4
+ * Récupérer notifications non lues
+ */
+exports.getUnreadNotifications = async (req, res) => {
+  try {
+    const user_id = req.user?.user_id || req.query.user_id;
+    if (!user_id) {
+      return res.status(400).json({ success: false, error: 'user_id requis' });
+    }
+
+    const notifications = await Notification.findUnreadByUser(user_id);
+    const unread_count = await Notification.countUnreadByUser(user_id);
+
+    res.json({ success: true, notifications, unread_count });
+  } catch (error) {
+    console.error('❌ Erreur getUnreadNotifications:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur', details: error.message });
+  }
+};
+
+/**
+ * GET /notifications/count?user_id=4
+ * Compter notifications non lues
+ */
+exports.getUnreadCount = async (req, res) => {
+  try {
+    const user_id = req.user?.user_id || req.query.user_id;
+    if (!user_id) {
+      return res.status(400).json({ success: false, error: 'user_id requis' });
+    }
+
+    const unread_count = await Notification.countUnreadByUser(user_id);
+    res.json({ success: true, unread_count });
+  } catch (error) {
+    console.error('❌ Erreur getUnreadCount:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur', details: error.message });
+  }
+};
+
+/**
+ * GET /notifications/:id
+ * Récupérer une notification par ID
+ */
+exports.getNotificationById = async (req, res) => {
+  try {
+    const notification = await Notification.findOne({ notification_id: req.params.id });
+    
+    if (!notification) {
+      return res.status(404).json({ success: false, error: 'Notification introuvable' });
+    }
+
+    res.json({ success: true, notification });
+  } catch (error) {
+    console.error('❌ Erreur getNotificationById:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur', details: error.message });
+  }
+};
+
+/**
+ * POST /notifications
+ * Créer une notification (admin/system)
+ */
+exports.createNotification = async (req, res) => {
+  try {
+    const notification = await notificationService.createNotification(req.body);
+    res.status(201).json({ success: true, notification });
+  } catch (error) {
+    console.error('❌ Erreur createNotification:', error);
+    res.status(500).json({ success: false, error: 'Erreur création', details: error.message });
+  }
+};
+
+/**
+ * PATCH /notifications/:id/read
+ * Marquer notification comme lue
+ */
+exports.markAsRead = async (req, res) => {
+  try {
+    const notification = await Notification.findOne({ notification_id: req.params.id });
+    
+    if (!notification) {
+      return res.status(404).json({ success: false, error: 'Notification introuvable' });
+    }
+    
+    await notification.markRead();
+    res.json({ success: true, notification });
+  } catch (error) {
+    console.error('❌ Erreur markAsRead:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur', details: error.message });
+  }
+};
+
+/**
+ * PATCH /notifications/mark-all-read
+ * Marquer toutes comme lues
+ */
+exports.markAllAsRead = async (req, res) => {
+  try {
+    const user_id = req.user?.user_id || req.body.user_id;
+    
+    if (!user_id) {
+      return res.status(400).json({ success: false, error: 'user_id requis' });
+    }
+
+    const result = await notificationService.markAllAsRead(user_id);
+    res.json({ success: true, modified_count: result.modifiedCount });
+  } catch (error) {
+    console.error('❌ Erreur markAllAsRead:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur', details: error.message });
+  }
+};
+
+/**
+ * DELETE /notifications/:id
+ * Supprimer notification
+ */
+exports.deleteNotification = async (req, res) => {
+  try {
+    const result = await notificationService.deleteNotification(req.params.id);
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ success: false, error: 'Notification introuvable' });
+    }
+    
+    res.status(204).send();
+  } catch (error) {
+    console.error('❌ Erreur deleteNotification:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur', details: error.message });
+  }
+};
+
+module.exports = exports;

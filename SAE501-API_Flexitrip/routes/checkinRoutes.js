@@ -10,6 +10,12 @@ const checkinController = require('../controllers/checkinController');
  */
 
 /**
+ * GET /checkin/search-reservation
+ * Rechercher une réservation par booking_reference
+ */
+router.get('/search-reservation', checkinController.searchReservation);
+
+/**
  * @swagger
  * /checkin/scan:
  *   post:
@@ -29,11 +35,20 @@ router.post('/manual', checkinController.manualCheckIn);
 
 /**
  * @swagger
- * /checkin/status/:reservation_id:
+ * /checkin/:id/status:
  *   get:
  *     summary: Statut check-in d'une réservation
  *     tags: [CheckIn]
  */
-router.get('/status/:reservation_id', checkinController.getCheckInStatus);
+router.get('/:id/status', checkinController.getCheckInStatus);
+
+/**
+ * @swagger
+ * /checkin/:id:
+ *   post:
+ *     summary: Effectuer le check-in d'une réservation
+ *     tags: [CheckIn]
+ */
+router.post('/:id', checkinController.scanCheckIn);
 
 module.exports = router;

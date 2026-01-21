@@ -2,9 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const helmet = require('helmet');
-const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
-console.log('SERVICE_ROLE_KEY:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 // Services
 const Neo4jService = require('./services/neo4jService');
@@ -35,11 +33,16 @@ const transactionRoutes = require('./routes/transactions');
 const stationRoutes = require('./routes/stations');
 const blockchainRoutes = require('./routes/blockchain');
 
-// Routes spécifiques PMR
+// Routes spécifiques PMR et services
 const assistanceRoutes = require('./routes/assistance');
 const bookingRoutes = require('./routes/booking');
 const notificationRoutes = require('./routes/notificationRoutesV2');
 const devPmrRoutes = require('./routes/devPmrRoutes');
+const searchRoutesV2 = require('./routes/searchRoutesV2');
+const checkinRoutes = require('./routes/checkinRoutes');
+const priseEnChargeRoutes = require('./routes/priseEnChargeRoutes');
+const intelligentAssignmentRoutes = require('./routes/intelligentAssignmentRoutes');
+const incidentRoutes = require('./routes/incidentRoutes');
 
 // ==========================================
 // INITIALISATION EXPRESS
@@ -85,47 +88,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // ==========================================
 
 app.get('/api/health', async (req, res) => {
-    try {
-        const { error: supabaseError } = await SupabaseService.client
-            .from('users')
-            .select('count', { count: 'exact' })
-            .limit(1);
-
-        const neo4jHealth = await Neo4jService.testConnection();
-
-        const services = {
-            supabase: supabaseError ? 'ERROR' : 'OK',
-            neo4j: neo4jHealth ? 'OK' : 'ERROR',
-            api: 'RUNNING'
-        };
-
-        res.status(200).json({
-            status: 'healthy',
-            timestamp: new Date().toISOString(),
-            version: '2.0.0',
-            architecture: 'Supabase PostgreSQL + Neo4j',
-            services
-        });
-
-    } catch (error) {
-        res.status(500).json({
-            status: 'unhealthy',
-            error: error.message,
-            timestamp: new Date().toISOString()
-        });
-    }
-});
-
-// Documentation Swagger
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
-// ==========================================
-// ROUTES PUBLIQUES (pas d'authentification requise)
-// ==========================================
-
-app.use('/api/auth', authRoutes);
-app.use('/api/stations', stationRoutes);
-app.use('/api/dev', devPmrRoutes);
+app.use('/api/prise-en-charge', priseEnChargeRoutes);
+app.use('/api/checkin', checkinRoutes);
 
 // ==========================================
 // ROUTES PROTÉGÉES (authentification requise)
@@ -143,6 +107,8 @@ app.use('/api/assistance', assistanceRoutes);
 app.use('/api/booking', bookingRoutes);
 app.use('/api/notification', notificationRoutes);
 app.use('/api/blockchain', blockchainRoutes); // ✅ CORRECT
+app.use('/api/incidents', incidentRoutes);
+app.use('/api/intelligent-assignment', intelligentAssignmentRoutes);
 
 // ==========================================
 // ENDPOINTS SPÉCIAUX POUR INTÉGRATION

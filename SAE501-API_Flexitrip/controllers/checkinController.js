@@ -8,6 +8,7 @@ const CheckInLog = require('../models/CheckInLog');
 const BoardingPass = require('../models/BoardingPass');
 const faceMatchService = require('../services/faceMatchService');
 const { Reservations } = require('../models');
+const checkinService = require('../services/checkinService'); // 🆕 ÉTAPE 5
 
 // ==========================================
 // 🆕 POINT 4 - IMPORTS NOTIFICATIONS + AGENT
@@ -16,12 +17,50 @@ const notificationService = require('../services/notificationService');
 const agentService = require('../services/agentService');
 
 /**
+ * 🆕 ÉTAPE 5 : Helper - Check-in unifié avec vérification enrollment automatique
+ */
+async function performUnifiedCheckIn(userId, reservationId, location, livePhoto, checkinType, res) {
+  try {
+    console.log(`📱 Check-in unifié pour user ${userId}, reservation ${reservationId}...`);
+    
+    // Appel au service unifié (ÉTAPE 5)
+    const result = await checkinService.performCheckIn({
+      user_id: userId,
+      reservation_id: reservationId,
+      live_photo: livePhoto || null,
+      location: location || 'Web Interface',
+      checkin_type: checkinType || 'manual_web'
+    });
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    return res.status(200).json(result);
+
+  } catch (error) {
+    console.error('❌ Erreur check-in manuel:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erreur lors du check-in',
+      details: error.message
+    });
+  }
+}
+
+/**
  * POST /checkin/scan
  * Check-in kiosk automatique
  */
 exports.scanCheckIn = async (req, res) => {
   try {
-    const { qr_data, live_photo, location, checkin_type } = req.body;
+    const { qr_data, live_photo, location, checkin_type, user_id, reservation_id } = req.body;
+
+    // 🆕 ÉTAPE 5 : Si user_id et reservation_id fournis directement (check-in unifié)
+    if (user_id && reservation_id && !qr_data) {
+      console.log(`📱 Check-in direct pour user ${user_id}, reservation ${reservation_id}...`);
+      return await performUnifiedCheckIn(user_id, reservation_id, location, live_photo, checkin_type, res);
+    }
 
     if (!qr_data || !live_photo) {
       return res.status(400).json({
@@ -328,7 +367,7 @@ exports.manualCheckIn = async (req, res) => {
  */
 exports.getCheckInStatus = async (req, res) => {
   try {
-    const { reservation_id } = req.params;
+    const reservation_id = req.params.id || req.params.reservation_id;
 
     const checkInLog = await CheckInLog.findOne({
       reservation_id: parseInt(reservation_id)
@@ -370,6 +409,52 @@ exports.getCheckInStatus = async (req, res) => {
       success: false,
       error: 'Erreur serveur',
       details: error.message
+    });
+  }
+};
+
+/**
+ * GET /checkin/search-reservation
+ * Rechercher une réservation par booking_reference
+ */
+exports.searchReservation = async (req, res) => {
+  try {
+    const { booking_reference } = req.query;
+    
+    if (!booking_reference) {
+      return res.status(400).json({
+        success: false,
+        error: 'booking_reference requis'
+      });
+    }
+    
+    const reservation = await Reservations.findOne({
+      where: { booking_reference: booking_reference }
+    });
+    
+    if (!reservation) {
+      return res.status(404).json({
+        success: false,
+        error: 'Réservation introuvable'
+      });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      reservation: {
+        reservation_id: reservation.reservation_id,
+        user_id: reservation.user_id,
+        booking_reference: reservation.booking_reference,
+        num_reza: reservation.num_reza_mmt,
+        type_transport: reservation.Type_Transport
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur recherche réservation:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erreur serveur'
     });
   }
 };

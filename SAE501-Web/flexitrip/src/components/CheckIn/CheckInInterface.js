@@ -79,7 +79,11 @@ const CheckInInterface = () => {
 
             const response = await axios.post(
                 `${API_BASE_URL}/checkin/${reservationId}`,
-                { user_id: user?.user_id },
+                {
+                    user_id: user?.user_id,
+                    reservation_id: reservationId,
+                    location: 'Web Interface'
+                },
                 { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }
             );
 

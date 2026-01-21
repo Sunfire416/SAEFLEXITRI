@@ -3,19 +3,16 @@ import React from 'react';
 import { Route, Routes } from 'react-router-dom';
 import RouteProtect from "../utils/RouteProtect";
 import HomePage from "../pages/HomePage";
-import MyTrip from "../components/TripInfo/TripInfo";
-import PmrAssisPage from "../pages/PmrAssisPage";
-import BagagePage from "../pages/BagagePage";
 import EwalletPage from "../pages/EwalletPage";
-import Support from "../components/Support/Support";
 import ProfilePage from "../components/Profile/Profile";
 import UserSettingsPage from "../components/User_settings/User_settings";
 import EditUser from '../components/EditerProfil/EditProfil';
-import ContactPage from "../components/Contact/Contact";
 import BoardingPage from '../pages/BoardingPage';
-import SecurityPage from "../pages/SecurityPage"; 
-import AccompagnantHome from '../components/AccompagnantHome/AccompagnantHome';
-import EditReservationPage from "../pages/EditReservationPage"; // ✅ Assure-toi que c'est bien ce fichier
+import BoardingGatePage from '../pages/BoardingGatePage';
+import BagagePage from '../pages/BagagePage';
+import PmrAssistance from '../components/PmrAssistance/PmrAssistance';
+import CheckInKiosk from '../components/CheckIn/CheckInKiosk';
+
 const ProtectedRoutes = () => {
     return (
         <Routes>
@@ -24,24 +21,24 @@ const ProtectedRoutes = () => {
                 element={<RouteProtect><HomePage /></RouteProtect>}
             />
             <Route
-                path="/user/mytrip"
-                element={<RouteProtect><MyTrip /></RouteProtect>}
+                path="/user/voyages"
+                element={<RouteProtect><HomePage /></RouteProtect>}
             />
             <Route
                 path="/user/pmr-assistance"
-                element={<RouteProtect><PmrAssisPage /></RouteProtect>}
+                element={<RouteProtect><PmrAssistance /></RouteProtect>}
             />
             <Route
                 path="/user/baggage-tracking"
                 element={<RouteProtect><BagagePage /></RouteProtect>}
             />
             <Route
-                path="/user/ewallet"
-                element={<RouteProtect><EwalletPage /></RouteProtect>}
+                path="/user/checkin"
+                element={<RouteProtect><CheckInKiosk /></RouteProtect>}
             />
             <Route
-                path="/user/support"
-                element={<RouteProtect><Support /></RouteProtect>}
+                path="/user/ewallet"
+                element={<RouteProtect><EwalletPage /></RouteProtect>}
             />
             <Route
                 path="/user/profile"
@@ -52,27 +49,21 @@ const ProtectedRoutes = () => {
                 element={<RouteProtect><EditUser /></RouteProtect>}
             />
             <Route
-                path="/user/User_settings"
+                path="/user/settings"
                 element={<RouteProtect><UserSettingsPage /></RouteProtect>}
             />
             <Route
-                path="/user/contact"
-                element={<RouteProtect><ContactPage /></RouteProtect>}
-            />
-            <Route
-                path="/user/boarding" // Correction de la casse
+                path="/user/boarding"
                 element={<RouteProtect><BoardingPage /></RouteProtect>}
             />
             <Route
-                path="/security"
-                element={<RouteProtect><SecurityPage /></RouteProtect>}
+                path="/user/boarding-gate"
+                element={<RouteProtect><BoardingGatePage /></RouteProtect>}
             />
-            <Route path="/accompagnant/home"
-                element={<RouteProtect><AccompagnantHome /></RouteProtect>}
+            <Route
+                path="/user/notifications"
+                element={<RouteProtect><HomePage /></RouteProtect>}
             />
-             <Route 
-             path="/edit-reservation/:id" 
-             element={<RouteProtect><EditReservationPage /></RouteProtect>} />
         </Routes>
     );
 };

@@ -22,7 +22,41 @@ const BookingResult = () => {
         );
     }
 
-    const { workflow_type, booking: bookingData, payment, timeline, total_price, remaining_balance } = booking;
+    const { workflow_type, booking: bookingData, payment, timeline, total_price, remaining_balance, itinerary } = booking;
+
+    const formatTime = (isoDate) => {
+        if (!isoDate) return 'N/A';
+        return new Date(isoDate).toLocaleTimeString('fr-FR', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'Europe/Paris'
+        });
+    };
+
+    const formatDateTime = (isoDate) => {
+        if (!isoDate) return 'N/A';
+        return new Date(isoDate).toLocaleString('fr-FR', {
+            day: '2-digit',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'Europe/Paris'
+        });
+    };
+
+    const getTransportIcon = (mode) => {
+        const icons = {
+            train: '🚆',
+            bus: '🚌',
+            flight: '✈️',
+            avion: '✈️',
+            metro: '🚇',
+            tram: '🚊',
+            walk: '🚶',
+            taxi: '🚕'
+        };
+        return icons[mode] || '🚗';
+    };
 
     const getWorkflowIcon = (type) => {
         const icons = {
@@ -107,6 +141,85 @@ const BookingResult = () => {
                     </div>
                 )}
 
+                {/* 🆕 Prise en Charge PMR - Multi-segments */}
+                {bookingData.prise_en_charge && Array.isArray(bookingData.prise_en_charge) && bookingData.prise_en_charge.length > 0 ? (
+                    <div className="prise-en-charge-card">
+                        <h3>📋 Prise en Charge PMR {bookingData.prise_en_charge.length > 1 && `(${bookingData.prise_en_charge.length} segments)`}</h3>
+                        {bookingData.prise_en_charge.map((pec, index) => (
+                            <div key={pec.id} className="pec-item">
+                                <div className="pec-header">
+                                    <h4>🚌 Étape {pec.etape_numero} - {pec.mode ? pec.mode.toUpperCase() : 'Transport'}</h4>
+                                    <span className={`pec-status ${pec.status}`}>
+                                        {pec.status === 'pending' && '⏳ En attente'}
+                                        {pec.status === 'validated' && '✅ Validée'}
+                                        {pec.status === 'cancelled' && '❌ Annulée'}
+                                    </span>
+                                </div>
+                                <p className="pec-info">
+                                    <strong>Lieu:</strong> {pec.location}
+                                    {pec.line && <> • <strong>Ligne:</strong> {pec.line}</>}
+                                    {pec.operator && <> • <strong>Opérateur:</strong> {pec.operator}</>}
+                                </p>
+                                {pec.status === 'pending' && (
+                                    <div className="pec-link-container">
+                                        <label>🔗 Lien de validation à partager au personnel :</label>
+                                        <div className="pec-url-box">
+                                            <input 
+                                                type="text" 
+                                                readOnly 
+                                                value={pec.validation_url} 
+                                                className="pec-url-input"
+                                                onClick={(e) => e.target.select()}
+                                            />
+                                            <button 
+                                                className="pec-copy-btn"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(pec.validation_url);
+                                                    alert(`✅ Lien copié pour l'étape ${pec.etape_numero} !`);
+                                                }}
+                                            >
+                                                📋 Copier
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                                {pec.status === 'validated' && (
+                                    <div className="pec-validated-info">
+                                        <p><strong>✅ Validée</strong></p>
+                                        {pec.validated_at && (
+                                            <p>Le {new Date(pec.validated_at).toLocaleString('fr-FR')}</p>
+                                        )}
+                                        {pec.validated_by && (
+                                            <p>Par : {pec.validated_by}</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        
+                        <div className="suivi-button-container">
+                            <button 
+                                className="btn-suivi" 
+                                onClick={() => navigate(`/suivi-prise-en-charge/${bookingData.reservation_id}`)}
+                            >
+                                📊 Suivre toutes les prises en charge
+                            </button>
+                        </div>
+                        
+                        <p className="pec-note">
+                            💡 Le personnel de chaque transport pourra valider votre prise en charge via son lien
+                        </p>
+                    </div>
+                ) : (
+                    <div className="prise-en-charge-card" style={{background: '#f3f4f6', borderLeftColor: '#9ca3af'}}>
+                        <h3>📋 Prise en Charge PMR</h3>
+                        <p style={{margin: 0, color: '#6b7280', fontSize: '14px'}}>
+                            ℹ️ Cette fonctionnalité n'était pas disponible lors de la création de cette réservation. 
+                            Elle sera activée pour vos prochaines réservations.
+                        </p>
+                    </div>
+                )}
+
                 {/* Biometric Data */}
                 {bookingData.biometric && (
                     <div className="biometric-info">
@@ -184,6 +297,74 @@ const BookingResult = () => {
                     <p className="qr-help">
                         💡 Vous pouvez également donner le code de validation au personnel
                     </p>
+                </div>
+            )}
+
+            {/* 🆕 Itinéraire Détaillé */}
+            {itinerary && itinerary.segments && itinerary.segments.length > 0 && (
+                <div className="itinerary-card">
+                    <h2>🗺️ Votre Itinéraire Détaillé</h2>
+                    <div className="itinerary-timeline">
+                        {itinerary.segments.map((segment, idx) => (
+                            <div key={idx} className="itinerary-segment">
+                                <div className="segment-timeline-marker">
+                                    <div className="segment-icon">{getTransportIcon(segment.mode)}</div>
+                                    {idx < itinerary.segments.length - 1 && <div className="timeline-connector"></div>}
+                                </div>
+                                
+                                <div className="segment-content">
+                                    <div className="segment-header">
+                                        <div className="segment-transport">
+                                            <strong>{(segment.mode || '').toUpperCase()}</strong>
+                                            {segment.line && (
+                                                <span className="segment-line-badge">Ligne {segment.line}</span>
+                                            )}
+                                            {segment.operator && (
+                                                <span className="segment-operator">{segment.operator}</span>
+                                            )}
+                                        </div>
+                                        <div className="segment-duration">
+                                            {segment.duration ? `${segment.duration}min` : ''}
+                                        </div>
+                                    </div>
+
+                                    <div className="segment-route">
+                                        <div className="route-point departure">
+                                            <span className="point-icon">🔵</span>
+                                            <div className="point-info">
+                                                <strong>{segment.departure_station || segment.from}</strong>
+                                                {segment.departure_time && (
+                                                    <span className="point-time">{formatTime(segment.departure_time)}</span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="route-point arrival">
+                                            <span className="point-icon">🟢</span>
+                                            <div className="point-info">
+                                                <strong>{segment.arrival_station || segment.to}</strong>
+                                                {segment.arrival_time && (
+                                                    <span className="point-time">{formatTime(segment.arrival_time)}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {segment.accessible === false && (
+                                        <div className="accessibility-warning">
+                                            ⚠️ Accessibilité limitée
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="itinerary-summary">
+                        <span>🕐 Durée totale: {itinerary.duration || itinerary.total_duration || 'N/A'} min</span>
+                        {itinerary.distance && (
+                            <span>📍 Distance: {(itinerary.distance / 1000).toFixed(1)} km</span>
+                        )}
+                    </div>
                 </div>
             )}
 

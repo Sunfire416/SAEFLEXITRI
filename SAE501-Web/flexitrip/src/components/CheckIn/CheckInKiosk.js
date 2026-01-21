@@ -70,12 +70,40 @@ const CheckInKiosk = () => {
     setError(null);
 
     try {
-      const checkinData = {
-        qr_data: qrData,
-        live_photo: livePhoto,
-        location: location,
-        checkin_type: mode
-      };
+      // 🆕 Si c'est juste un booking_reference (texte simple), chercher la réservation
+      let checkinData;
+      
+      if (qrData.startsWith('{')) {
+        // C'est un QR JSON
+        checkinData = {
+          qr_data: qrData,
+          live_photo: livePhoto,
+          location: location,
+          checkin_type: mode
+        };
+      } else {
+        // C'est un booking_reference simple, chercher d'abord la réservation
+        console.log('🔍 Recherche réservation par booking_reference:', qrData);
+        
+        const searchResponse = await axios.get(`${API_BASE_URL}/checkin/search-reservation`, {
+          params: { booking_reference: qrData }
+        });
+        
+        if (!searchResponse.data.success || !searchResponse.data.reservation) {
+          throw new Error('Réservation introuvable avec ce booking_reference');
+        }
+        
+        const reservation = searchResponse.data.reservation;
+        checkinData = {
+          user_id: reservation.user_id,
+          reservation_id: reservation.reservation_id,
+          live_photo: livePhoto,
+          location: location,
+          checkin_type: mode
+        };
+        
+        console.log('✅ Réservation trouvée:', reservation.reservation_id);
+      }
 
       console.log('📤 Envoi check-in...');
 

@@ -2,14 +2,13 @@
 
 import React, { useState, useEffect, useContext } from 'react';
 import './Navbar.css';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import logo from '../../assets/images/Flexitrip.png';
 import defaultProfileImage from '../../assets/images/younes.png'; // Image par défaut
 import { AuthContext } from '../../context/AuthContext';
 import { ReactComponent as SettingsIcon } from '../../assets/icones/settings.svg';
 import { ReactComponent as UserIcon } from '../../assets/icones/utilisateur.svg';
 import { ReactComponent as LogoutIcon } from '../../assets/icones/logout.svg';
-import { ReactComponent as LoginIcon } from '../../assets/icones/login.svg';
 import { ReactComponent as AngleDownIcon } from '../../assets/icones/angle-bas.svg';
 import { ReactComponent as AngleRightIcon } from '../../assets/icones/angle-droit.svg';
 import NotificationBell from '../Notifications/NotificationBell';
@@ -120,16 +119,13 @@ function Navbar() {
                     {!user && (
                         <>
                             <li className="nav-item">
-                                <a href="/mytrip" className="nav-links">MyTrip</a>
+                                <a href="/login" className="nav-links">Connexion</a>
                             </li>
                             <li className="nav-item">
                                 <a href="/pmr-assistance" className="nav-links">PMR Assistance</a>
                             </li>
                             <li className="nav-item">
                                 <a href="/baggage-tracking" className="nav-links">Baggage Tracking</a>
-                            </li>
-                            <li className="nav-item">
-                                <a href="/support" className="nav-links">Support</a>
                             </li>
                             <li className="nav-item">
                                 <a href="/ewallet" className="nav-links">e-Wallet</a>
@@ -141,19 +137,31 @@ function Navbar() {
                     {user && (
                         <>
                             <li className="nav-item">
-                                <a href="/user/mytrip" className="nav-links">My Trip</a>
+                                <a href="/user/home" className="nav-links">🏠 Accueil</a>
                             </li>
                             <li className="nav-item">
-                                <a href="/user/pmr-assistance" className="nav-links">Mes Réservations</a>
+                                <a href="/user/voyages" className="nav-links">✈️ Mes Voyages</a>
+                            </li>
+                            <li className="nav-item">
+                                <a href="/user/checkin" className="nav-links">📋 Check-in</a>
                             </li>
                             <li className="nav-item">
                                 <a href="/user/baggage-tracking" className="nav-links">Baggage Tracking</a>
                             </li>
                             <li className="nav-item">
-                                <a href="/user/ewallet" className="nav-links">eWallet</a>
+                                <a href="/user/pmr-assistance" className="nav-links">PMR Assistance</a>
                             </li>
                             <li className="nav-item">
-                                <a href="/user/support" className="nav-links">Support</a>
+                                <a href="/user/boarding" className="nav-links">🎫 Boarding Pass</a>
+                            </li>
+                            <li className="nav-item">
+                                <a href="/user/boarding-gate" className="nav-links">🚪 Porte Embarquement</a>
+                            </li>
+                            <li className="nav-item">
+                                <a href="/user/ewallet" className="nav-links">💰 Wallet</a>
+                            </li>
+                            <li className="nav-item">
+                                <a href="/user/agent-assignment" className="nav-links">🤖 Agent IA</a>
                             </li>
                         </>
                     )}
@@ -176,16 +184,15 @@ function Navbar() {
                         {/* Dropdown Menu */}
                         {dropdownOpen && (
                             <div className="user-dropdown">
-                                <a href="/user/profile">View Profile <AngleRightIcon className="icon-Drop" /></a>
-                                <a href="/user/User_settings">Settings <AngleRightIcon className="icon-Drop" /></a>
-                                {/* 🆕 Nouveaux liens */}
-                                <a href="/user/pmr-profile">🦽 Profil PMR <AngleRightIcon className="icon-Drop" /></a>
-                                <a href="/user/search">🔍 Recherche <AngleRightIcon className="icon-Drop" /></a>
+                                <a href="/user/profile">👤 Profil <AngleRightIcon className="icon-Drop" /></a>
+                                <a href="/user/settings">⚙️ Paramètres <AngleRightIcon className="icon-Drop" /></a>
                                 <a href="/user/notifications">📬 Notifications <AngleRightIcon className="icon-Drop" /></a>
                                 <a href="/user/voyages">✈️ Mes Voyages <AngleRightIcon className="icon-Drop" /></a>
-                                {user.role === 'admin' && (
-                                    <a href="/admin/dashboard">📊 Dashboard Admin <AngleRightIcon className="icon-Drop" /></a>
-                                )}
+                                <a href="/user/checkin">📋 Check-in <AngleRightIcon className="icon-Drop" /></a>
+                                <a href="/user/boarding">🎫 Boarding Pass <AngleRightIcon className="icon-Drop" /></a>
+                                <a href="/user/boarding-gate">🚪 Porte Embarquement <AngleRightIcon className="icon-Drop" /></a>
+                                <a href="/user/ewallet">💰 Wallet <AngleRightIcon className="icon-Drop" /></a>
+                                <a href="/user/agent-assignment">🤖 Agent IA <AngleRightIcon className="icon-Drop" /></a>
                                 <label className="upload-label">
                                     Changer l’image de profil
                                     <input
@@ -244,7 +251,7 @@ function Navbar() {
                                 <a href="/user/profile" className="profile-link">
                                     <UserIcon className='icon-user' />{/* Icône SVG */} Profile   
                                 </a>
-                                <a href="/user/User_settings" className="profile-link">
+                                <a href="/user/settings" className="profile-link">
                                     <SettingsIcon className="icon-settings" /> {/* Icône SVG */} Settings
                                 </a>
                                 <button onClick={handleLogout} className="btn-logout-icon"><LogoutIcon className="icon-logout" /> </button>
@@ -261,10 +268,7 @@ function Navbar() {
                     {!user && (
                         <>
                             <li className="nav-item">
-                                <a href="/mytrip" className="nav-links" onClick={toggleMobileMenu}>My Trip<AngleRightIcon className="icon-user"/></a>
-                            </li>
-                            <li className="nav-item">
-                                <a href="/pmr-assistance" className="nav-links" onClick={toggleMobileMenu}>Mes Réservations<AngleRightIcon className="icon-angle"/></a>
+                                <a href="/pmr-assistance" className="nav-links" onClick={toggleMobileMenu}>PMR Assistance<AngleRightIcon className="icon-angle"/></a>
                             </li>
                             <li className="nav-item">
                                 <a href="/baggage-tracking" className="nav-links" onClick={toggleMobileMenu}>Baggage Tracking<AngleRightIcon className="icon-angle"/></a>
@@ -272,27 +276,36 @@ function Navbar() {
                             <li className="nav-item">
                                 <a href="/ewallet" className="nav-links" onClick={toggleMobileMenu}>e-Wallet<AngleRightIcon className="icon-angle"/></a>
                             </li>
-                            <li className="nav-item">
-                                <a href="/support" className="nav-links" onClick={toggleMobileMenu}>Support<AngleRightIcon className="icon-angle"/></a>
-                            </li>
                         </>
                     )}
                     {user && (
                         <>
                             <li className="nav-item">
-                                <a href="/user/mytrip" className="nav-links" onClick={toggleMobileMenu}>My Trip<AngleRightIcon className="icon-angle"/></a>
+                                <a href="/user/home" className="nav-links" onClick={toggleMobileMenu}>Accueil<AngleRightIcon className="icon-angle"/></a>
                             </li>
                             <li className="nav-item">
-                                <a href="/user/pmr-assistance" className="nav-links" onClick={toggleMobileMenu}>Mes réservations<AngleRightIcon className="icon-angle"/></a>
+                                <a href="/user/voyages" className="nav-links" onClick={toggleMobileMenu}>Mes Voyages<AngleRightIcon className="icon-angle"/></a>
+                            </li>
+                            <li className="nav-item">
+                                <a href="/user/checkin" className="nav-links" onClick={toggleMobileMenu}>Check-in<AngleRightIcon className="icon-angle"/></a>
                             </li>
                             <li className="nav-item">
                                 <a href="/user/baggage-tracking" className="nav-links" onClick={toggleMobileMenu}>Baggage Tracking<AngleRightIcon className="icon-angle"/></a>
                             </li>
                             <li className="nav-item">
-                                <a href="/user/ewallet" className="nav-links" onClick={toggleMobileMenu}>eWallet<AngleRightIcon className="icon-angle"/></a>
+                                <a href="/user/pmr-assistance" className="nav-links" onClick={toggleMobileMenu}>PMR Assistance<AngleRightIcon className="icon-angle"/></a>
                             </li>
                             <li className="nav-item">
-                                <a href="/user/support" className="nav-links" onClick={toggleMobileMenu}>Support<AngleRightIcon className="icon-angle"/></a>
+                                <a href="/user/boarding" className="nav-links" onClick={toggleMobileMenu}>Boarding Pass<AngleRightIcon className="icon-angle"/></a>
+                            </li>
+                            <li className="nav-item">
+                                <a href="/user/boarding-gate" className="nav-links" onClick={toggleMobileMenu}>Porte Embarquement<AngleRightIcon className="icon-angle"/></a>
+                            </li>
+                            <li className="nav-item">
+                                <a href="/user/ewallet" className="nav-links" onClick={toggleMobileMenu}>Wallet<AngleRightIcon className="icon-angle"/></a>
+                            </li>
+                            <li className="nav-item">
+                                <a href="/user/agent-assignment" className="nav-links" onClick={toggleMobileMenu}>Agent IA<AngleRightIcon className="icon-angle"/></a>
                             </li>
                         </>
                     )}

@@ -1,8 +1,6 @@
 /**
- * Service Notifications
+ * Service Notifications - Supabase
  * Gère la création et l'envoi de notifications utilisateur
- * 
- * Migré vers Supabase
  */
 
 const SupabaseService = require('./SupabaseService');

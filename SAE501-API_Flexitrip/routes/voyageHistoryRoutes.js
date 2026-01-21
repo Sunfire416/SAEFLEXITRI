@@ -25,6 +25,14 @@ router.get('/history', voyageController.getHistory);
 router.get('/:id', voyageController.getVoyageDetails);
 
 /**
+ * GET /voyages/details/:id
+ * Alias pour récupérer détails d'un voyage (compatibilité frontend)
+ * Params: id (reservation_id MySQL)
+ * Query: user_id
+ */
+router.get('/details/:id', voyageController.getVoyageDetails);
+
+/**
  * GET /voyages/:id/qr
  * Générer QR code pour un voyage
  * Params: id (MongoDB ObjectId)
