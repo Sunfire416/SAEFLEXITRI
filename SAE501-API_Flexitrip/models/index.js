@@ -12,6 +12,11 @@ const Notification = require('./Notification');
 const Voyage = require('./Voyage');
 const Agent = require('./Agent');
 const PriseEnCharge = require('./PriseEnCharge');
+// ==========================================
+// 🆕 MODÈLES IA - ASSIGNATION INTELLIGENTE
+// ==========================================
+const AgentAvailability = require('./AgentAvailability');
+const AgentSkills = require('./AgentSkills');
 
 // Associations
 
@@ -81,6 +86,29 @@ Agent.hasMany(PriseEnCharge, {
     as: 'prises_en_charge'
 });
 
+// ==========================================
+// 🆕 ASSOCIATIONS IA - AGENTS
+// ==========================================
+// Agent et AgentAvailability (1-1)
+Agent.hasOne(AgentAvailability, {
+    foreignKey: 'agent_id',
+    as: 'availability'
+});
+AgentAvailability.belongsTo(Agent, {
+    foreignKey: 'agent_id',
+    as: 'agent'
+});
+
+// Agent et AgentSkills (1-1)
+Agent.hasOne(AgentSkills, {
+    foreignKey: 'agent_id',
+    as: 'skills'
+});
+AgentSkills.belongsTo(Agent, {
+    foreignKey: 'agent_id',
+    as: 'agent'
+});
+
 module.exports = {
     Facturation,
     Agent,
@@ -96,4 +124,9 @@ module.exports = {
     PriseEnCharge,
     Notification,
     Voyage,
+    // ==========================================
+    // 🆕 EXPORTS MODÈLES IA - ASSIGNATION INTELLIGENTE
+    // ==========================================
+    AgentAvailability,
+    AgentSkills,
 };

@@ -65,11 +65,60 @@ const PriseEnCharge = sequelize.define('prise_en_charge', {
     type: DataTypes.TEXT,
     allowNull: true,
     comment: 'Notes additionnelles sur la prise en charge'
+  },
+  priority_level: {
+    type: DataTypes.ENUM('low', 'normal', 'high', 'urgent', 'critical'),
+    defaultValue: 'normal',
+    allowNull: false,
+    comment: 'Niveau de priorité de la mission'
+  },
+  pmr_dependency_level: {
+    type: DataTypes.ENUM('minimal', 'partial', 'significant', 'complete'),
+    defaultValue: 'partial',
+    allowNull: false,
+    comment: 'Niveau de dépendance du PMR'
+  },
+  is_critical_connection: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false,
+    comment: 'Indique si cette étape est une correspondance critique'
+  },
+  estimated_duration_minutes: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Durée estimée de la prise en charge en minutes'
+  },
+  actual_start_time: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Heure réelle de début de prise en charge'
+  },
+  actual_end_time: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Heure réelle de fin de prise en charge'
+  },
+  reassignment_count: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    allowNull: false,
+    comment: 'Nombre de fois que la mission a été réassignée'
+  },
+  reassignment_reason: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Raison de la dernière réassignation'
   }
 }, {
   tableName: 'prise_en_charge',
   timestamps: true, // createdAt, updatedAt
-  comment: 'Traçabilité des prises en charge PMR par agents/personnel transport'
+  indexes: [
+    { fields: ['priority_level'] },
+    { fields: ['status', 'priority_level'] },
+    { fields: ['is_critical_connection'] }
+  ],
+  comment: 'Traçabilité des prises en charge PMR par agents/personnel transport avec gestion intelligente des priorités'
 });
 
 module.exports = PriseEnCharge;
