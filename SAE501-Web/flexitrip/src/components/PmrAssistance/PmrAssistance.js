@@ -5,13 +5,17 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import "./PmrAssistance.css";
 
 // Mapbox access token
-mapboxgl.accessToken = 'pk.eyJ1IjoianJpcHBlcjc5IiwiYSI6ImNsaW9kYmozNDBldmszcHBjamZhaG00ZjUifQ.pTtXkitNS0RjYw3LGvf1CQ';
+mapboxgl.accessToken = 'pk.eyJ1IjoianJpcHBlcjc5IiwiYSI6ImNsaW9kbGozNDBldmszcHBjamZhaG00ZjUifQ.pTtXkitNS0RjYw3LGvf1CQ';
 
 function PMRTracking() {
   // États pour les données
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [missionData, setMissionData] = useState(null);
+  const [coordinates, setCoordinates] = useState({
+    departure: null,
+    destination: null,
+  });
   
   // État pour la simulation locale
   const [status, setStatus] = useState("en_route");
@@ -82,22 +86,57 @@ function PMRTracking() {
     setTimeout(() => setHelpRequested(false), 3000);
   };
 
+  // Géocoder les adresses de la mission pour obtenir les coordonnées
+  useEffect(() => {
+    if (!missionData) return;
+
+    const departureAddress = missionData.reservation?.lieu_depart;
+    const destinationAddress = missionData.reservation?.lieu_arrivee;
+
+    if (!departureAddress || !destinationAddress) return;
+
+    const geocodeAddress = async (address) => {
+      try {
+        const response = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxgl.accessToken}`
+        );
+        const data = await response.json();
+        if (data.features && data.features.length > 0) {
+          const [longitude, latitude] = data.features[0].center;
+          console.log(`✅ Géocodage pour "${address}":`, [longitude, latitude]);
+          return [longitude, latitude];
+        } else {
+          console.warn(`⚠️ Aucun résultat géocodage pour: ${address}`);
+          return null;
+        }
+      } catch (error) {
+        console.error("❌ Erreur géocodage:", error);
+        return null;
+      }
+    };
+
+    const fetchCoordinates = async () => {
+      const dept = await geocodeAddress(departureAddress);
+      const dest = await geocodeAddress(destinationAddress);
+      
+      setCoordinates({
+        departure: dept,
+        destination: dest,
+      });
+    };
+
+    fetchCoordinates();
+  }, [missionData]);
+
   // Extraire les coordonnées
-  // lieu_depart et lieu_arrivee sont des strings simples, pas du JSON
   const departurePointName = missionData?.reservation?.lieu_depart || 'Départ';
   const destinationName = missionData?.reservation?.lieu_arrivee || 'Destination';
   
-  // Coordonnées : utiliser la position de l'agent pour le départ, valeurs par défaut pour destination
-  const departurePoint = [2.3553, 48.8809]; // Valeur par défaut (Paris)
-  const destination = [3.077, 50.637]; // Valeur par défaut (Lille)
+  // Utiliser les coordonnées géocodées ou valeurs par défaut
+  const departurePoint = coordinates.departure || [2.3553, 48.8809]; // Valeur par défaut (Paris)
+  const destination = coordinates.destination || [3.077, 50.637]; // Valeur par défaut (Lille)
 
-  const agentPosition = missionData?.agent_position?.coordinates || [2.3553, 48.8809];
-  
-  // Estimer un point de rendez-vous entre départ et destination
-  const meetingPoint = [
-    (departurePoint[0] + destination[0]) / 2,
-    (departurePoint[1] + destination[1]) / 2
-  ];
+  const agentPosition = missionData?.agent_position?.coordinates || departurePoint;
 
   const currentConfig = statusConfig[status];
 
@@ -106,132 +145,130 @@ function PMRTracking() {
     ? Math.ceil(missionData.eta_seconds / 60)
     : 3;
 
-  // Initialisation et mise à jour de la carte MapBox - MOVED BEFORE EARLY RETURNS
+  // Initialisation et mise à jour de la carte MapBox
   useEffect(() => {
-    // Internal guard: only proceed if we have the necessary data
-    if (!mapContainer.current || loading || !missionData) return;
+    // Guard: only proceed if we have the necessary data
+    if (!mapContainer.current || loading || !missionData || !coordinates.departure || !coordinates.destination) return;
 
-    const timer = setTimeout(() => {
-      if (!map.current) {
-        try {
-          map.current = new mapboxgl.Map({
-            container: mapContainer.current,
-            style: "mapbox://styles/mapbox/streets-v12",
-            center: [2.7, 49.3],
-            zoom: 7,
-            pitch: 0,
-            bearing: 0,
-            antialias: true,
+    if (!map.current) {
+      try {
+        console.log('🗺️ Initializing map with container:', mapContainer.current);
+        console.log('Departure:', departurePoint, 'Destination:', destination);
+        
+        map.current = new mapboxgl.Map({
+          container: mapContainer.current,
+          style: "mapbox://styles/mapbox/streets-v12",
+          center: [(departurePoint[0] + destination[0]) / 2, (departurePoint[1] + destination[1]) / 2],
+          zoom: 11,
+          pitch: 0,
+          bearing: 0,
+          antialias: true,
+        });
+
+        map.current.on("load", () => {
+          map.current.addSource("route", {
+            type: "geojson",
+            data: {
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "LineString",
+                coordinates: [departurePoint, destination],
+              },
+            },
           });
 
-          map.current.on("load", () => {
-            map.current.addSource("route", {
-              type: "geojson",
-              data: {
-                type: "Feature",
-                properties: {},
-                geometry: {
-                  type: "LineString",
-                  coordinates: [departurePoint, meetingPoint, destination],
-                },
-              },
-            });
-
-            map.current.addSource("agent", {
-              type: "geojson",
-              data: {
-                type: "FeatureCollection",
-                features: [
-                  {
-                    type: "Feature",
-                    properties: {},
-                    geometry: {
-                      type: "Point",
-                      coordinates: agentPosition,
-                    },
+          map.current.addSource("agent", {
+            type: "geojson",
+            data: {
+              type: "FeatureCollection",
+              features: [
+                {
+                  type: "Feature",
+                  properties: {},
+                  geometry: {
+                    type: "Point",
+                    coordinates: agentPosition,
                   },
-                ],
-              },
-            });
-
-            map.current.addLayer({
-              id: "route",
-              type: "line",
-              source: "route",
-              layout: {
-                "line-join": "round",
-                "line-cap": "round",
-              },
-              paint: {
-                "line-color": "#5bbcea",
-                "line-width": 3,
-              },
-            });
-
-            new mapboxgl.Marker({ color: "#2eb378" })
-              .setLngLat(departurePoint)
-              .setPopup(new mapboxgl.Popup().setHTML(`<strong>Départ:</strong> ${missionData.reservation?.lieu_depart || 'Départ'}`))
-              .addTo(map.current);
-
-            new mapboxgl.Marker({ color: "#5bbcea" })
-              .setLngLat(meetingPoint)
-              .setPopup(new mapboxgl.Popup().setHTML("<strong>Point RDV estimé</strong>"))
-              .addTo(map.current);
-
-            new mapboxgl.Marker({ color: "#EF4444" })
-              .setLngLat(destination)
-              .setPopup(new mapboxgl.Popup().setHTML(`<strong>Destination:</strong> ${missionData.reservation?.lieu_arrivee || 'Destination'}`))
-              .addTo(map.current);
-
-            map.current.addLayer({
-              id: "agent-marker",
-              type: "circle",
-              source: "agent",
-              paint: {
-                "circle-radius": 10,
-                "circle-color": currentConfig.color,
-                "circle-opacity": 1,
-                "circle-stroke-width": 2,
-                "circle-stroke-color": "#fff",
-              },
-            });
-
-            map.current.addControl(new mapboxgl.NavigationControl());
-          });
-
-          map.current.on("error", (e) => {
-            console.error("MapBox error:", e);
-          });
-        } catch (error) {
-          console.error("MapBox initialization error:", error);
-        }
-      } else {
-        if (map.current.getSource("agent")) {
-          map.current.getSource("agent").setData({
-            type: "FeatureCollection",
-            features: [
-              {
-                type: "Feature",
-                properties: {},
-                geometry: {
-                  type: "Point",
-                  coordinates: agentPosition,
                 },
-              },
-            ],
+              ],
+            },
           });
-        }
 
-        if (map.current.getLayer("agent-marker")) {
-          map.current.setPaintProperty("agent-marker", "circle-color", currentConfig.color);
-        }
+          map.current.addLayer({
+            id: "route",
+            type: "line",
+            source: "route",
+            layout: {
+              "line-join": "round",
+              "line-cap": "round",
+            },
+            paint: {
+              "line-color": "#5bbcea",
+              "line-width": 3,
+            },
+          });
+
+          new mapboxgl.Marker({ color: "#2eb378" })
+            .setLngLat(departurePoint)
+            .setPopup(new mapboxgl.Popup().setHTML(`<strong>Départ:</strong> ${departurePointName}`))
+            .addTo(map.current);
+
+          new mapboxgl.Marker({ color: "#EF4444" })
+            .setLngLat(destination)
+            .setPopup(new mapboxgl.Popup().setHTML(`<strong>Destination:</strong> ${destinationName}`))
+            .addTo(map.current);
+
+          map.current.addLayer({
+            id: "agent-marker",
+            type: "circle",
+            source: "agent",
+            paint: {
+              "circle-radius": 10,
+              "circle-color": currentConfig.color,
+              "circle-opacity": 1,
+              "circle-stroke-width": 2,
+              "circle-stroke-color": "#fff",
+            },
+          });
+
+          map.current.addControl(new mapboxgl.NavigationControl());
+        });
+
+        map.current.on("error", (e) => {
+          console.error("MapBox error:", e);
+        });
+      } catch (error) {
+        console.error("MapBox initialization error:", error);
       }
-    }, 100);
+    }
+  }, [loading, missionData, departurePoint, destination, agentPosition, coordinates.departure, coordinates.destination]);
 
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [currentConfig.color, agentPosition, loading, missionData]);
+  // Mettre à jour uniquement la couleur du marqueur agent sans recréer la carte
+  useEffect(() => {
+    if (map.current && map.current.getLayer("agent-marker")) {
+      map.current.setPaintProperty("agent-marker", "circle-color", currentConfig.color);
+    }
+  }, [currentConfig.color]);
+
+  // Mettre à jour la position de l'agent sans recréer la carte
+  useEffect(() => {
+    if (map.current && map.current.getSource("agent")) {
+      map.current.getSource("agent").setData({
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "Point",
+              coordinates: agentPosition,
+            },
+          },
+        ],
+      });
+    }
+  }, [agentPosition]);
 
   // Affichage Loading - MOVED AFTER ALL HOOKS
   if (loading) {
@@ -297,12 +334,8 @@ function PMRTracking() {
         <div
           ref={mapContainer}
           className="pmr-map"
-          style={{ height: "300px", borderRadius: "12px" }}
+          style={{ height: "400px", borderRadius: "12px" }}
         />
-
-        <p id="meetingPointText">
-          📍 Point de rendez-vous : <span id="meetingPoint">Non défini</span>
-        </p>
       </section>
 
       <section>
