@@ -336,22 +336,47 @@ async function reassignAgent(prise_en_charge_id, reason) {
     
     // Libérer l'ancien agent si assigné
     if (oldAgentId) {
-      await AgentAvailability.update(
-        {
-          status: 'available',
-          assigned_missions: { [Op.gt]: 0 } ? { [Op.col]: 'assigned_missions - 1' } : 0,
-          last_updated: new Date()
-        },
-        {
-          where: { agent_id: oldAgentId }
-        }
-      );
+      // Récupérer l'agent actuel pour décrémenter correctement
+      const oldAgentAvailability = await AgentAvailability.findOne({
+        where: { agent_id: oldAgentId }
+      });
+      
+      if (oldAgentAvailability && oldAgentAvailability.assigned_missions > 0) {
+        await AgentAvailability.update(
+          {
+            status: 'available',
+            assigned_missions: oldAgentAvailability.assigned_missions - 1,
+            last_updated: new Date()
+          },
+          {
+            where: { agent_id: oldAgentId }
+          }
+        );
+      }
     }
     
-    // Récupérer le voyage pour avoir les détails
+    // Récupérer le voyage et la réservation pour avoir les détails
     const voyage = priseEnCharge.voyage_id_mongo 
       ? await Voyage.findById(priseEnCharge.voyage_id_mongo)
       : null;
+    
+    const { Reservations } = require('../models');
+    const reservation = await Reservations.findByPk(priseEnCharge.reservation_id);
+    
+    // Extraire la localisation et le type de transport
+    let location = { lat: 48.8566, lng: 2.3522 }; // Paris par défaut
+    let transportType = 'train'; // Type par défaut
+    
+    if (voyage && voyage.etapes && voyage.etapes.length > 0) {
+      const etapeIndex = priseEnCharge.etape_numero - 1;
+      if (etapeIndex >= 0 && etapeIndex < voyage.etapes.length) {
+        const etape = voyage.etapes[etapeIndex];
+        transportType = etape.type || 'train';
+        // TODO: Extraire lat/lng depuis les gares/aéroports si disponibles
+      }
+    } else if (reservation) {
+      transportType = reservation.Type_Transport || 'train';
+    }
     
     // Trouver un nouvel agent via le service intelligent
     const assignment = await intelligentAssignmentService.assignBestAgent({
@@ -360,11 +385,8 @@ async function reassignAgent(prise_en_charge_id, reason) {
       user_id: priseEnCharge.user_id,
       voyage_id: priseEnCharge.voyage_id_mongo,
       pmrNeeds: priseEnCharge.user,
-      location: { 
-        lat: 48.8566, 
-        lng: 2.3522 
-      }, // TODO: Récupérer la vraie localisation
-      transportType: 'train', // TODO: Récupérer depuis la réservation
+      location: location,
+      transportType: transportType,
       isCriticalConnection: priseEnCharge.is_critical_connection,
       priorityLevel: priseEnCharge.priority_level
     });
@@ -443,9 +465,30 @@ async function checkCriticalConnection(priseEnCharge) {
       return { isCritical: false };
     }
     
-    // TODO: Calculer le temps restant jusqu'à la correspondance
-    // Pour l'instant, retourne un temps simulé
-    const timeRemaining = 45; // minutes
+    // Calculer le temps restant jusqu'à la correspondance
+    let timeRemaining = 45; // Valeur par défaut en minutes
+    
+    // Tenter de récupérer le voyage pour calculer le temps réel
+    if (priseEnCharge.voyage_id_mongo) {
+      const voyage = await Voyage.findById(priseEnCharge.voyage_id_mongo);
+      
+      if (voyage && voyage.etapes && voyage.etapes.length > 0) {
+        const etapeIndex = priseEnCharge.etape_numero - 1;
+        
+        // Vérifier s'il y a une étape suivante (correspondance)
+        if (etapeIndex >= 0 && etapeIndex < voyage.etapes.length - 1) {
+          const etapeActuelle = voyage.etapes[etapeIndex];
+          const etapeSuivante = voyage.etapes[etapeIndex + 1];
+          
+          // Calculer le temps entre l'arrivée de l'étape actuelle et le départ de la suivante
+          if (etapeActuelle.arrival_time && etapeSuivante.departure_time) {
+            const now = new Date();
+            const nextDeparture = new Date(etapeSuivante.departure_time);
+            timeRemaining = Math.max(0, Math.floor((nextDeparture - now) / 60000)); // en minutes
+          }
+        }
+      }
+    }
     
     return {
       isCritical: true,
