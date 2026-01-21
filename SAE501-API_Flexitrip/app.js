@@ -198,6 +198,12 @@ app.use('/api/booking', bookingRoutes);
 app.use('/prise-en-charge', priseEnChargeRoutes);
 
 // ==========================================
+// 🆕 ASSIGNATION INTELLIGENTE IA
+// ==========================================
+const intelligentAssignmentRoutes = require('./routes/intelligentAssignmentRoutes');
+app.use('/api/intelligent-assignment', intelligentAssignmentRoutes);
+
+// ==========================================
 // 🆕 POINT 9 - SYSTÈME DE FEEDBACK/AVIS (DÉSACTIVÉ - controller manquant)
 // ==========================================
 // app.use('/api/review', reviewRoutes);
