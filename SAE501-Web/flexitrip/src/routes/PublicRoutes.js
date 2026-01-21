@@ -19,7 +19,7 @@ const PublicRoutes = () => {
             <Route path="/signup" element={<Signup />} />
             <Route path="/ewallet" element={<EwalletPage />} />
             <Route path="/mytrip" element={<MyTrip />} />
-            <Route path="/bagage-tracking" element={<BagagePage />} />
+            <Route path="/baggage-tracking" element={<BagagePage />} />
             <Route path="/pmr-assistance" element={<PmrAssisPage />} />
         </Routes>
     );

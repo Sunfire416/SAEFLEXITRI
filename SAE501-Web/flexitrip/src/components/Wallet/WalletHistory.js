@@ -22,32 +22,26 @@ const WalletHistory = () => {
             setLoading(true);
             setError(null);
 
-            const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+            const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
-            // Récupérer le solde
-            const balanceResponse = await axios.get(
-                `${API_URL}/blockchain/balance/${user.user_id}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`
-                    }
-                }
-            );
-            setBalance(balanceResponse.data.balance || 0);
+            const config = {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            };
 
-            // Récupérer l'historique des transactions
-            const transactionsResponse = await axios.get(
-                `${API_URL}/blockchain/historic/${user.user_id}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`
-                    }
-                }
-            );
-            setTransactions(transactionsResponse.data || []);
+            // 1. Récupérer le solde (Route sans ID à la fin)
+            const balanceRes = await axios.get(`${API_URL}/blockchain/balance`, config);
+            setBalance(balanceRes.data.balance || 0);
+
+            // 2. Récupérer l'historique (Route /history et non /historic)
+            const historyRes = await axios.get(`${API_URL}/blockchain/history`, config);
+
+            // On s'assure de prendre les données de la blockchain
+            const txData = historyRes.data.history || historyRes.data || [];
+            setTransactions(txData);
+
         } catch (err) {
-            console.error('Erreur lors du chargement des données wallet:', err);
-            setError('Impossible de charger l\'historique des transactions');
+            console.error('Erreur:', err);
+            setError('Impossible de charger les données');
         } finally {
             setLoading(false);
         }
@@ -199,8 +193,8 @@ const WalletHistory = () => {
                                             {isPositive ? 'Reçu de' : 'Envoyé à'}
                                         </span>
                                         <span className="transaction-party">
-                                            {isPositive 
-                                                ? `Utilisateur ${transaction.sender}` 
+                                            {isPositive
+                                                ? `Utilisateur ${transaction.sender}`
                                                 : `Utilisateur ${transaction.receiver}`
                                             }
                                         </span>
@@ -228,7 +222,7 @@ const WalletHistory = () => {
                         <span className="summary-label">Montant total :</span>
                         <span className="summary-value">
                             {formatAmount(
-                                filteredTransactions.reduce((sum, t) => 
+                                filteredTransactions.reduce((sum, t) =>
                                     sum + Math.abs(t.amount), 0
                                 )
                             )}

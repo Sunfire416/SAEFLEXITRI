@@ -11,16 +11,16 @@ import VoyageCard from './VoyageCard';
 import VoyageQRModal from './VoyageQRModal';
 import './VoyageHistory.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 const VoyageHistory = () => {
   const { user } = useContext(AuthContext);
-  
+
   const [voyages, setVoyages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all'); // 'all', 'pending', 'confirmed', 'completed', 'cancelled'
-  
+
   // Modal QR
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [selectedVoyage, setSelectedVoyage] = useState(null);
@@ -28,6 +28,46 @@ const VoyageHistory = () => {
   /**
    * Récupérer historique voyages
    */
+  const normalizeLocation = (loc) => {
+    if (!loc) return 'N/A';
+    if (typeof loc === 'string') return loc;
+    if (typeof loc === 'object') {
+      return loc.ville || loc.gare || loc.name || JSON.stringify(loc);
+    }
+    return String(loc);
+  };
+
+  const normalizeEtapes = (etapes = []) => {
+    return etapes.map((e) => {
+      const data = e.etape_data || {};
+      return {
+        type: e.type || e.transport || data.type,
+        compagnie: data.compagnie,
+        adresse_1: data.adresse_1 || e.start_station_snapshot?.name,
+        adresse_2: data.adresse_2 || e.end_station_snapshot?.name,
+        id: data.id
+      };
+    });
+  };
+
+  const normalizeVoyage = (v) => {
+    const id = v.id_voyage || v.voyage_id || v.id;
+    return {
+      id,
+      voyage_id: id,
+      id_voyage: id,
+      depart: normalizeLocation(v.depart || v.lieu_depart || v.Lieu_depart || v.start_station_snapshot),
+      arrivee: normalizeLocation(v.arrivee || v.lieu_arrivee || v.Lieu_arrivee || v.end_station_snapshot),
+      date_debut: v.date_debut || v.Date_depart,
+      date_fin: v.date_fin || v.Date_arrivee,
+      prix_total: v.prix_total,
+      status: v.status || v.statut,
+      etapes: normalizeEtapes(v.etapes),
+      reservations: v.reservations || [],
+      raw: v,
+    };
+  };
+
   const fetchVoyages = async () => {
     if (!user?.user_id) return;
 
@@ -36,6 +76,7 @@ const VoyageHistory = () => {
       setError(null);
 
       const response = await axios.get(`${API_BASE_URL}/voyages/history`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         params: {
           user_id: user.user_id,
           status: filter === 'all' ? null : filter
@@ -43,7 +84,8 @@ const VoyageHistory = () => {
       });
 
       if (response.data.success) {
-        setVoyages(response.data.voyages);
+        const normalized = (response.data.voyages || []).map(normalizeVoyage);
+        setVoyages(normalized);
       }
 
     } catch (err) {
@@ -77,7 +119,8 @@ const VoyageHistory = () => {
     try {
       const response = await axios.patch(
         `${API_BASE_URL}/voyages/cancel-checkin/${reservationId}`,
-        { user_id: user.user_id }
+        { user_id: user.user_id },
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
       );
 
       if (response.data.success) {
@@ -102,7 +145,10 @@ const VoyageHistory = () => {
     try {
       const response = await axios.delete(
         `${API_BASE_URL}/voyages/${voyageId}`,
-        { data: { user_id: user.user_id } }
+        {
+          data: { user_id: user.user_id },
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        }
       );
 
       if (response.data.success) {

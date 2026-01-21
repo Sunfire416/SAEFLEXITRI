@@ -34,7 +34,7 @@ const transportTypes = [
   { value: "bus", label: "Bus", price: 50, icon: <DirectionsBusIcon /> },
 ];
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 const BoardingPassGenerator = () => {
   const [step, setStep] = useState(1);
@@ -103,7 +103,7 @@ const BoardingPassGenerator = () => {
   const formatTripDataForAPI = (qrData, userId) => {
     return {
       id_pmr: userId, // Identifiant du PMR
-      id_accompagnant: 1, // Identifiant de l'accompagnant (à remplacer par une valeur dynamique si nécessaire)
+      id_accompagnant: null, // Mettre null au lieu de 1 pour éviter l'erreur UUID
       prix_total: qrData.totalPrice, // Prix total du voyage
       bagage: [
         {
@@ -145,16 +145,14 @@ const BoardingPassGenerator = () => {
     let payload;
 
     if (tripData.transportType === "train") {
-      // Utiliser l'endpoint spécifique pour les trains
-      endpoint = `${API_URL}/SNCF/trajetSNCF/insert`;
-      payload = {
-        departure: tripData.departure,
-        destination: tripData.destination,
-        price: tripData.totalPrice,
-      };
+      // Utiliser l'endpoint générique pour les trains aussi (migré vers Supabase)
+      endpoint = `${API_URL}/voyages/insert`; // ou /voyages (alias supporté)
+      // On utilise le même format de payload que pour les autres
+      // Mais on s'assure que le type est bien 'train' dans les étapes
+      payload = formatTripDataForAPI(tripData, user.user_id);
     } else {
       // Utiliser l'endpoint générique pour les autres types de transport
-      endpoint = `${API_URL}/voyage/insert`;
+      endpoint = `${API_URL}/voyages/insert`;
       payload = formatTripDataForAPI(tripData, user.user_id);
     }
 
@@ -223,29 +221,48 @@ const BoardingPassGenerator = () => {
       return;
     }
 
+    // Vérifier que l'utilisateur a suffisamment de solde
+    const userBalance = user.solde || 0;
+    if (userBalance < totalPrice) {
+      setTransactionStatus(`❌ Erreur: Solde insuffisant. Vous avez ${userBalance}€, besoin de ${totalPrice}€`);
+      return;
+    }
+
     const paymentData = {
-      sender: user.user_id.toString(),
-      receiver: "1",
+      sender: user.user_id, // Pas besoin de .toString()
+      receiver: "2462094f-0ed6-4cb0-946a-427d615c008f", // ID de l'admin
       amount: totalPrice,
+      description: `Paiement pour voyage ${selectedTransportType} de ${departure} à ${destination}`
     };
 
     try {
       console.log("Envoi du paiement:", paymentData);
       const response = await axios.post(
-        `${API_URL}/blockchain/addBlock`,
+        `${API_URL}/transactions/pay`,
         paymentData,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         }
       );
 
-      if (response.status === 200 || response.status === 201) {
+      if (response.data.success) {
         setTransactionStatus("✅ Paiement réussi !");
+        // Mettre à jour le solde localement
+        user.solde = response.data.transaction.sender.new_balance;
+        setSnackbarMessage("✅ Paiement effectué avec succès !");
+        setSnackbarOpen(true);
+      } else {
+        setTransactionStatus(`❌ Erreur: ${response.data.error}`);
       }
     } catch (error) {
       console.error("Erreur lors du paiement :", error);
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message;
       setTransactionStatus(`❌ Erreur: ${errorMsg}`);
+      setSnackbarMessage(`❌ Erreur de paiement: ${errorMsg}`);
+      setSnackbarOpen(true);
     }
   };
 

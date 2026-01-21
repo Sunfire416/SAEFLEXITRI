@@ -33,19 +33,19 @@ const AgentDashboard = () => {
     const fetchDashboardData = async () => {
         try {
             setLoading(true);
-            const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+            const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
             const token = localStorage.getItem('token');
 
             // Récupérer les missions (réservations nécessitant assistance)
             const missionsResponse = await axios.get(
-                `${API_URL}/api/assistance/pending`,
+                `${API_URL}/assistance/pending`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             setMissions(missionsResponse.data.assistances || []);
 
             // Récupérer les incidents actifs
             const incidentsResponse = await axios.get(
-                `${API_URL}/api/incidents/active`,
+                `${API_URL}/incidents/active`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             setIncidents(incidentsResponse.data.incidents || []);
@@ -69,14 +69,14 @@ const AgentDashboard = () => {
 
     const handleStartMission = async (mission) => {
         try {
-            const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+            const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
             const token = localStorage.getItem('token');
 
             await axios.put(
-                `${API_URL}/api/assistance/${mission._id}`,
-                { 
+                `${API_URL}/assistance/${mission._id}`,
+                {
                     status: 'in_progress',
-                    agentId: user.user_id 
+                    agentId: user.user_id
                 },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -94,14 +94,14 @@ const AgentDashboard = () => {
         if (!report) return;
 
         try {
-            const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+            const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
             const token = localStorage.getItem('token');
 
             await axios.put(
-                `${API_URL}/api/assistance/${mission._id}`,
-                { 
+                `${API_URL}/assistance/${mission._id}`,
+                {
                     status: 'completed',
-                    report 
+                    report
                 },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -127,11 +127,11 @@ const AgentDashboard = () => {
         const severity = prompt('Gravité (low, medium, high, critical):');
         if (!severity) return;
 
-        const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+        const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
         const token = localStorage.getItem('token');
 
         axios.post(
-            `${API_URL}/api/incidents`,
+            `${API_URL}/incidents`,
             {
                 type,
                 title,
@@ -142,14 +142,14 @@ const AgentDashboard = () => {
             },
             { headers: { Authorization: `Bearer ${token}` } }
         )
-        .then(() => {
-            alert('✅ Incident signalé');
-            fetchDashboardData();
-        })
-        .catch(error => {
-            console.error('Erreur:', error);
-            alert('❌ Erreur lors du signalement');
-        });
+            .then(() => {
+                alert('✅ Incident signalé');
+                fetchDashboardData();
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                alert('❌ Erreur lors du signalement');
+            });
     };
 
     const formatDate = (date) => {
@@ -164,8 +164,8 @@ const AgentDashboard = () => {
             critical: '#e74c3c'
         };
         return (
-            <span 
-                className="severity-badge" 
+            <span
+                className="severity-badge"
                 style={{ backgroundColor: colors[severity] || '#95a5a6' }}
             >
                 {severity}
@@ -271,7 +271,7 @@ const AgentDashboard = () => {
                                 </div>
                                 <div className="mission-actions">
                                     {mission.status === 'pending' && (
-                                        <button 
+                                        <button
                                             onClick={() => handleStartMission(mission)}
                                             className="start-btn"
                                         >
@@ -279,7 +279,7 @@ const AgentDashboard = () => {
                                         </button>
                                     )}
                                     {mission.status === 'in_progress' && (
-                                        <button 
+                                        <button
                                             onClick={() => handleCompleteMission(mission)}
                                             className="complete-btn"
                                         >

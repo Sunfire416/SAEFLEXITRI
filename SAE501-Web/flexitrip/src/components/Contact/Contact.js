@@ -3,7 +3,7 @@ import axios from "axios";
 import "./Contact.css";
 import avion from "../../assets/images/avion.jpg";
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 function Contact() {
   const [formData, setFormData] = useState({
@@ -36,7 +36,7 @@ function Contact() {
       setStatus("Veuillez entrer une adresse email valide.");
       return;
     }
-    
+
 
     // Préparation des données
     const payload = {
@@ -55,6 +55,7 @@ function Contact() {
         {
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem('token')}`
           },
         }
       );
@@ -92,7 +93,7 @@ function Contact() {
         minHeight: "100vh",
       }}
     >
-      
+
       <div className="contact-form-card">
         <h1>Rencontrez-vous un problème ?</h1>
         <form onSubmit={handleSubmit} className="contact-form">

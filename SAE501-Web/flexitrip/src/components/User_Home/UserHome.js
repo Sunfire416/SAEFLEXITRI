@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 function UserHome() {
     const [userName, setUserName] = useState('');

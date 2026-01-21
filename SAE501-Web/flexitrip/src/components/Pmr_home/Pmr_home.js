@@ -1,6 +1,6 @@
 /* src/User_Home/UserHome.js */
 import React, { useEffect, useState } from 'react';
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 function Pmr_home() {
     const [userName, setUserName] = useState('');

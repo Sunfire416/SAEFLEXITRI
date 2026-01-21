@@ -13,13 +13,13 @@ import React, { createContext, useState, useEffect, useContext, useCallback } fr
 import axios from 'axios';
 import { AuthContext } from './AuthContext';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 export const NotificationContext = createContext();
 
 export const NotificationProvider = ({ children }) => {
   const { user } = useContext(AuthContext);
-  
+
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -32,7 +32,9 @@ export const NotificationProvider = ({ children }) => {
     if (!user?.user_id) return;
 
     try {
+      const token = localStorage.getItem('token');
       const response = await axios.get(`${API_BASE_URL}/notification`, {
+        headers: { Authorization: `Bearer ${token}` },
         params: {
           user_id: user.user_id,
           limit: 50
@@ -58,7 +60,9 @@ export const NotificationProvider = ({ children }) => {
     if (!user?.user_id) return;
 
     try {
+      const token = localStorage.getItem('token');
       const response = await axios.get(`${API_BASE_URL}/notification/count`, {
+        headers: { Authorization: `Bearer ${token}` },
         params: { user_id: user.user_id }
       });
 
@@ -76,8 +80,11 @@ export const NotificationProvider = ({ children }) => {
    */
   const markAsRead = async (notificationId) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await axios.patch(
-        `${API_BASE_URL}/notification/${notificationId}/read`
+        `${API_BASE_URL}/notification/${notificationId}/read`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (response.data.success) {
@@ -105,9 +112,11 @@ export const NotificationProvider = ({ children }) => {
     if (!user?.user_id) return;
 
     try {
+      const token = localStorage.getItem('token');
       const response = await axios.patch(
         `${API_BASE_URL}/notification/mark-all-read`,
-        { user_id: user.user_id }
+        { user_id: user.user_id },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (response.data.success) {
@@ -129,7 +138,10 @@ export const NotificationProvider = ({ children }) => {
    */
   const deleteNotification = async (notificationId) => {
     try {
-      await axios.delete(`${API_BASE_URL}/notification/${notificationId}`);
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_BASE_URL}/notification/${notificationId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
       // Retirer de l'état local
       setNotifications(prev =>

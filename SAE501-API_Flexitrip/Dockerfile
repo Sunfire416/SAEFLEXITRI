@@ -1,15 +1,18 @@
-FROM node:18
+FROM node:20
 
 WORKDIR /app
 
-# Copie uniquement les fichiers de dépendances pour éviter le cache inutile
+# Copie des fichiers de dépendances
 COPY package*.json ./
 
-# Force une réinstallation propre, y compris des dépendances natives
-RUN npm install --build-from-source
+# Install propre dans le conteneur (Linux) – pas besoin de build-from-source ici
+RUN npm install
 
-# Copie le reste du code
+# Copie du reste du code
 COPY . .
 
+ENV NODE_ENV=production
+
 EXPOSE 17777
+
 CMD ["node", "app.js"]

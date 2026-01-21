@@ -1,124 +1,125 @@
 .contact-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    background-color: #d7ebf8; /* Bleu clair relaxant */
-    padding: 20px;
-  }
-  
-  .contact-form-card {
-    background: #fff;
-    padding: 30px;
-    border-radius: 12px;
-    width: 100%;
-    max-width: 600px;
-    text-align: center;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-  }
-  
-  h1 {
-    font-size: 24px;
-    font-weight: 700;
-    margin-bottom: 8px;
-    color: #333;
-  }
-  
-  p {
-    font-size: 14px;
-    color: #777;
-    margin-bottom: 20px;
-  }
-  
-  .contact-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-  }
-  
-  .form-row {
-    display: flex;
-    gap: 15px;
-  }
-  
-  .form-group {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  label {
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 5px;
-    color: #444;
-  }
-  
-  input,
-  textarea {
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 14px;
-  }
-  
-  textarea {
-    resize: none;
-    height: 100px;
-  }
-  
-  input:focus,
-  textarea:focus {
-    outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 4px rgba(0, 123, 255, 0.5);
-  }
-  
-  .submit-button {
-    padding: 12px 20px;
-    background-color: #007bff;
-    color: #fff;
-    font-size: 16px;
-    font-weight: 700;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-  }
-  
-  .submit-button:hover {
-    background-color: #0056b3;
-  }
-  
-  .social-icons {
-    margin-top: 20px;
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-  }
-  
-  .icon-twitter,
-  .icon-facebook,
-  .icon-google,
-  .icon-instagram {
-    font-size: 20px;
-    color: #555;
-    cursor: pointer;
-    transition: color 0.3s;
-  }
-  
-  .icon-twitter:hover {
-    color: #1da1f2;
-  }
-  
-  .icon-facebook:hover {
-    color: #3b5998;
-  }
-  
-  .icon-google:hover {
-    color: #db4437;
-  }
-  
-  .icon-instagram:hover {
-    color: #e1306c;
-  }
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #d7ebf8;
+  /* Bleu clair relaxant */
+  padding: 20px;
+}
+
+.contact-form-card {
+  background: #fff;
+  padding: 30px;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  text-align: center;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+p {
+  font-size: 14px;
+  color: #777;
+  margin-bottom: 20px;
+}
+
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.form-row {
+  display: flex;
+  gap: 15px;
+}
+
+.form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #444;
+}
+
+input,
+textarea {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+textarea {
+  resize: none;
+  height: 100px;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 4px rgba(0, 123, 255, 0.5);
+}
+
+.submit-button {
+  padding: 12px 20px;
+  background-color: #007bff;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.submit-button:hover {
+  background-color: #0056b3;
+}
+
+.social-icons {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+.icon-twitter,
+.icon-facebook,
+.icon-google,
+.icon-instagram {
+  font-size: 20px;
+  color: #555;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.icon-twitter:hover {
+  color: #1da1f2;
+}
+
+.icon-facebook:hover {
+  color: #3b5998;
+}
+
+.icon-google:hover {
+  color: #db4437;
+}
+
+.icon-instagram:hover {
+  color: #e1306c;
+}

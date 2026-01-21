@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './MultimodalSearch.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 /**
  * Page de recherche multimodale avec Google Maps APIs
@@ -13,7 +13,7 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
 const MultimodalSearch = () => {
     const { user } = useContext(AuthContext);
     const navigate = useNavigate();
-    
+
     const [searchForm, setSearchForm] = useState({
         origin: '',
         destination: '',
@@ -69,7 +69,7 @@ const MultimodalSearch = () => {
             console.log('🔍 Recherche multimodale:', searchData);
 
             const response = await axios.post(
-                `${API_BASE_URL}/api/search/multimodal`,
+                `${API_BASE_URL}/search/multimodal`,
                 searchData,
                 {
                     headers: {
@@ -79,7 +79,7 @@ const MultimodalSearch = () => {
             );
 
             console.log('✅ Résultats:', response.data);
-            
+
             // Vérifier si c'est une erreur de clé API
             if (!response.data.success || response.data.error) {
                 setError(response.data.error || 'Erreur lors de la recherche');
@@ -87,7 +87,7 @@ const MultimodalSearch = () => {
                 setLoading(false);
                 return;
             }
-            
+
             setResults(response.data);
 
         } catch (err) {
@@ -142,7 +142,7 @@ const MultimodalSearch = () => {
             // Récupérer le token JWT
             const token = localStorage.getItem('token');
             console.log('🔑 Token récupéré:', token ? 'Présent (' + token.substring(0, 20) + '...)' : '❌ ABSENT');
-            
+
             if (!token) {
                 alert('❌ Token manquant. Veuillez vous reconnecter.');
                 navigate('/login');
@@ -153,21 +153,21 @@ const MultimodalSearch = () => {
             // 1. Prévisualiser le workflow
             console.log('📋 Appel workflow-preview avec token...');
             const workflowRes = await axios.post(
-                `${API_BASE_URL}/api/booking/workflow-preview`,
+                `${API_BASE_URL}/booking/workflow-preview`,
                 { itinerary: route },
-                { 
-                    headers: { 
+                {
+                    headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
-                    } 
+                    }
                 }
             );
-            
+
             console.log('✅ Workflow reçu:', workflowRes.data);
 
             const workflow = workflowRes.data.workflow;
             const steps = workflow.required_steps.join(', ');
-            
+
             // 2. Confirmer avec l'utilisateur
             const confirmed = window.confirm(
                 `🎫 Réservation ${workflow.workflow_type}\n\n` +
@@ -199,12 +199,12 @@ const MultimodalSearch = () => {
                 has_flight: route.segments?.some(s => s.mode === 'flight') || false,
                 is_international: false // TODO: détecter selon les pays
             };
-            
+
             console.log('📦 Itinéraire enrichi:', enrichedItinerary);
 
             // 4. Créer la réservation (token déjà récupéré au début)
             const bookingRes = await axios.post(
-                `${API_BASE_URL}/api/booking/create`,
+                `${API_BASE_URL}/booking/create`,
                 {
                     itinerary: enrichedItinerary,
                     pmr_needs: searchForm.pmr_needs || {}
@@ -228,13 +228,13 @@ const MultimodalSearch = () => {
 
         } catch (err) {
             console.error('❌ Erreur réservation:', err);
-            
+
             let errorMessage = 'Erreur lors de la réservation';
-            
+
             if (err.response) {
                 // Le serveur a répondu avec un code d'erreur
                 console.error('📡 Réponse serveur:', err.response.status, err.response.data);
-                
+
                 if (err.response.status === 401) {
                     errorMessage = 'Session expirée. Veuillez vous reconnecter.';
                     // Rediriger vers login après 2 secondes
@@ -254,7 +254,7 @@ const MultimodalSearch = () => {
                 console.error('⚙️ Erreur config:', err.message);
                 errorMessage = err.message;
             }
-            
+
             alert(`❌ ${errorMessage}`);
         } finally {
             setBookingLoading(false);
@@ -442,13 +442,13 @@ const MultimodalSearch = () => {
                         <div className="routes-list">
                             {results.routes.map((route, idx) => {
                                 const accessibility = getAccessibilityBadge(route.accessibility_score);
-                                
+
                                 return (
                                     <div key={idx} className="route-card">
                                         <div className="route-header">
                                             <div className="route-title">
                                                 <h3>Itinéraire {idx + 1}</h3>
-                                                <span 
+                                                <span
                                                     className="accessibility-badge"
                                                     style={{ backgroundColor: accessibility.color }}
                                                 >
@@ -507,7 +507,7 @@ const MultimodalSearch = () => {
                                             </div>
                                         )}
 
-                                        <button 
+                                        <button
                                             className="btn-book-route"
                                             onClick={() => handleBooking(route)}
                                             disabled={bookingLoading}

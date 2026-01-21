@@ -1,61 +1,64 @@
 /**
- * Routes Notifications V2 - MongoDB (Point 4)
- * Base path: /notifications (avec 's')
+ * Routes Notifications V2 - Supabase
+ * Base path dans app.js: /api/notification (singulier)
  */
 
 const express = require('express');
 const router = express.Router();
 const notificationController = require('../controllers/notificationControllerV2');
 
+// NOTE: app.js monte ce router sur /api/notification
+// Donc ici les chemins sont relatifs.
+
 /**
- * GET /notification
+ * GET /api/notification
  * Récupérer toutes les notifications de l'utilisateur
  * Query params: user_id, limit, skip, unread_only, type
  */
 router.get('/', notificationController.getNotifications);
 
 /**
- * GET /notification/unread
+ * GET /api/notification/unread
  * Récupérer notifications non lues
  * Query params: user_id
  */
 router.get('/unread', notificationController.getUnreadNotifications);
 
 /**
- * GET /notification/count
+ * GET /api/notification/count
  * Compter notifications non lues
  * Query params: user_id
  */
 router.get('/count', notificationController.getUnreadCount);
 
 /**
- * GET /notification/:id
- * Récupérer une notification par ID
- */
-router.get('/:id', notificationController.getNotificationById);
-
-/**
- * POST /notification
+ * POST /api/notification
  * Créer une notification (admin/system)
  * Body: { user_id, type, title, message, data, agent_info, priority, icon }
  */
 router.post('/', notificationController.createNotification);
 
 /**
- * PATCH /notification/:id/read
- * Marquer notification comme lue
- */
-router.patch('/:id/read', notificationController.markAsRead);
-
-/**
- * PATCH /notification/mark-all-read
+ * PATCH /api/notification/mark-all-read
  * Marquer toutes les notifications comme lues
  * Body: { user_id }
  */
 router.patch('/mark-all-read', notificationController.markAllAsRead);
 
 /**
- * DELETE /notification/:id
+ * GET /api/notification/:id
+ * Récupérer une notification par ID
+ */
+router.get('/:id', notificationController.getNotificationById);
+
+/**
+ * PATCH /api/notification/:id/read
+ * Marquer une notification comme lue
+ */
+router.patch('/:id/read', notificationController.markAsRead);
+
+/**
+ * DELETE /api/notification/:id
  * Supprimer une notification
  */
 router.delete('/:id', notificationController.deleteNotification);

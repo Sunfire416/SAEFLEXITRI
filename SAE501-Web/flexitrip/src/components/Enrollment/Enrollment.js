@@ -9,11 +9,11 @@ import WebcamCapture from '../shared/WebcamCapture';
 import './Enrollment.css';
 import { AuthContext } from '../../context/AuthContext';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 const Enrollment = () => {
   const { user } = useContext(AuthContext);
-  
+
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -35,12 +35,12 @@ const Enrollment = () => {
     const fetchReservation = async () => {
       try {
         const userId = user?.user_id || 4;
-        
+
         // 🔧 TEMPORAIRE : Forcer reservation_id=1 pour debug
         console.log('🔧 Mode DEBUG : Forcing reservation_id=1');
         setReservationId(1);
         return;
-        
+
         // Récupérer la dernière réservation de l'utilisateur
         const response = await axios.get(
           `${API_BASE_URL}/reservations/user/${userId}`,
@@ -193,7 +193,7 @@ const Enrollment = () => {
     } catch (err) {
       console.error('❌ Erreur enrollment:', err);
       setError(
-        err.response?.data?.error || 
+        err.response?.data?.error ||
         'Erreur lors de l\'enregistrement biométrique'
       );
     } finally {

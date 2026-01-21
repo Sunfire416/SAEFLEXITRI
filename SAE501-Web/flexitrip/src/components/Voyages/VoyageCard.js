@@ -60,9 +60,9 @@ const VoyageCard = ({ voyage, onOpenQR, onCancelCheckin, onDeleteVoyage }) => {
         <div className="route-point">
           <div className="route-dot start"></div>
           <div className="route-location">
-            <span className="location-name">{voyage.depart || voyage.Lieu_depart}</span>
+            <span className="location-name">{voyage.depart}</span>
             <span className="location-time">
-              {formatDate(voyage.date_debut || voyage.Date_depart)}
+              {voyage.date_debut ? formatDate(voyage.date_debut) : 'N/A'}
             </span>
           </div>
         </div>
@@ -85,7 +85,7 @@ const VoyageCard = ({ voyage, onOpenQR, onCancelCheckin, onDeleteVoyage }) => {
           <div className="route-location">
             <span className="location-name">{voyage.arrivee || voyage.Lieu_arrivee}</span>
             <span className="location-time">
-              {formatDate(voyage.date_fin || voyage.Date_arrivee)}
+              {voyage.date_fin ? formatDate(voyage.date_fin) : 'N/A'}
             </span>
           </div>
         </div>
@@ -161,7 +161,7 @@ const VoyageCard = ({ voyage, onOpenQR, onCancelCheckin, onDeleteVoyage }) => {
         {voyage.status !== 'cancelled' && voyage.status !== 'completed' && (
           <button
             className="btn-delete"
-            onClick={() => onDeleteVoyage(voyage.voyage_id)}
+            onClick={() => onDeleteVoyage(voyage.id_voyage)}
           >
             🗑️ Supprimer
           </button>

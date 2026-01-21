@@ -126,7 +126,7 @@ function Navbar() {
                                 <a href="/pmr-assistance" className="nav-links">PMR Assistance</a>
                             </li>
                             <li className="nav-item">
-                                <a href="/bagage-tracking" className="nav-links">Baggage Tracking</a>
+                                <a href="/baggage-tracking" className="nav-links">Baggage Tracking</a>
                             </li>
                             <li className="nav-item">
                                 <a href="/support" className="nav-links">Support</a>
@@ -147,7 +147,7 @@ function Navbar() {
                                 <a href="/user/pmr-assistance" className="nav-links">Mes Réservations</a>
                             </li>
                             <li className="nav-item">
-                                <a href="/user/bagage-tracking" className="nav-links">Baggage Tracking</a>
+                                <a href="/user/baggage-tracking" className="nav-links">Baggage Tracking</a>
                             </li>
                             <li className="nav-item">
                                 <a href="/user/ewallet" className="nav-links">eWallet</a>
@@ -267,7 +267,7 @@ function Navbar() {
                                 <a href="/pmr-assistance" className="nav-links" onClick={toggleMobileMenu}>Mes Réservations<AngleRightIcon className="icon-angle"/></a>
                             </li>
                             <li className="nav-item">
-                                <a href="/bagage-tracking" className="nav-links" onClick={toggleMobileMenu}>Baggage Tracking<AngleRightIcon className="icon-angle"/></a>
+                                <a href="/baggage-tracking" className="nav-links" onClick={toggleMobileMenu}>Baggage Tracking<AngleRightIcon className="icon-angle"/></a>
                             </li>
                             <li className="nav-item">
                                 <a href="/ewallet" className="nav-links" onClick={toggleMobileMenu}>e-Wallet<AngleRightIcon className="icon-angle"/></a>
@@ -286,7 +286,7 @@ function Navbar() {
                                 <a href="/user/pmr-assistance" className="nav-links" onClick={toggleMobileMenu}>Mes réservations<AngleRightIcon className="icon-angle"/></a>
                             </li>
                             <li className="nav-item">
-                                <a href="/user/bagage-tracking" className="nav-links" onClick={toggleMobileMenu}>Baggage Tracking<AngleRightIcon className="icon-angle"/></a>
+                                <a href="/user/baggage-tracking" className="nav-links" onClick={toggleMobileMenu}>Baggage Tracking<AngleRightIcon className="icon-angle"/></a>
                             </li>
                             <li className="nav-item">
                                 <a href="/user/ewallet" className="nav-links" onClick={toggleMobileMenu}>eWallet<AngleRightIcon className="icon-angle"/></a>

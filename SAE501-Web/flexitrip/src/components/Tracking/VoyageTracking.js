@@ -8,14 +8,14 @@ const VoyageTracking = () => {
     const { reservationId } = useParams();
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
-    
+
     const [reservation, setReservation] = useState(null);
     const [position, setPosition] = useState(null);
     const [status, setStatus] = useState('on_time'); // on_time, delayed, cancelled
     const [delay, setDelay] = useState(0);
     const [alerts, setAlerts] = useState([]);
     const [loading, setLoading] = useState(true);
-    
+
     const wsRef = useRef(null);
     const mapRef = useRef(null);
     const markerRef = useRef(null);
@@ -35,7 +35,7 @@ const VoyageTracking = () => {
 
     const fetchReservationData = async () => {
         try {
-            const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+            const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
             const token = localStorage.getItem('token');
 
             const response = await axios.get(
@@ -44,7 +44,7 @@ const VoyageTracking = () => {
             );
 
             setReservation(response.data);
-            
+
             // Initialiser position de départ
             if (response.data.Lieu_depart) {
                 geocodeLocation(response.data.Lieu_depart);
@@ -88,7 +88,7 @@ const VoyageTracking = () => {
         try {
             // Simulation WebSocket (remplacer par vrai WebSocket en production)
             // const ws = new WebSocket('ws://localhost:17777/tracking');
-            
+
             // Simulation de mises à jour en temps réel
             const simulationInterval = setInterval(() => {
                 updatePosition();
@@ -222,7 +222,7 @@ const VoyageTracking = () => {
                     <div className="map-overlay">
                         <p>🗺️ Carte interactive</p>
                         <p className="map-hint">
-                            {position 
+                            {position
                                 ? `Position: ${position.lat.toFixed(4)}, ${position.lng.toFixed(4)}`
                                 : 'Chargement de la position...'
                             }

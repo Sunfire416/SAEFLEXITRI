@@ -1,288 +1,61 @@
-/* General Styles */
-.ewallet-container {
+/* ======== RESET & GLOBAL ======== */
+.ewallet-page {
+  font-family: "Inter", "Stem Extra Light", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* ======== QR INFO - LAYOUT LABEL/VALUE ======== */
+.qr-card-info {
+  width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  font-family: 'Arial', sans-serif;
-  background-color: #f4f4f4;
-  min-height: 100vh;
-}
-
-/* E-wallet Card */
-.ewallet-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  text-align: center;
-  width: 90%;
-  max-width: 400px;
-  margin-bottom: 20px;
-}
-
-.ewallet-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
-.ewallet-logo {
-  width: 60px;
-  height: 60px;
-  margin-bottom: 10px;
-}
-
-.ewallet-title {
-  font-size: 24px;
-  font-weight: bold;
-  color: #333;
-}
-
-.balance-section {
-  font-size: 22px;
-  font-weight: bold;
-  color: #2c3e50;
-  margin-top: 10px;
-}
-
-.balance-label {
-  font-size: 14px;
-  color: #777;
-}
-
-/* User Profile */
-.user-profile {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  padding: 20px;
+  gap: 8px;
   text-align: left;
-  width: 90%;
-  max-width: 500px;
-  margin-bottom: 20px;
 }
 
-.profile-title {
-  font-size: 22px;
-  font-weight: bold;
-  margin-bottom: 15px;
-  color: #2c3e50;
-}
-
-.profile-card {
-  background: #fafafa;
-  border-radius: 10px;
-  padding: 15px;
-  max-height: 180px;
-  overflow-y: auto;
-}
-
-.profile-info {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-
-.profile-info p {
-  margin: 5px 0;
-  font-size: 14px;
-  color: #555;
-}
-
-.user-role {
-  font-weight: bold;
-  color: #16a085;
-}
-
-/* Payment History */
-.payment-history-section {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  width: 90%;
-  max-width: 600px;
-  text-align: left;
-  margin-bottom: 20px;
-}
-
-.payment-history-title {
-  font-size: 22px;
-  font-weight: bold;
-  margin-bottom: 15px;
-  color: #2c3e50;
-}
-
-.payment-history-list {
+.qr-info-row {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(57, 56, 57, 0.08);
+  font-size: 0.8rem;
 }
 
-.payment-history-item {
-  background: #fafafa;
-  border-radius: 10px;
-  padding: 15px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+.qr-info-row:last-child {
+  border-bottom: none;
 }
 
-.payment-history-item p {
-  margin: 5px 0;
-  font-size: 16px;
-  color: #555;
+.qr-label {
+  color: rgba(57, 56, 57, 0.6);
+  font-weight: 500;
 }
 
-.no-payment-history-message {
-  font-size: 18px;
-  color: #555;
+.qr-value {
+  color: #393839;
+  font-weight: 600;
+  text-align: right;
+  word-break: break-word;
+  max-width: 50%;
+}
+
+/* ======== EMPTY STATE ======== */
+.ewallet-empty-state {
   text-align: center;
-  margin-top: 20px;
+  padding: 40px 20px;
+  color: rgba(57, 56, 57, 0.5);
 }
 
-/* QR Codes Section */
-.qr-section {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  width: 90%;
-  max-width: 600px;
-  text-align: center;
-  margin-bottom: 20px;
+.ewallet-empty-state-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  opacity: 0.3;
 }
 
-.qr-title {
-  font-size: 22px;
-  font-weight: bold;
-  margin-bottom: 15px;
-  color: #2c3e50;
-}
-
-.qr-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 20px;
-}
-
-.qr-card {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  text-align: left; /* Alignement à gauche pour une meilleure lecture */
-  width: 250px; /* Largeur ajustée pour mieux afficher les informations */
-  margin: 10px;
-}
-
-.qr-card p {
-  font-size: 14px;
-  color: #333;
-  margin: 8px 0; /* Espacement entre les lignes */
-  line-height: 1.4; /* Amélioration de la lisibilité */
-}
-
-.qr-card strong {
-  font-weight: bold;
-  color: #2c3e50; /* Couleur plus foncée pour les titres */
-}
-
-.clear-qr-button {
-  background: #e74c3c;
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  font-size: 16px;
-  border-radius: 5px;
-  cursor: pointer;
-  margin-top: 15px;
-  transition: background 0.3s ease;
-}
-
-.clear-qr-button:hover {
-  background: #c0392b;
-}
-
-.no-qr-message {
-  font-size: 18px;
-  color: #555;
-  text-align: center;
-  margin-top: 20px;
-}
-
-/* Baggage QR Codes Section */
-.baggage-qr-section {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  width: 90%;
-  max-width: 600px;
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.baggage-qr-title {
-  font-size: 22px;
-  font-weight: bold;
-  margin-bottom: 15px;
-  color: #2c3e50;
-}
-
-.baggage-qr-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 15px;
-}
-
-.baggage-qr-card {
-  background: #fafafa;
-  border-radius: 10px;
-  padding: 15px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  text-align: left; /* Alignement à gauche pour une meilleure lecture */
-  width: 250px; /* Largeur ajustée */
-}
-
-.baggage-qr-card p {
-  font-size: 14px;
-  color: #333;
-  margin: 8px 0; /* Espacement entre les lignes */
-  line-height: 1.4; /* Amélioration de la lisibilité */
-}
-
-.baggage-qr-card strong {
-  font-weight: bold;
-  color: #2c3e50; /* Couleur plus foncée pour les titres */
-}
-
-.no-baggage-qr-message {
-  font-size: 18px;
-  color: #555;
-  text-align: center;
-  margin-top: 20px;
-}
-
-/* Error Message */
-.error-message {
-  font-size: 16px;
-  color: red;
-  font-weight: bold;
-  text-align: center;
-  margin-top: 20px;
-}
-
-/* Responsive Design */
+/* ======== RESPONSIVE ======== */
 @media (max-width: 768px) {
-  .ewallet-card,
-  .profile-card,
-  .qr-section,
-  .payment-history-section,
-  .baggage-qr-section {
-    width: 100%;
-  }
+  /* Aucun changement majeur – MUI Grid gère */
+}
+
+@media (max-width: 480px) {
+  /* Aucun changement majeur – MUI Grid gère */
 }

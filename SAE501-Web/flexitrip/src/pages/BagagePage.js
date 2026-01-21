@@ -1,8 +1,6 @@
-import React from 'react';
-import BaggageTracking from '../components/Baggage/Baggage.js';
-const BagagePage = () =>
-    <>
-   <BaggageTracking/>
-    </>;
+import React from "react";
+import BaggageTracking from "../components/Baggage/Baggage"; // <= sans .js, propre
 
-export default BagagePage;
+export default function BagagePage() {
+    return <BaggageTracking />;
+}

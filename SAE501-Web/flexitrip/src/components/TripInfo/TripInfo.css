@@ -4,7 +4,8 @@
 .trip-info-container {
     text-align: center;
     padding: 30px 20px;
-    background-color: #ffffff; /* Fond blanc pour le conteneur */
+    background-color: #ffffff;
+    /* Fond blanc pour le conteneur */
     border-radius: 15px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     margin: 30px auto;
@@ -13,7 +14,8 @@
 
 /* Fond général en dehors du conteneur */
 body {
-    background-color: #f0f2f5; /* Fond de l'application */
+    background-color: #f0f2f5;
+    /* Fond de l'application */
 }
 
 /* Titre principal */
@@ -22,14 +24,16 @@ body {
     color: #333;
     margin-bottom: 30px;
     font-weight: 600;
-    text-align: center; /* Centre uniquement le titre */
+    text-align: center;
+    /* Centre uniquement le titre */
 }
 
 /* Formulaire */
 form {
     display: flex;
     flex-direction: column;
-    gap: 15px; /* Espacement uniforme entre les champs */
+    gap: 15px;
+    /* Espacement uniforme entre les champs */
 }
 
 label {
@@ -72,13 +76,15 @@ button {
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 14px; /* Revenir à la taille d'origine pour "Enregistrer" */
-    font-weight: normal; /* Revenir à une police plus légère */
+    font-size: 14px;
+    /* Revenir à la taille d'origine pour "Enregistrer" */
+    font-weight: normal;
+    /* Revenir à une police plus légère */
     transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 button:hover {
-    background-color: #0056b3;
+    background-color: rgba(91, 188, 234, 0.14);
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
@@ -123,5 +129,3 @@ button:hover {
         padding: 10px;
     }
 }
-
-
