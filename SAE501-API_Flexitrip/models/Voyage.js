@@ -10,6 +10,15 @@ const trajetSchema = new mongoose.Schema({
   compagnie: { type: String, required: true },
   adresse_1: { type: String, default: '' },
   adresse_2: { type: String, default: '' },
+  // 🆕 Champs enrichis pour segments détaillés
+  line: { type: String, default: null },                      // Numéro de ligne/vol (ex: "TGV 6601", "RER A", "Bus 91")
+  departure_station: { type: String, default: null },         // Station de départ précise
+  departure_time: { type: Date, default: null },              // Horaire de départ ISO
+  arrival_station: { type: String, default: null },           // Station d'arrivée précise
+  arrival_time: { type: Date, default: null },                // Horaire d'arrivée ISO
+  duration_minutes: { type: Number, default: null },          // Durée du segment en minutes
+  accessible: { type: Boolean, default: true },               // Accessibilité PMR
+  vehicle_type: { type: String, default: null }               // Type de véhicule (HEAVY_RAIL, BUS, etc.)
 });
 
 // Schéma pour un voyage
@@ -34,6 +43,16 @@ const voyageSchema = new mongoose.Schema({
   }],
   etapes: [trajetSchema],
   prix_total: { type: Number, required: true },
+  
+  // ==========================================
+  // 🆕 ÉTAPE 4 - ENROLLMENT BIOMÉTRIQUE
+  // ==========================================
+  enrollment_id: {
+    type: String,
+    required: false,
+    index: true,
+    comment: 'ID enrollment biométrique (EnrollmentBiometric._id) - Workflows MODERATE/FULL uniquement'
+  },
 });
 
 // Pre-save hook to auto-increment id_voyage locally

@@ -9,7 +9,7 @@ const checkInLogSchema = new mongoose.Schema({
   },
   enrollment_id: {
     type: String,
-    required: true,
+    required: false,
     index: true
   },
   reservation_id: {
@@ -24,7 +24,7 @@ const checkInLogSchema = new mongoose.Schema({
   },
   checkin_type: {
     type: String,
-    enum: ['kiosk', 'agent', 'mobile', 'gate'],
+    enum: ['kiosk', 'agent', 'mobile', 'gate', 'manual_web'],
     required: true
   },
   location: {

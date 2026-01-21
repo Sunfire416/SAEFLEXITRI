@@ -28,11 +28,11 @@ const BoardingPass = sequelize.define('BoardingPass', {
     allowNull: false
   },
   gate: {
-    type: DataTypes.STRING(10),
+    type: DataTypes.STRING(50),
     allowNull: true
   },
   seat: {
-    type: DataTypes.STRING(10),
+    type: DataTypes.STRING(50),
     allowNull: true
   },
   boarding_time: {

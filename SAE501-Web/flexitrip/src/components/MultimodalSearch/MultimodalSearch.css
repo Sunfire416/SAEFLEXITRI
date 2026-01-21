@@ -75,6 +75,31 @@
     font-size: 0.95rem;
 }
 
+/* Styles pour Autocomplete Material-UI */
+.form-group .MuiAutocomplete-root {
+    width: 100%;
+}
+
+.form-group .MuiOutlinedInput-root {
+    background-color: white;
+    border-radius: 8px;
+}
+
+.form-group .MuiOutlinedInput-notchedOutline {
+    border-color: #e0e0e0;
+    border-width: 2px;
+}
+
+.form-group .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+    border-color: #667eea;
+}
+
+.form-group .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+    border-color: #667eea;
+    border-width: 2px;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
 .form-group input,
 .form-group select {
     padding: 0.75rem;
@@ -336,11 +361,24 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .segment-mode strong {
     color: #667eea;
     font-size: 1.1rem;
+}
+
+.segment-line {
+    display: inline-block;
+    padding: 0.3rem 0.8rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+    margin: 0 0.3rem;
 }
 
 .operator {

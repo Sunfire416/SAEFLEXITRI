@@ -31,16 +31,19 @@ const TrajetSNCFRoutes = require('./routes/SNCF/TrajetRoutes');
 // UBER 
 const TrajetTaxiUBERRoutes = require('./routes/UBER/TrajetTaxiRoutes');
 
-// MongoDB
-const voyageRoutesOLD = require('./routes/voyageRoutes'); // Point 2 ancien
+// MongoDB - ⚠️ Fichiers obsolètes supprimés (voyageRoutes, searchRoutes v1)
+// const voyageRoutesOLD = require('./routes/voyageRoutes'); // SUPPRIMÉ - utilisez /api/booking
 const biometricRoutes = require('./routes/biometricRoutes');
-const notificationRoutesOLD = require('./routes/notificationRoutes'); // Ancien MySQL
 const blockchainRoutes = require('./routes/blockchainRoutes');
+
+// ==========================================
+// ✅ NOTIFICATIONS - SYSTÈME UNIFIÉ MONGODB
+// ==========================================
+const notificationRoutes = require('./routes/notificationRoutes'); // MongoDB unifié
 
 // ==========================================
 // 🆕 POINT 2 - NOUVEAUX IMPORTS
 // ==========================================
-const searchRoutes = require('./routes/searchRoutes');
 const ticketRoutes = require('./routes/ticketRoutes');
 
 // ==========================================
@@ -50,9 +53,9 @@ const checkinRoutes = require('./routes/checkinRoutes');
 const boardingRoutes = require('./routes/boardingRoutes');
 
 // ==========================================
-// 🆕 POINT 4 & 5 - NOUVELLES ROUTES
+// ✅ NOTIFICATIONS - SYSTÈME UNIFIÉ MONGODB
 // ==========================================
-const notificationRoutesV2 = require('./routes/notificationRoutesV2'); // MongoDB Point 4
+// Plus de notificationRoutesV2, tout est unifié dans notificationRoutes
 const voyageHistoryRoutes = require('./routes/voyageHistoryRoutes'); // Point 5
 
 // ==========================================
@@ -67,14 +70,19 @@ const assistanceRoutes = require('./routes/assistanceRoutes'); // Gestion assist
 const bookingRoutes = require('./routes/bookingRoutes');
 
 // ==========================================
-// 🆕 POINT 9 - SYSTÈME DE FEEDBACK/AVIS
+// 🆕 POINT 9 - SYSTÈME DE FEEDBACK/AVIS (DÉSACTIVÉ - controller manquant)
 // ==========================================
-const reviewRoutes = require('./routes/reviewRoutes');
+// const reviewRoutes = require('./routes/reviewRoutes');
 
 // ==========================================
 // 🆕 POINT 10 - GESTION INCIDENTS
 // ==========================================
 const incidentRoutes = require('./routes/incidentRoutes');
+
+// ==========================================
+// 🆕 PRISE EN CHARGE PMR PAR AGENTS
+// ==========================================
+const priseEnChargeRoutes = require('./routes/priseEnChargeRoutes');
 
 // HUB AMQP (KAFKA)
 const kafkaRoutes = require('./routes/kafkaRoutes');
@@ -136,28 +144,36 @@ app.use('/SNCF/trajetSNCF', TrajetSNCFRoutes);
 app.use('/UBER/ride', TrajetTaxiUBERRoutes);
 
 // Routes NoSQL
-app.use('/voyage', voyageRoutesOLD); // Point 2 ancien /voyage/insert
+// ⚠️ DEPRECATED : /voyage/* routes supprimées - utilisez /api/booking/*
+// app.use('/voyage', voyageRoutesOLD); // SUPPRIMÉ - MIGRATION VERS BOOKING COMPLÈTE
 app.use('/biometric', biometricRoutes);
-app.use('/notification', notificationRoutesOLD); // Ancien MySQL
 app.use('/blockchain', blockchainRoutes);
 app.use('/contact', contactRoutes);
 
 // ==========================================
-// 🆕 POINT 2 - NOUVELLES ROUTES
+// ✅ NOTIFICATIONS - SYSTÈME UNIFIÉ MONGODB
 // ==========================================
-app.use('/search', searchRoutes);
-app.use('/tickets', ticketRoutes);
+// Route unique : /notifications (MongoDB)
+// Ancien système MySQL supprimé
+app.use('/notifications', notificationRoutes);
 
 // ==========================================
-// 🆕 POINT 3 - NOUVELLES ROUTES
+// 🆕 POINT 2 - ROUTES DE RECHERCHE
 // ==========================================
-app.use('/checkin', checkinRoutes);
+// app.use('/search', searchRoutes); // ⚠️ Version v1 supprimée - utilisez /api/search
+app.use('/tickets', ticketRoutes);
+
+// Déjà défini plus haut - /notifications
+
+// ==========================================
+// 🆕 POINT 5 - VOYAGE HISTORY
+// ==========================================
 app.use('/boarding', boardingRoutes);
 
 // ==========================================
 // 🆕 POINT 4 & 5 - NOUVELLES ROUTES
 // ==========================================
-app.use('/notifications', notificationRoutesV2); // Point 4 MongoDB /notifications/*
+// ⚠️ Notifications déjà définies ligne 155 (système unifié MongoDB)
 app.use('/voyages', voyageHistoryRoutes); // Point 5 /voyages/* (avec 's')
 
 // ==========================================
@@ -167,19 +183,35 @@ app.use('/api/search', searchRoutesV2); // Recherche multimodale avancée
 app.use('/api/assistance', assistanceRoutes); // Gestion assistances PMR
 
 // ==========================================
-// 🆕 POINT 8 - RÉSERVATION ADAPTATIVE
+// ✅ POINT 8 - RÉSERVATION ADAPTATIVE UNIFIÉE
 // ==========================================
-app.use('/api/booking', bookingRoutes); // Réservation avec workflow adaptatif
+// 🎯 POINT D'ENTRÉE PRINCIPAL POUR CRÉER DES RÉSERVATIONS
+// Crée automatiquement : Voyage MongoDB + Reservation MySQL
+// Workflow adaptatif : MINIMAL/LIGHT/MODERATE/FULL
+// Déduction wallet automatique
+app.use('/api/booking', bookingRoutes);
 
 // ==========================================
-// 🆕 POINT 9 - SYSTÈME DE FEEDBACK/AVIS
+// 🆕 PRISE EN CHARGE PMR PAR AGENTS
 // ==========================================
-app.use('/api/review', reviewRoutes); // Avis et évaluations PMR
+// Routes publiques (sans middleware auth) pour validation par personnel transport
+app.use('/prise-en-charge', priseEnChargeRoutes);
+
+// ==========================================
+// 🆕 POINT 9 - SYSTÈME DE FEEDBACK/AVIS (DÉSACTIVÉ - controller manquant)
+// ==========================================
+// app.use('/api/review', reviewRoutes);
 
 // ==========================================
 // 🆕 POINT 10 - GESTION INCIDENTS
 // ==========================================
-app.use('/api/incidents', incidentRoutes); // Incidents et perturbations
+app.use('/api/incidents', incidentRoutes);
+
+// ==========================================
+// 🆕 CHECK-IN & BOARDING - ÉTAPE 5
+// ==========================================
+app.use('/checkin', checkinRoutes);
+app.use('/boarding', boardingRoutes);
 
 // Routes HUB
 app.use('/kafka', kafkaRoutes);

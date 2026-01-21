@@ -1,11 +1,17 @@
 /**
  * Service de réservation complète avec workflow adaptatif
+ * 
+ * ✅ SYSTÈME UNIFIÉ : Crée automatiquement un Voyage MongoDB + Reservation MySQL
+ * Ce service est le SEUL point d'entrée pour créer des réservations
  */
 
 const workflowDecisionService = require('./workflowDecisionService');
 const simulationService = require('./simulationService');
-const { Reservations } = require('../models');
-const { User } = require('../models');
+const enrollmentService = require('./enrollmentService'); // 🆕 ÉTAPE 4
+const agentAssignmentService = require('./agentAssignmentService'); // 🆕 ÉTAPE 8
+const incidentDetectionService = require('./incidentDetectionService'); // 🆕 ÉTAPE 9
+const walletService = require('./walletService'); // 🆕 ÉTAPE 10
+const { Reservations, Voyage, User } = require('../models');
 
 /**
  * Normalise le mode de transport vers les valeurs ENUM valides
@@ -23,6 +29,139 @@ function normalizeTransportType(mode) {
         'multimodal': 'multimodal'
     };
     return modeMap[mode?.toLowerCase()] || 'bus';
+}
+
+/**
+ * Crée les prises en charge pour chaque segment de transport (hors WALK)
+ * @param {Object} params - Paramètres
+ * @returns {Promise<Array>} - Tableau des prises en charge créées
+ */
+async function createPrisesEnChargeForSegments({ reservation, voyage, user, itinerary, agentData }) {
+    const prisesEnCharge = [];
+    const { PriseEnCharge } = require('../models');
+    const crypto = require('crypto');
+    const notificationService = require('./notificationService');
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    
+    // Filtre les segments qui nécessitent une prise en charge (exclut WALK)
+    const transportSegments = (itinerary.segments || []).filter(seg => 
+        seg.mode && seg.mode.toUpperCase() !== 'WALK'
+    );
+    
+    // Si pas de segments, créer une prise en charge unique
+    if (transportSegments.length === 0) {
+        const validationToken = crypto.randomBytes(32).toString('hex');
+        const validationUrl = `${baseUrl}/prise-en-charge/validate/${validationToken}`;
+        
+        const priseEnCharge = await PriseEnCharge.create({
+            reservation_id: reservation.reservation_id,
+            voyage_id_mongo: voyage._id.toString(),
+            agent_id: agentData ? agentData.agent_id : null,
+            user_id: user.user_id,
+            etape_numero: 1,
+            validation_token: validationToken,
+            location: itinerary.from?.name || 'Unknown',
+            status: 'pending'
+        });
+        
+        console.log(`✅ PriseEnCharge unique créée: ${priseEnCharge.id}`);
+        
+        prisesEnCharge.push({
+            id: priseEnCharge.id,
+            validation_url: validationUrl,
+            validation_token: validationToken,
+            status: 'pending',
+            location: itinerary.from?.name || 'Unknown',
+            etape_numero: 1,
+            mode: 'unknown'
+        });
+        
+        // Notification
+        try {
+            await notificationService.createNotification({
+                user_id: user.user_id,
+                type: 'PRISE_EN_CHARGE_CREATED',
+                title: '📋 Prise en charge créée',
+                message: `Votre prise en charge est prête. Partagez le lien au personnel de transport.`,
+                data: {
+                    prise_en_charge_id: priseEnCharge.id,
+                    validation_url: validationUrl,
+                    location: itinerary.from?.name || 'Unknown',
+                    reservation_id: reservation.reservation_id,
+                    voyage_id: voyage._id.toString()
+                },
+                priority: 'high',
+                icon: '📋',
+                action_url: validationUrl
+            });
+        } catch (notifError) {
+            console.error('⚠️ Erreur notification:', notifError.message);
+        }
+        
+        return prisesEnCharge;
+    }
+    
+    // Créer une prise en charge par segment de transport
+    for (let i = 0; i < transportSegments.length; i++) {
+        const segment = transportSegments[i];
+        const validationToken = crypto.randomBytes(32).toString('hex');
+        const validationUrl = `${baseUrl}/prise-en-charge/validate/${validationToken}`;
+        
+        const location = segment.departure_station || segment.from || segment.departure || 'Unknown';
+        
+        const priseEnCharge = await PriseEnCharge.create({
+            reservation_id: reservation.reservation_id,
+            voyage_id_mongo: voyage._id.toString(),
+            agent_id: agentData ? agentData.agent_id : null,
+            user_id: user.user_id,
+            etape_numero: i + 1,
+            validation_token: validationToken,
+            location: location,
+            status: 'pending'
+        });
+        
+        console.log(`✅ PriseEnCharge créée: ${priseEnCharge.id} - Étape ${i + 1}/${transportSegments.length} (${segment.mode}) - ${location}`);
+        
+        prisesEnCharge.push({
+            id: priseEnCharge.id,
+            validation_url: validationUrl,
+            validation_token: validationToken,
+            status: 'pending',
+            location: location,
+            etape_numero: i + 1,
+            mode: segment.mode,
+            line: segment.line || null,
+            operator: segment.operator || 'Unknown'
+        });
+        
+        // Notification pour chaque segment
+        try {
+            await notificationService.createNotification({
+                user_id: user.user_id,
+                type: 'PRISE_EN_CHARGE_CREATED',
+                title: `📋 Prise en charge - Étape ${i + 1}/${transportSegments.length}`,
+                message: `${segment.mode} ${segment.line || ''} depuis ${location}`,
+                data: {
+                    prise_en_charge_id: priseEnCharge.id,
+                    validation_url: validationUrl,
+                    location: location,
+                    segment_mode: segment.mode,
+                    segment_line: segment.line,
+                    etape_numero: i + 1,
+                    reservation_id: reservation.reservation_id,
+                    voyage_id: voyage._id.toString()
+                },
+                priority: 'high',
+                icon: '📋',
+                action_url: validationUrl
+            });
+        } catch (notifError) {
+            console.error(`⚠️ Erreur notification étape ${i + 1}:`, notifError.message);
+        }
+    }
+    
+    console.log(`✅ Total: ${prisesEnCharge.length} prise(s) en charge créée(s)`);
+    return prisesEnCharge;
 }
 
 /**
@@ -93,7 +232,14 @@ async function createBooking(userId, itinerary, pmrNeeds) {
             payment: walletTx,
             timeline: workflow.timeline,
             total_price: totalPrice,
-            remaining_balance: newBalance
+            remaining_balance: newBalance,
+            itinerary: {
+                segments: itinerary.segments || [],
+                from: itinerary.from,
+                to: itinerary.to,
+                duration: itinerary.duration,
+                distance: itinerary.distance
+            }
         };
         
     } catch (error) {
@@ -106,10 +252,69 @@ async function createBooking(userId, itinerary, pmrNeeds) {
 }
 
 /**
+ * Mappe les segments de l'itinéraire vers le format MongoDB voyage.etapes
+ * @param {Object} itinerary - Itinéraire complet avec segments
+ * @param {Object} operatorBooking - Données de réservation opérateur (fallback)
+ * @param {string} transportMode - Mode de transport normalisé
+ * @param {string} departureDate - Date de départ ISO
+ * @param {string} arrivalDate - Date d'arrivée ISO
+ * @returns {Array} - Tableau d'étapes enrichies
+ */
+function mapSegmentsToEtapes(itinerary, operatorBooking, transportMode, departureDate, arrivalDate) {
+    const hasSegments = itinerary.segments && itinerary.segments.length > 0;
+    
+    if (hasSegments) {
+        // ✅ Mappe TOUS les segments avec champs enrichis
+        return itinerary.segments.map((seg, index) => ({
+            id: `${seg.mode}_${Date.now()}_${index}`,
+            type: normalizeTransportType(seg.mode),
+            compagnie: seg.operator || 'Unknown',
+            adresse_1: seg.departure_station || seg.from || '',
+            adresse_2: seg.arrival_station || seg.to || '',
+            // Champs enrichis
+            line: seg.line || null,
+            departure_station: seg.departure_station || seg.departure || null,
+            departure_time: seg.departure_time ? new Date(seg.departure_time) : null,
+            arrival_station: seg.arrival_station || seg.arrival || null,
+            arrival_time: seg.arrival_time ? new Date(seg.arrival_time) : null,
+            duration_minutes: seg.duration || null,
+            accessible: seg.accessible !== undefined ? seg.accessible : true,
+            vehicle_type: seg.vehicle_type || null
+        }));
+    }
+    
+    // ❌ Fallback : pas de segments
+    return [{
+        id: operatorBooking.booking_reference,
+        type: transportMode,
+        compagnie: operatorBooking.operator || 'Unknown',
+        adresse_1: itinerary.from?.name || '',
+        adresse_2: itinerary.to?.name || '',
+        // Champs enrichis avec valeurs par défaut
+        line: null,
+        departure_station: itinerary.from?.name || null,
+        departure_time: new Date(departureDate),
+        arrival_station: itinerary.to?.name || null,
+        arrival_time: new Date(arrivalDate),
+        duration_minutes: itinerary.duration || null,
+        accessible: true,
+        vehicle_type: null
+    }];
+}
+
+/**
  * WORKFLOW MINIMAL - Bus courte distance
  * Étapes: QR Code uniquement
+ * 
+ * ✅ CRÉER : Voyage MongoDB + Reservation MySQL
  */
 async function processMinimalBooking(user, itinerary, pmrNeeds, workflow) {
+    // ==========================================
+    // 🚌 WORKFLOW MINIMAL (BUS)
+    // ⚠️ PAS d'enrollment biométrique (ÉTAPE 6)
+    // ⚠️ enrollment_id reste NULL
+    // ==========================================
+    
     // Simule réservation opérateur
     const operatorBooking = await simulationService.simulateOperatorBooking(
         itinerary.segments?.[0] || { mode: itinerary.transport_mode || 'bus' },
@@ -155,14 +360,43 @@ async function processMinimalBooking(user, itinerary, pmrNeeds, workflow) {
         booking_reference: operatorBooking.booking_reference,
         issued_at: new Date().toISOString()
     };
+    
+    // ==========================================
+    // 🆕 ÉTAPE 1 : CRÉER VOYAGE MONGODB
+    // ⚠️ enrollment_id NON INCLUS (workflow MINIMAL)
+    // ==========================================
+    const transportMode = normalizeTransportType(itinerary.transport_mode);
+    const voyageData = {
+        id_pmr: user.user_id,
+        id_accompagnant: null,
+        date_debut: new Date(departureDate),
+        date_fin: new Date(arrivalDate),
+        lieu_depart: {
+            locomotion: transportMode,
+            id: itinerary.from?.id || itinerary.from?.name || 'Unknown'
+        },
+        lieu_arrive: {
+            locomotion: transportMode,
+            id: itinerary.to?.id || itinerary.to?.name || 'Unknown'
+        },
+        bagage: [],
+        etapes: mapSegmentsToEtapes(itinerary, operatorBooking, transportMode, departureDate, arrivalDate),
+        prix_total: calculateTotalPrice(itinerary)
+        // ⚠️ PAS de enrollment_id ici (MINIMAL)
+    };
+    
+    const voyage = await Voyage.create(voyageData);
+    console.log('✅ Voyage MongoDB créé:', voyage._id);
 
-    // Crée le voyage en DB
+    // ==========================================
+    // 🆕 ÉTAPE 2 : CRÉER RESERVATION MYSQL
+    // ==========================================
     const reservation = await Reservations.create({
-        user_id: user.user_id,  // Correction: user.user_id au lieu de user.id
+        user_id: user.user_id,
         num_reza_mmt: numRezaMmt,
         enregistre: false,
         assistance_PMR: pmrNeeds.assistance_level !== 'none' ? 'Oui' : 'Non',
-        Type_Transport: normalizeTransportType(itinerary.transport_mode),
+        Type_Transport: transportMode,
         Lieu_depart: itinerary.from?.name || 'Unknown',
         Lieu_arrivee: itinerary.to?.name || 'Unknown',
         Date_depart: departureDate,
@@ -170,25 +404,115 @@ async function processMinimalBooking(user, itinerary, pmrNeeds, workflow) {
         Statut: 'CONFIRMED',
         booking_reference: operatorBooking.booking_reference,
         qr_code_data: JSON.stringify(qrCodeData),
-        id_voyage: null,  // Optionnel pour le nouveau système
-        etape_voyage: 1   // Première étape par défaut
+        voyage_id_mongo: voyage._id.toString(),  // 🔗 LIEN MongoDB
+        id_voyage: voyage.id_voyage,              // 🔗 LIEN id_voyage (numérique)
+        etape_voyage: 1
     });
+    
+    console.log('✅ Reservation MySQL créée:', reservation.reservation_id, '→ Voyage:', voyage._id);
+    
+    // ==========================================
+    // 🆕 ÉTAPE 8 : AUTO-ASSIGN AGENT PMR
+    // ==========================================
+    let agentData = null;
+    try {
+        const agentResult = await agentAssignmentService.autoAssignAgent({
+            user_id: user.user_id,
+            voyage_id: voyage._id.toString(),
+            reservation_id: reservation.reservation_id,
+            pmr_needs: pmrNeeds,
+            location: itinerary.from?.name || 'Unknown',
+            transport_type: transportMode
+        });
+        
+        if (agentResult.agent_assigned) {
+            agentData = {
+                agent_id: agentResult.agent.agent_id,
+                agent_name: agentResult.agent.name,
+                agent_phone: agentResult.agent.phone
+            };
+            console.log(`✅ Agent assigné: ${agentData.agent_name}`);
+        }
+    } catch (agentError) {
+        console.error('⚠️ Erreur agent assignment (booking continue):', agentError.message);
+    }
+    
+    // ==========================================
+    // 🆕 ÉTAPE 8B : CRÉER PRISES EN CHARGE (MULTI-SEGMENTS)
+    // ==========================================
+    let priseEnChargeData = null;
+    try {
+        const prisesEnCharge = await createPrisesEnChargeForSegments({
+            reservation,
+            voyage,
+            user,
+            itinerary,
+            agentData
+        });
+        
+        // Retourner toutes les prises en charge
+        priseEnChargeData = prisesEnCharge;
+        
+    } catch (priseEnChargeError) {
+        console.error('⚠️ Erreur création prises en charge (booking continue):', priseEnChargeError.message);
+    }
     
     // Génère QR Code visuel
     const qrCode = simulationService.generateQRCode({
         id: reservation.reservation_id,
-        user_id: user.user_id,  // Correction: user.user_id
+        user_id: user.user_id,
         departure: itinerary.from?.name || 'Unknown',
         destination: itinerary.to?.name || 'Unknown',
         departure_time: departureDate
     });
     
+    // ==========================================
+    // 🆕 ÉTAPE 9 : ACTIVER MONITORING INCIDENTS
+    // ==========================================
+    incidentDetectionService.monitorVoyageForIncidents(voyage._id.toString())
+        .catch(err => console.error('⚠️ Erreur monitoring incidents:', err.message));
+    
+    // ==========================================
+    // 🆕 ÉTAPE 10 : AUTO-DEDUCTION WALLET
+    // ==========================================
+    let paymentData = null;
+    try {
+        const bookingPrice = walletService.calculateBookingPrice('MINIMAL', { pmrNeeds });
+        const deductionResult = await walletService.deductFromWallet({
+            user_id: user.user_id,
+            amount: bookingPrice,
+            booking_reference: operatorBooking.booking_reference,
+            description: `Paiement booking ${transportMode} - ${itinerary.from?.name} → ${itinerary.to?.name}`,
+            voyage_id: voyage._id.toString()
+        });
+        
+        if (deductionResult.success) {
+            paymentData = {
+                transaction_id: deductionResult.transaction_id,
+                amount_paid: deductionResult.amount_deducted,
+                wallet_balance: deductionResult.balance_after
+            };
+            console.log(`✅ Paiement effectué : ${bookingPrice} points (solde: ${deductionResult.balance_after})`);
+        } else {
+            console.warn(`⚠️ Échec déduction wallet: ${deductionResult.error}`);
+            paymentData = { error: deductionResult.error, balance: deductionResult.currentBalance };
+        }
+    } catch (paymentError) {
+        console.error('⚠️ Erreur paiement wallet (booking continue):', paymentError.message);
+    }
+    
     return {
         reservation_id: reservation.reservation_id,
+        voyage_id: voyage._id.toString(),
+        voyage_id_numeric: voyage.id_voyage,
         booking_reference: operatorBooking.booking_reference,
         qr_code: qrCode,
         operator: operatorBooking.operator,
-        steps_completed: ['booking', 'qr_generation'],
+        agent: agentData,  // 🆕 ÉTAPE 8
+        prise_en_charge: priseEnChargeData,  // 🆕 ÉTAPE 8B
+        payment: paymentData,  // 🆕 ÉTAPE 10
+        segments: voyage.etapes,  // 🆕 Segments enrichis sauvegardés
+        steps_completed: ['booking', 'qr_generation', agentData ? 'agent_assigned' : null, priseEnChargeData ? 'prise_en_charge_created' : null, paymentData?.transaction_id ? 'payment' : null].filter(Boolean),
         next_step: 'Montrez le QR code au conducteur'
     };
 }
@@ -196,8 +520,16 @@ async function processMinimalBooking(user, itinerary, pmrNeeds, workflow) {
 /**
  * WORKFLOW LIGHT - Train moyenne distance
  * Étapes: Réservation opérateur + QR Code + Assistance PMR
+ * 
+ * ✅ CRÉER : Voyage MongoDB + Reservation MySQL
  */
 async function processLightBooking(user, itinerary, pmrNeeds, workflow) {
+    // ==========================================
+    // 🚆 WORKFLOW LIGHT (TRAIN RÉGIONAL)
+    // ⚠️ PAS d'enrollment biométrique (ÉTAPE 6)
+    // ⚠️ enrollment_id reste NULL
+    // ==========================================
+    
     // 1. Réservation opérateur
     const operatorBooking = await simulationService.simulateOperatorBooking(
         itinerary.segments?.[0] || { mode: itinerary.transport_mode || 'train' },
@@ -244,13 +576,46 @@ async function processLightBooking(user, itinerary, pmrNeeds, workflow) {
         issued_at: new Date().toISOString()
     };
     
-    // 2. Crée le voyage
+    // ==========================================
+    // 🆕 ÉTAPE 1 : CRÉER VOYAGE MONGODB
+    // ⚠️ enrollment_id NON INCLUS (workflow LIGHT)
+    // ==========================================
+    const transportMode = normalizeTransportType(itinerary.transport_mode || 'train');
+    
+    // 🆕 Enrichissement étapes avec données détaillées
+    const voyageEtapes = mapSegmentsToEtapes(itinerary, operatorBooking, transportMode, departureDate, arrivalDate);
+    
+    const voyageData = {
+        id_pmr: user.user_id,
+        id_accompagnant: null,
+        date_debut: new Date(departureDate),
+        date_fin: new Date(arrivalDate),
+        lieu_depart: {
+            locomotion: transportMode,
+            id: itinerary.from?.id || itinerary.from?.name || 'Unknown'
+        },
+        lieu_arrive: {
+            locomotion: transportMode,
+            id: itinerary.to?.id || itinerary.to?.name || 'Unknown'
+        },
+        bagage: [],
+        etapes: voyageEtapes,  // 🆕 Utiliser les étapes enrichies
+        prix_total: calculateTotalPrice(itinerary)
+        // ⚠️ PAS de enrollment_id ici (LIGHT)
+    };
+    
+    const voyage = await Voyage.create(voyageData);
+    console.log('✅ Voyage MongoDB créé:', voyage._id);
+    
+    // ==========================================
+    // 🆕 ÉTAPE 2 : CRÉER RESERVATION MYSQL
+    // ==========================================
     const reservation = await Reservations.create({
         user_id: user.user_id,
         num_reza_mmt: numRezaMmt,
         enregistre: false,
         assistance_PMR: pmrNeeds.assistance_level !== 'none' ? 'Oui' : 'Non',
-        Type_Transport: normalizeTransportType(itinerary.transport_mode || 'train'),
+        Type_Transport: transportMode,
         Lieu_depart: itinerary.from?.name || 'Unknown',
         Lieu_arrivee: itinerary.to?.name || 'Unknown',
         Date_depart: departureDate,
@@ -258,9 +623,58 @@ async function processLightBooking(user, itinerary, pmrNeeds, workflow) {
         Statut: 'CONFIRMED',
         booking_reference: operatorBooking.booking_reference,
         qr_code_data: JSON.stringify(qrCodeData),
-        id_voyage: null,
+        voyage_id_mongo: voyage._id.toString(),  // 🔗 LIEN MongoDB
+        id_voyage: voyage.id_voyage,              // 🔗 LIEN id_voyage (numérique)
         etape_voyage: 1
     });
+    
+    console.log('✅ Reservation MySQL créée:', reservation.reservation_id, '→ Voyage:', voyage._id);
+
+    // ==========================================
+    // 🆕 ÉTAPE 8 : AUTO-ASSIGN AGENT PMR
+    // ==========================================
+    let agentData = null;
+    try {
+        const agentResult = await agentAssignmentService.autoAssignAgent({
+            user_id: user.user_id,
+            voyage_id: voyage._id.toString(),
+            reservation_id: reservation.reservation_id,
+            pmr_needs: pmrNeeds,
+            location: itinerary.from?.name || 'Unknown',
+            transport_type: transportMode
+        });
+        
+        if (agentResult.agent_assigned) {
+            agentData = {
+                agent_id: agentResult.agent.agent_id,
+                agent_name: agentResult.agent.name,
+                agent_phone: agentResult.agent.phone
+            };
+            console.log(`✅ Agent assigné: ${agentData.agent_name}`);
+        }
+    } catch (agentError) {
+        console.error('⚠️ Erreur agent assignment (booking continue):', agentError.message);
+    }
+
+    // ==========================================
+    // 🆕 ÉTAPE 8B : CRÉER PRISES EN CHARGE (MULTI-SEGMENTS)
+    // ==========================================
+    let priseEnChargeData = null;
+    try {
+        const prisesEnCharge = await createPrisesEnChargeForSegments({
+            reservation,
+            voyage,
+            user,
+            itinerary,
+            agentData
+        });
+        
+        // Retourner toutes les prises en charge
+        priseEnChargeData = prisesEnCharge;
+        
+    } catch (priseEnChargeError) {
+        console.error('⚠️ Erreur création prises en charge (booking continue):', priseEnChargeError.message);
+    }
 
     // 3. Génère QR Code visuel
     const qrCode = simulationService.generateQRCode({
@@ -271,6 +685,41 @@ async function processLightBooking(user, itinerary, pmrNeeds, workflow) {
         departure_time: departureDate
     });
 
+    // ==========================================
+    // 🆕 ÉTAPE 9 : ACTIVER MONITORING INCIDENTS
+    // ==========================================
+    incidentDetectionService.monitorVoyageForIncidents(voyage._id.toString())
+        .catch(err => console.error('⚠️ Erreur monitoring incidents:', err.message));
+
+    // ==========================================
+    // 🆕 ÉTAPE 10 : AUTO-DEDUCTION WALLET
+    // ==========================================
+    let paymentData = null;
+    try {
+        const bookingPrice = walletService.calculateBookingPrice('LIGHT', { pmrNeeds });
+        const deductionResult = await walletService.deductFromWallet({
+            user_id: user.user_id,
+            amount: bookingPrice,
+            booking_reference: operatorBooking.booking_reference,
+            description: `Paiement booking ${transportMode} - ${itinerary.from?.name} → ${itinerary.to?.name}`,
+            voyage_id: voyage._id.toString()
+        });
+        
+        if (deductionResult.success) {
+            paymentData = {
+                transaction_id: deductionResult.transaction_id,
+                amount_paid: deductionResult.amount_deducted,
+                wallet_balance: deductionResult.balance_after
+            };
+            console.log(`✅ Paiement effectué : ${bookingPrice} points (solde: ${deductionResult.balance_after})`);
+        } else {
+            console.warn(`⚠️ Échec déduction wallet: ${deductionResult.error}`);
+            paymentData = { error: deductionResult.error, balance: deductionResult.currentBalance };
+        }
+    } catch (paymentError) {
+        console.error('⚠️ Erreur paiement wallet (booking continue):', paymentError.message);
+    }
+
     // 4. Résultat de base
     const result = {
         reservation_id: reservation.reservation_id,
@@ -279,7 +728,10 @@ async function processLightBooking(user, itinerary, pmrNeeds, workflow) {
         operator: operatorBooking.operator,
         departure_time: departureDate,
         arrival_time: arrivalDate,
-        steps_completed: ['operator_booking', 'qr_generation'],
+        agent: agentData,  // 🆕 ÉTAPE 8
+        prise_en_charge: priseEnChargeData,  // 🆕 ÉTAPE 8B
+        payment: paymentData,  // 🆕 ÉTAPE 10
+        steps_completed: ['operator_booking', 'qr_generation', agentData ? 'agent_assigned' : null, priseEnChargeData ? 'prise_en_charge_created' : null, paymentData?.transaction_id ? 'payment' : null].filter(Boolean),
         next_step: 'Présentez votre QR code à l\'embarquement'
     };
     
@@ -314,33 +766,50 @@ async function processLightBooking(user, itinerary, pmrNeeds, workflow) {
     result.steps_completed.push('assistance_coordination');
     result.next_step = 'Rendez-vous au point de rencontre 30min avant le départ';
     
+    // 🆕 Ajouter les IDs de voyage
+    result.voyage_id = reservation.voyage_id_mongo;
+    result.voyage_id_numeric = reservation.id_voyage;
+    
     return result;
 }
 
 /**
  * WORKFLOW MODERATE - Vol national
  * Étapes: Enrôlement biométrique + Check-in + QR Code
+ * 
+ * ✅ CRÉER : Voyage MongoDB + Reservation MySQL
  */
 async function processModerateBooking(user, itinerary, pmrNeeds, workflow) {
-    // 1. Enrôlement biométrique si pas déjà fait
+    // ==========================================
+    // 🆕 ÉTAPE 4 : ENROLLMENT BIOMÉTRIQUE AUTO
+    // ==========================================
+    console.log('🔐 ÉTAPE 4 : Enrollment biométrique pour workflow MODERATE...');
+    let enrollmentData = null;
     let biometricData = null;
-    if (!user.biometric_enrolled) {
-        // Simulation: on fait comme si l'utilisateur avait uploadé une photo
-        const faceMatch = await simulationService.simulateFaceMatch(
-            'enrollment_photo_base64',
-            'live_photo_base64'
-        );
+    
+    try {
+        enrollmentData = await enrollmentService.createAutoEnrollment(user, {
+            workflow_type: 'MODERATE',
+            identity_data: {
+                nom: user.nom,
+                prenom: user.prenom,
+                date_naissance: user.date_naissance
+            }
+        });
         
-        if (faceMatch.match) {
+        if (enrollmentData.success) {
             await user.update({ biometric_enrolled: true });
             biometricData = {
                 enrolled: true,
-                confidence: faceMatch.confidence,
-                liveness: faceMatch.liveness_check
+                enrollment_id: enrollmentData.enrollment_id,
+                already_enrolled: enrollmentData.already_exists,
+                qr_data_url: enrollmentData.qr_data_url
             };
+            console.log(`✅ Enrollment actif: ${enrollmentData.enrollment_id}`);
         }
-    } else {
-        biometricData = { enrolled: true, already_enrolled: true };
+    } catch (enrollError) {
+        console.error('⚠️ Erreur enrollment (booking continue quand même):', enrollError.message);
+        biometricData = { enrolled: false, error: enrollError.message };
     }
     
     // 2. Réservation opérateur (segment vol)
@@ -401,9 +870,38 @@ async function processModerateBooking(user, itinerary, pmrNeeds, workflow) {
         issued_at: new Date().toISOString()
     };
     
-    // 3. Crée le voyage
+    // ==========================================
+    // 🆕 ÉTAPE 1 : CRÉER VOYAGE MONGODB
+    // ==========================================
+    const voyageEtapes = mapSegmentsToEtapes(itinerary, operatorBooking, transportType, departureDate, arrivalDate);
+    
+    const voyageData = {
+        id_pmr: user.user_id,
+        id_accompagnant: null,
+        date_debut: new Date(departureDate),
+        date_fin: new Date(arrivalDate),
+        lieu_depart: {
+            locomotion: transportType,
+            id: itinerary.from?.id || itinerary.from?.name || 'Unknown'
+        },
+        lieu_arrive: {
+            locomotion: transportType,
+            id: itinerary.to?.id || itinerary.to?.name || 'Unknown'
+        },
+        bagage: [],
+        etapes: voyageEtapes,
+        prix_total: calculateTotalPrice(itinerary),
+        enrollment_id: enrollmentData?.enrollment_id || null // 🆕 ÉTAPE 4
+    };
+    
+    const voyage = await Voyage.create(voyageData);
+    console.log('✅ Voyage MongoDB créé:', voyage._id);
+    
+    // ==========================================
+    // 🆕 ÉTAPE 2 : CRÉER RESERVATION MYSQL
+    // ==========================================
     const reservation = await Reservations.create({
-        user_id: user.user_id,  // Correction: user.user_id
+        user_id: user.user_id,
         num_reza_mmt: numRezaMmt,
         enregistre: false,
         assistance_PMR: pmrNeeds.assistance_level !== 'none' ? 'Oui' : 'Non',
@@ -415,10 +913,60 @@ async function processModerateBooking(user, itinerary, pmrNeeds, workflow) {
         Statut: 'CONFIRMED',
         booking_reference: operatorBooking.booking_reference,
         qr_code_data: JSON.stringify(qrCodeData),
-        biometric_verified: true,
-        id_voyage: null,
-        etape_voyage: 1
+        biometric_verified: enrollmentData?.success || false, // 🆕 ÉTAPE 4
+        voyage_id_mongo: voyage._id.toString(),  // 🔗 LIEN MongoDB
+        id_voyage: voyage.id_voyage,              // 🔗 LIEN id_voyage (numérique)
+        enrollment_id: enrollmentData?.enrollment_id || null, // 🆕 ÉTAPE 4
+        etape_voyage: isMultimodal ? voyageEtapes.length : 1
     });
+    
+    console.log('✅ Reservation MySQL créée:', reservation.reservation_id, '→ Voyage:', voyage._id);
+    
+    // ==========================================
+    // 🆕 ÉTAPE 8 : AUTO-ASSIGN AGENT PMR
+    // ==========================================
+    let agentData = null;
+    try {
+        const agentResult = await agentAssignmentService.autoAssignAgent({
+            user_id: user.user_id,
+            voyage_id: voyage._id.toString(),
+            reservation_id: reservation.reservation_id,
+            pmr_needs: pmrNeeds,
+            location: itinerary.from?.name || 'Unknown',
+            transport_type: transportType
+        });
+        
+        if (agentResult.agent_assigned) {
+            agentData = {
+                agent_id: agentResult.agent.agent_id,
+                agent_name: agentResult.agent.name,
+                agent_phone: agentResult.agent.phone
+            };
+            console.log(`✅ Agent assigné: ${agentData.agent_name}`);
+        }
+    } catch (agentError) {
+        console.error('⚠️ Erreur agent assignment (booking continue):', agentError.message);
+    }
+    
+    // ==========================================
+    // 🆕 ÉTAPE 8B : CRÉER PRISES EN CHARGE (MULTI-SEGMENTS)
+    // ==========================================
+    let priseEnChargeData = null;
+    try {
+        const prisesEnCharge = await createPrisesEnChargeForSegments({
+            reservation,
+            voyage,
+            user,
+            itinerary,
+            agentData
+        });
+        
+        // Retourner toutes les prises en charge
+        priseEnChargeData = prisesEnCharge;
+        
+    } catch (priseEnChargeError) {
+        console.error('⚠️ Erreur création prises en charge (booking continue):', priseEnChargeError.message);
+    }
     
     // 4. Check-in automatique (simulé)
     const checkinData = {
@@ -437,6 +985,41 @@ async function processModerateBooking(user, itinerary, pmrNeeds, workflow) {
         departure_time: departureDate
     });
     
+    // ==========================================
+    // 🆕 ÉTAPE 9 : ACTIVER MONITORING INCIDENTS
+    // ==========================================
+    incidentDetectionService.monitorVoyageForIncidents(voyage._id.toString())
+        .catch(err => console.error('⚠️ Erreur monitoring incidents:', err.message));
+    
+    // ==========================================
+    // 🆕 ÉTAPE 10 : AUTO-DEDUCTION WALLET
+    // ==========================================
+    let paymentData = null;
+    try {
+        const bookingPrice = walletService.calculateBookingPrice('MODERATE', { pmrNeeds });
+        const deductionResult = await walletService.deductFromWallet({
+            user_id: user.user_id,
+            amount: bookingPrice,
+            booking_reference: operatorBooking.booking_reference,
+            description: `Paiement booking ${transportType} - ${itinerary.from?.name} → ${itinerary.to?.name}`,
+            voyage_id: voyage._id.toString()
+        });
+        
+        if (deductionResult.success) {
+            paymentData = {
+                transaction_id: deductionResult.transaction_id,
+                amount_paid: deductionResult.amount_deducted,
+                wallet_balance: deductionResult.balance_after
+            };
+            console.log(`✅ Paiement effectué : ${bookingPrice} points (solde: ${deductionResult.balance_after})`);
+        } else {
+            console.warn(`⚠️ Échec déduction wallet: ${deductionResult.error}`);
+            paymentData = { error: deductionResult.error, balance: deductionResult.currentBalance };
+        }
+    } catch (paymentError) {
+        console.error('⚠️ Erreur paiement wallet (booking continue):', paymentError.message);
+    }
+    
     await reservation.update({ 
         qr_code_data: qrCode.qr_data,
         checkin_data: JSON.stringify(checkinData),
@@ -451,17 +1034,36 @@ async function processModerateBooking(user, itinerary, pmrNeeds, workflow) {
     
     return {
         reservation_id: reservation.reservation_id,
+        voyage_id: voyage._id.toString(),
+        voyage_id_numeric: voyage.id_voyage,
         booking_reference: operatorBooking.booking_reference,
+        payment: paymentData,  // 🆕 ÉTAPE 10
+        segments: voyage.etapes,  // 🆕 Segments enrichis sauvegardés
+        enrollment: enrollmentData ? {
+            enrollment_id: enrollmentData.enrollment_id,
+            already_exists: enrollmentData.already_exists,
+            qr_data_url: enrollmentData.qr_data_url
+        } : null, // 🆕 ÉTAPE 4
         biometric: biometricData,
         checkin: checkinData,
         qr_code: qrCode,
         operator: operatorBooking.operator,
+        agent: agentData,  // 🆕 ÉTAPE 8
+        prise_en_charge: priseEnChargeData,  // 🆕 ÉTAPE 8B
         assistance: agent ? {
             agent_assigned: true,
             agent_name: agent.name,
             meeting_point: 'Porte PMR - Terminal départs'
         } : null,
-        steps_completed: ['booking', 'biometric_enrollment', 'checkin', 'qr_generation', 'assistance'],
+        steps_completed: [
+            'booking', 
+            enrollmentData?.success ? 'biometric_enrollment' : null,
+            'checkin', 
+            'qr_generation',
+            agentData ? 'agent_assigned' : null,  // 🆕 ÉTAPE 8
+            priseEnChargeData ? 'prise_en_charge_created' : null,  // 🆕 ÉTAPE 8B
+            'assistance'
+        ].filter(Boolean), // 🆕 ÉTAPE 4 : Filtre null
         next_step: 'Présentez-vous à la porte d\'embarquement 45min avant le départ'
     };
 }
@@ -469,33 +1071,50 @@ async function processModerateBooking(user, itinerary, pmrNeeds, workflow) {
 /**
  * WORKFLOW FULL - Vol international
  * Étapes: OCR Passeport + Enrôlement biométrique + Check-in + QR Code
+ * 
+ * ✅ Utilise processModerateBooking qui crée déjà Voyage MongoDB + Reservation MySQL
  */
 async function processFullBooking(user, itinerary, pmrNeeds, workflow) {
-    // 1. Simulation OCR passeport
-    const ocrData = await simulationService.simulateOCR('passport_image_base64', 'passport');
+    // ==========================================
+    // 🆕 ÉTAPE 4 : ENROLLMENT BIOMÉTRIQUE AUTO
+    // ==========================================
+    console.log('🔐 ÉTAPE 4 : Enrollment biométrique pour workflow FULL...');
+    let enrollmentData = null;
     
-    if (!ocrData.success || ocrData.data.confidence < 0.85) {
-        throw new Error('OCR passport validation failed');
+    try {
+        // Simulation OCR passeport (déjà dans enrollmentService mais on garde pour cohérence)
+        const ocrData = await simulationService.simulateOCR('passport_image_base64', 'passport');
+        
+        if (!ocrData.success || ocrData.data.confidence < 0.85) {
+            throw new Error('OCR passport validation failed');
+        }
+        
+        // Création enrollment avec données passeport
+        enrollmentData = await enrollmentService.createAutoEnrollment(user, {
+            workflow_type: 'FULL',
+            identity_data: {
+                nom: ocrData.data.nom || user.nom,
+                prenom: ocrData.data.prenom || user.prenom,
+                date_naissance: ocrData.data.date_naissance || user.date_naissance,
+                numero_id: ocrData.data.document_number,
+                nationalite: ocrData.data.nationalite || 'FR'
+            }
+        });
+        
+        if (enrollmentData.success) {
+            // Mise à jour profil utilisateur
+            await user.update({
+                passport_number: ocrData.data.document_number,
+                passport_expiry: ocrData.data.expiry_date,
+                biometric_enrolled: true
+            });
+            console.log(`✅ Enrollment FULL actif: ${enrollmentData.enrollment_id}`);
+        }
+    } catch (enrollError) {
+        console.error('⚠️ Erreur enrollment FULL (booking continue quand même):', enrollError.message);
     }
     
-    // 2. Validation biométrique
-    const faceMatch = await simulationService.simulateFaceMatch(
-        'passport_photo_base64',
-        'live_photo_base64'
-    );
-    
-    if (!faceMatch.match || faceMatch.confidence < 0.85) {
-        throw new Error('Biometric face matching failed');
-    }
-    
-    // 3. Mise à jour profil utilisateur
-    await user.update({
-        passport_number: ocrData.data.document_number,
-        passport_expiry: ocrData.data.expiry_date,
-        biometric_enrolled: true
-    });
-    
-    // 4. Réservation vol (même logique que MODERATE)
+    // 4. Réservation vol (même logique que MODERATE - crée déjà Voyage + Reservation avec enrollment_id)
     const moderateResult = await processModerateBooking(user, itinerary, pmrNeeds, workflow);
     
     // 5. Ajout des données OCR et vérifications

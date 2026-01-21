@@ -1,12 +1,13 @@
 /**
- * Service Notifications
+ * Service Notifications - MongoDB Unifié
  * Gère la création et l'envoi de notifications utilisateur
  * 
+ * ✅ SYSTÈME UNIFIÉ : MongoDB uniquement
  * Intégré avec Kafka pour notifications temps réel
  * MongoDB pour stockage persistant
  */
 
-const Notification = require('../models/NotificationMongo');
+const Notification = require('../models/Notification');
 // const { produceMessage } = require('./kafkaService');
 const crypto = require('crypto');
 

@@ -40,6 +40,34 @@ exports.searchMultimodal = async (req, res) => {
 };
 
 /**
+ * @route GET /api/search/autocomplete
+ * @desc Autocomplétion d'adresses avec Google Places
+ */
+exports.getAutocomplete = async (req, res) => {
+    try {
+        const { input } = req.query;
+
+        if (!input || input.length < 2) {
+            return res.status(200).json({
+                success: true,
+                predictions: []
+            });
+        }
+
+        const results = await searchService.getPlacesAutocomplete(input);
+        res.status(200).json(results);
+
+    } catch (error) {
+        console.error('❌ Erreur autocomplétion:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            predictions: []
+        });
+    }
+};
+
+/**
  * @route POST /api/search/validate-booking-deadlines
  * @desc Valide les délais de réservation pour un voyage
  */

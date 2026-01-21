@@ -7,6 +7,7 @@
 
 const { Reservations, BoardingPass, User } = require('../models');
 const qrService = require('../services/qrService');
+const reviewTriggerService = require('../services/reviewTriggerService'); // 🆕 ÉTAPE 7
 const mongoose = require('mongoose');
 
 // ✅ Fonction helper pour accéder à la collection voyages
@@ -86,6 +87,23 @@ exports.getHistory = async (req, res) => {
         const isPast = new Date(voyage.date_fin) < new Date();
         if (isPast && voyageStatus === 'pending') voyageStatus = 'completed';
 
+        // ==========================================
+        // 🆕 ÉTAPE 7 : AUTO-TRIGGER REVIEW
+        // ==========================================
+        if (voyageStatus === 'completed' && isPast) {
+          // Déclencher demande d'avis en arrière-plan (ne pas bloquer la requête)
+          reviewTriggerService.triggerReviewRequest({
+            voyage_id: voyage._id.toString(),
+            user_id: parseInt(user_id),
+            reservations: reservations,
+            depart: voyage.etapes?.[0]?.adresse_1 || voyage.lieu_depart?.id || 'N/A',
+            arrivee: voyage.etapes?.[voyage.etapes.length - 1]?.adresse_2 || voyage.lieu_arrive?.id || 'N/A',
+            transport_type: voyage.etapes?.[0]?.type || 'unknown'
+          }).catch(err => {
+            console.error('⚠️ Erreur trigger review (non bloquant):', err.message);
+          });
+        }
+
         return {
           voyage_id: voyage._id.toString(),
           id_voyage: voyage.id_voyage,
@@ -97,9 +115,11 @@ exports.getHistory = async (req, res) => {
           prix_total: voyage.prix_total,
           bagage: voyage.bagage || [],
           status: voyageStatus,
+          booking_reference: reservations[0]?.booking_reference || null, // 🆕 Ajout booking_reference au niveau voyage
           reservations: reservations.map(r => ({
             reservation_id: r.reservation_id,
             num_reza: r.num_reza_mmt,
+            booking_reference: r.booking_reference, // 🆕 Ajout booking_reference
             assistance_PMR: r.assistance_PMR,
             type_transport: r.Type_Transport,
             ticket_status: r.ticket_status,
@@ -185,7 +205,66 @@ exports.getVoyageDetails = async (req, res) => {
 
     console.log(`🔍 Récupération détails voyage ${id}`);
 
-    // Détecter si c'est une réservation standalone
+    // Si l'ID est un nombre simple, c'est une reservation_id
+    if (!isNaN(id)) {
+      const reservation = await Reservations.findOne({
+        where: { 
+          reservation_id: parseInt(id),
+          user_id: parseInt(user_id)
+        },
+        include: [
+          {
+            model: BoardingPass,
+            as: 'boarding_pass',
+            required: false
+          }
+        ]
+      });
+
+      if (!reservation) {
+        return res.status(404).json({
+          success: false,
+          error: 'Réservation introuvable'
+        });
+      }
+
+      const user = await User.findOne({ where: { user_id: parseInt(user_id) } });
+
+      return res.json({
+        success: true,
+        voyage: {
+          voyage_id: `standalone_${id}`,
+          id_voyage: null,
+          is_standalone: true,
+          user: {
+            user_id: parseInt(user_id),
+            name: user?.name,
+            surname: user?.surname,
+            email: user?.email
+          },
+          depart: reservation.departure_city,
+          arrivee: reservation.arrival_city,
+          date_debut: reservation.departure_date,
+          date_fin: reservation.arrival_date,
+          etapes: [],
+          prix_total: parseFloat(reservation.price) || 0,
+          bagage: [],
+          reservations: [{
+            reservation_id: reservation.reservation_id,
+            num_reza: reservation.num_reza_mmt,
+            assistance_PMR: reservation.assistance_PMR,
+            type_transport: reservation.Type_Transport,
+            ticket_status: reservation.ticket_status,
+            date_reservation: reservation.date_reservation,
+            booking_reference: reservation.booking_reference,
+            qr_code_data: reservation.qr_code_data,
+            boarding_pass: reservation.boarding_pass
+          }]
+        }
+      });
+    }
+
+    // Détecter si c'est une réservation standalone avec préfixe
     if (id.startsWith('standalone_')) {
       const reservationId = parseInt(id.replace('standalone_', ''));
       const reservation = await Reservations.findOne({

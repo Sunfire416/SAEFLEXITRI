@@ -32,7 +32,7 @@ export const NotificationProvider = ({ children }) => {
     if (!user?.user_id) return;
 
     try {
-      const response = await axios.get(`${API_BASE_URL}/notification`, {
+      const response = await axios.get(`${API_BASE_URL}/notifications`, {
         params: {
           user_id: user.user_id,
           limit: 50
@@ -58,7 +58,7 @@ export const NotificationProvider = ({ children }) => {
     if (!user?.user_id) return;
 
     try {
-      const response = await axios.get(`${API_BASE_URL}/notification/count`, {
+      const response = await axios.get(`${API_BASE_URL}/notifications/count`, {
         params: { user_id: user.user_id }
       });
 
@@ -77,7 +77,7 @@ export const NotificationProvider = ({ children }) => {
   const markAsRead = async (notificationId) => {
     try {
       const response = await axios.patch(
-        `${API_BASE_URL}/notification/${notificationId}/read`
+        `${API_BASE_URL}/notifications/${notificationId}/read`
       );
 
       if (response.data.success) {
@@ -106,7 +106,7 @@ export const NotificationProvider = ({ children }) => {
 
     try {
       const response = await axios.patch(
-        `${API_BASE_URL}/notification/mark-all-read`,
+        `${API_BASE_URL}/notifications/mark-all-read`,
         { user_id: user.user_id }
       );
 
@@ -129,7 +129,7 @@ export const NotificationProvider = ({ children }) => {
    */
   const deleteNotification = async (notificationId) => {
     try {
-      await axios.delete(`${API_BASE_URL}/notification/${notificationId}`);
+      await axios.delete(`${API_BASE_URL}/notifications/${notificationId}`);
 
       // Retirer de l'état local
       setNotifications(prev =>

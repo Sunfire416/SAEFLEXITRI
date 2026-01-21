@@ -587,4 +587,54 @@ function toRad(degrees) {
     return degrees * (Math.PI / 180);
 }
 
+/**
+ * Autocomplétion d'adresses avec Google Maps Places Autocomplete API
+ * @param {string} input - Texte saisi par l'utilisateur
+ * @returns {Promise<Array>} - Liste de suggestions d'adresses
+ */
+async function getPlacesAutocomplete(input) {
+    try {
+        if (!GOOGLE_MAPS_API_KEY) {
+            console.warn('⚠️  GOOGLE_MAPS_API_KEY manquante pour autocomplétion');
+            return { success: false, predictions: [] };
+        }
+
+        if (!input || input.length < 3) {
+            return { success: true, predictions: [] };
+        }
+
+        const url = `${GOOGLE_MAPS_BASE_URL}/place/autocomplete/json`;
+        const response = await axios.get(url, {
+            params: {
+                input: input,
+                types: 'address',  // Adresses complètes (gares, stations, rues)
+                language: 'fr',
+                key: GOOGLE_MAPS_API_KEY
+            },
+            timeout: 5000
+        });
+
+        if (response.data?.status === 'OK') {
+            return {
+                success: true,
+                predictions: response.data.predictions.map(p => ({
+                    description: p.description,
+                    place_id: p.place_id,
+                    main_text: p.structured_formatting?.main_text || p.description,
+                    secondary_text: p.structured_formatting?.secondary_text || ''
+                }))
+            };
+        }
+
+        console.log(`⚠️  Places Autocomplete status: ${response.data?.status}`);
+        return { success: false, predictions: [], error: response.data?.status };
+
+    } catch (error) {
+        console.error('❌ Erreur Places Autocomplete:', error.message);
+        return { success: false, predictions: [], error: error.message };
+    }
+}
+
+exports.getPlacesAutocomplete = getPlacesAutocomplete;
+
 module.exports = exports;

@@ -11,6 +11,7 @@ const BoardingPass = require('./BoardingPass');
 const Notification = require('./Notification');
 const Voyage = require('./Voyage');
 const Agent = require('./Agent');
+const PriseEnCharge = require('./PriseEnCharge');
 
 // Associations
 
@@ -47,6 +48,39 @@ User.hasMany(BoardingPass, {
     as: 'boarding_passes'
 });
 
+// ==========================================
+// 🆕 ASSOCIATIONS PRISE EN CHARGE PMR
+// ==========================================
+// PriseEnCharge et Reservations
+PriseEnCharge.belongsTo(Reservations, {
+    foreignKey: 'reservation_id',
+    as: 'reservation'
+});
+Reservations.hasOne(PriseEnCharge, {
+    foreignKey: 'reservation_id',
+    as: 'prise_en_charge'
+});
+
+// PriseEnCharge et User
+PriseEnCharge.belongsTo(User, {
+    foreignKey: 'user_id',
+    as: 'user'
+});
+User.hasMany(PriseEnCharge, {
+    foreignKey: 'user_id',
+    as: 'prises_en_charge'
+});
+
+// PriseEnCharge et Agent (optionnel)
+PriseEnCharge.belongsTo(Agent, {
+    foreignKey: 'agent_id',
+    as: 'agent'
+});
+Agent.hasMany(PriseEnCharge, {
+    foreignKey: 'agent_id',
+    as: 'prises_en_charge'
+});
+
 module.exports = {
     Facturation,
     Agent,
@@ -59,6 +93,7 @@ module.exports = {
     CheckInLog,
     BoardingPass,
     // ==========================================
+    PriseEnCharge,
     Notification,
     Voyage,
 };

@@ -1,124 +1,65 @@
+/**
+ * Routes Notifications - MongoDB Unifié
+ * Base path: /notifications
+ * 
+ * ✅ SYSTÈME UNIFIÉ : MongoDB uniquement pour notifications
+ * Ce fichier remplace l'ancien système MySQL
+ */
+
 const express = require('express');
 const router = express.Router();
 const notificationController = require('../controllers/notificationController');
 
 /**
- * @swagger
- * tags:
- *   name: Notification
- *   description: API pour gérer les notifications
- */
-
-/**
- * @swagger
- * /notification:
- *   post:
- *     summary: Créer une nouvelle notification
- *     tags: [Notification]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               
- *     responses:
- *       201:
- *         description: Notification créée avec succès
- *       500:
- *         description: Erreur lors de la création de la notification
- */
-router.post('/', notificationController.createNotification);
-
-/**
- * @swagger
- * /notification:
- *   get:
- *     summary: Récupérer toutes les notifications
- *     tags: [Notification]
- *     responses:
- *       200:
- *         description: Liste de toutes les notifications
- *       500:
- *         description: Erreur lors de la récupération des notifications
+ * GET /notification
+ * Récupérer toutes les notifications de l'utilisateur
+ * Query params: user_id, limit, skip, unread_only, type
  */
 router.get('/', notificationController.getNotifications);
 
 /**
- * @swagger
- * /notification/{id}:
- *   get:
- *     summary: Récupérer une notification par ID
- *     tags: [Notification]
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         description: ID de la notification à récupérer
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Notification récupérée avec succès
- *       404:
- *         description: Notification non trouvée
- *       500:
- *         description: Erreur lors de la récupération de la notification
+ * GET /notification/unread
+ * Récupérer notifications non lues
+ * Query params: user_id
+ */
+router.get('/unread', notificationController.getUnreadNotifications);
+
+/**
+ * GET /notification/count
+ * Compter notifications non lues
+ * Query params: user_id
+ */
+router.get('/count', notificationController.getUnreadCount);
+
+/**
+ * GET /notification/:id
+ * Récupérer une notification par ID
  */
 router.get('/:id', notificationController.getNotificationById);
 
 /**
- * @swagger
- * /notification/{id}:
- *   put:
- *     summary: Mettre à jour une notification
- *     tags: [Notification]
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         description: ID de la notification à mettre à jour
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               
- *     responses:
- *       200:
- *         description: Notification mise à jour avec succès
- *       404:
- *         description: Notification non trouvée
- *       500:
- *         description: Erreur lors de la mise à jour de la notification
+ * POST /notification
+ * Créer une notification (admin/system)
+ * Body: { user_id, type, title, message, data, agent_info, priority, icon }
  */
-router.put('/:id', notificationController.updateNotification);
+router.post('/', notificationController.createNotification);
 
 /**
- * @swagger
- * /notification/{id}:
- *   delete:
- *     summary: Supprimer une notification
- *     tags: [Notification]
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         description: ID de la notification à supprimer
- *         schema:
- *           type: integer
- *     responses:
- *       204:
- *         description: Notification supprimée avec succès
- *       404:
- *         description: Notification non trouvée
- *       500:
- *         description: Erreur lors de la suppression de la notification
+ * PATCH /notification/:id/read
+ * Marquer notification comme lue
+ */
+router.patch('/:id/read', notificationController.markAsRead);
+
+/**
+ * PATCH /notification/mark-all-read
+ * Marquer toutes les notifications comme lues
+ * Body: { user_id }
+ */
+router.patch('/mark-all-read', notificationController.markAllAsRead);
+
+/**
+ * DELETE /notification/:id
+ * Supprimer une notification
  */
 router.delete('/:id', notificationController.deleteNotification);
 

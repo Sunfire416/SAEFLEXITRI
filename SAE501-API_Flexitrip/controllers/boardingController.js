@@ -73,8 +73,11 @@ exports.validateBoarding = async (req, res) => {
       });
     }
 
-    // Vérifier porte
-    if (boardingPass.gate !== gate) {
+    // Vérifier porte (case-insensitive + trim)
+    const normalizedExpectedGate = (boardingPass.gate || '').toLowerCase().trim();
+    const normalizedProvidedGate = (gate || '').toLowerCase().trim();
+    
+    if (normalizedExpectedGate !== normalizedProvidedGate) {
       return res.status(400).json({
         success: false,
         error: `Mauvaise porte. Porte attendue : ${boardingPass.gate}`,
@@ -209,7 +212,11 @@ exports.scanGate = async (req, res) => {
       });
     }
 
-    if (boardingPass.gate !== gate) {
+    // Vérifier porte (case-insensitive + trim)
+    const normalizedExpectedGate = (boardingPass.gate || '').toLowerCase().trim();
+    const normalizedProvidedGate = (gate || '').toLowerCase().trim();
+    
+    if (normalizedExpectedGate !== normalizedProvidedGate) {
       return res.status(400).json({
         success: false,
         error: `Mauvaise porte. Attendue : ${boardingPass.gate}`

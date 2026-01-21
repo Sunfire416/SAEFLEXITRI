@@ -1,0 +1,75 @@
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
+
+const PriseEnCharge = sequelize.define('prise_en_charge', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
+    comment: 'ID unique de la prise en charge'
+  },
+  reservation_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    comment: 'Référence à la réservation (FK)'
+  },
+  voyage_id_mongo: {
+    type: DataTypes.STRING(24),
+    allowNull: true,
+    comment: 'ID du voyage MongoDB'
+  },
+  agent_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Agent assigné (FK vers Agent, nullable car assignation peut être après)'
+  },
+  user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    comment: 'ID de l\'utilisateur PMR (FK)'
+  },
+  etape_numero: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 1,
+    comment: 'Numéro de l\'étape dans le voyage (1, 2, 3...)'
+  },
+  validation_token: {
+    type: DataTypes.STRING(100),
+    unique: true,
+    allowNull: false,
+    comment: 'Token public unique pour validation (crypto.randomBytes)'
+  },
+  status: {
+    type: DataTypes.ENUM('pending', 'validated', 'cancelled'),
+    defaultValue: 'pending',
+    allowNull: false,
+    comment: 'Statut de la prise en charge'
+  },
+  validated_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Date/heure de validation'
+  },
+  validated_by: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Nom/fonction du validateur (ex: Jean Dupont - Agent SNCF)'
+  },
+  location: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Lieu de prise en charge (gare, arrêt, aéroport...)'
+  },
+  notes: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Notes additionnelles sur la prise en charge'
+  }
+}, {
+  tableName: 'prise_en_charge',
+  timestamps: true, // createdAt, updatedAt
+  comment: 'Traçabilité des prises en charge PMR par agents/personnel transport'
+});
+
+module.exports = PriseEnCharge;
