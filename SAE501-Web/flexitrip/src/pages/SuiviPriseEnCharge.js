@@ -85,6 +85,11 @@ const SuiviPriseEnCharge = () => {
     navigator.clipboard.writeText(url);
     alert(`✅ Lien copié pour l'étape ${etape} !`);
   };
+
+  const openChat = (etapeNumero) => {
+    if (!reservationId || !etapeNumero) return;
+    navigate(`/chat/reservation/${reservationId}/etape/${etapeNumero}`);
+  };
   
   const validatedCount = prisesEnCharge.filter(p => p.status === 'validated').length;
   const progressPercentage = prisesEnCharge.length > 0 
@@ -183,9 +188,20 @@ const SuiviPriseEnCharge = () => {
                     {pec.segment?.mode || pec.reservation?.type_transport || 'Transport'} 
                     {pec.segment?.line && ` - Ligne ${pec.segment.line}`}
                   </h3>
-                  <span className={`status-badge ${pec.status}`}>
-                    {getStatusIcon(pec.status)} {getStatusLabel(pec.status)}
-                  </span>
+                  <div className="timeline-header-actions">
+                    {pec.status === 'validated' ? (
+                      <button
+                        type="button"
+                        className="btn-chat"
+                        onClick={() => openChat(pec.etape_numero)}
+                      >
+                        💬 Ouvrir le chat
+                      </button>
+                    ) : null}
+                    <span className={`status-badge ${pec.status}`}>
+                      {getStatusIcon(pec.status)} {getStatusLabel(pec.status)}
+                    </span>
+                  </div>
                 </div>
                 
                 <div className="timeline-details">

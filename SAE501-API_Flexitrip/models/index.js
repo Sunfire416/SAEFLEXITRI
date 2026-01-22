@@ -17,6 +17,13 @@ const PriseEnCharge = require('./PriseEnCharge');
 // ==========================================
 const AgentAvailability = require('./AgentAvailability');
 const AgentSkills = require('./AgentSkills');
+const Bagage = require('./Bagage');
+const BagageEvent = require('./BagageEvent');
+// ==========================================
+// 💬 CHAT (PMR <-> Agent) - Additif
+// ==========================================
+const ChatConversation = require('./ChatConversation');
+const ChatMessage = require('./ChatMessage');
 
 // Associations
 
@@ -109,6 +116,74 @@ AgentSkills.belongsTo(Agent, {
     as: 'agent'
 });
 
+// 🧳 ASSOCIATIONS BAGAGES (TRACKING)
+// ==========================================
+Bagage.belongsTo(Reservations, {
+    foreignKey: 'reservation_id',
+    as: 'reservation'
+});
+Reservations.hasMany(Bagage, {
+    foreignKey: 'reservation_id',
+    as: 'bagages'
+});
+
+Bagage.belongsTo(User, {
+    foreignKey: 'user_id',
+    as: 'user'
+});
+User.hasMany(Bagage, {
+    foreignKey: 'user_id',
+    as: 'bagages'
+});
+
+BagageEvent.belongsTo(Bagage, {
+    foreignKey: 'bagage_id',
+    as: 'bagage'
+});
+Bagage.hasMany(BagageEvent, {
+    foreignKey: 'bagage_id',
+    as: 'events'
+});
+
+// ==========================================
+// 💬 ASSOCIATIONS CHAT (Additif)
+// ==========================================
+ChatConversation.belongsTo(User, {
+    foreignKey: 'pmr_user_id',
+    as: 'pmr_user'
+});
+User.hasMany(ChatConversation, {
+    foreignKey: 'pmr_user_id',
+    as: 'pmr_conversations'
+});
+
+ChatConversation.belongsTo(User, {
+    foreignKey: 'agent_user_id',
+    as: 'agent_user'
+});
+User.hasMany(ChatConversation, {
+    foreignKey: 'agent_user_id',
+    as: 'agent_conversations'
+});
+
+ChatMessage.belongsTo(ChatConversation, {
+    foreignKey: 'conversation_id',
+    as: 'conversation'
+});
+ChatConversation.hasMany(ChatMessage, {
+    foreignKey: 'conversation_id',
+    as: 'messages'
+});
+
+ChatMessage.belongsTo(User, {
+    foreignKey: 'sender_user_id',
+    as: 'sender'
+});
+User.hasMany(ChatMessage, {
+    foreignKey: 'sender_user_id',
+    as: 'sent_messages'
+});
+
 module.exports = {
     Facturation,
     Agent,
@@ -122,6 +197,10 @@ module.exports = {
     BoardingPass,
     // ==========================================
     PriseEnCharge,
+    Bagage,
+    BagageEvent,
+    ChatConversation,
+    ChatMessage,
     Notification,
     Voyage,
     // ==========================================

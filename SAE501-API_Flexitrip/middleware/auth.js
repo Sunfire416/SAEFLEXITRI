@@ -189,7 +189,7 @@ const optional = async (req, res, next) => {
 /**
  * Middleware pour vérifier si l'utilisateur est admin ou agent
  */
-exports.requireAdminOrAgent = (req, res, next) => {
+const requireAdminOrAgent = (req, res, next) => {
     if (!req.user) {
         return res.status(401).json({ error: 'Non authentifié' });
     }
@@ -209,5 +209,6 @@ module.exports = {
     requirePMR,
     requireAgent,
     requireAdmin,
+    requireAdminOrAgent,
     optional
 };

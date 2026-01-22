@@ -22,6 +22,10 @@ import UserAccessPage from "./pages/UserAccessPage";
 import PriseEnChargeValidation from "./pages/PriseEnChargeValidation";
 import SuiviPriseEnCharge from "./pages/SuiviPriseEnCharge";
 import AgentAssignmentPage from "./pages/AgentAssignmentPage";
+import BaggageDashboard from "./pages/BaggageDashboard";
+import BaggageDetail from "./pages/BaggageDetail";
+import BaggageScan from "./pages/BaggageScan";
+import ChatPage from "./pages/ChatPage";
 
 // Components
 import ProfilePage from "./components/Profile/Profile";
@@ -37,7 +41,7 @@ import EditUser from "./components/EditerProfil/EditProfil";
 import WalletHistory from "./components/Wallet/WalletHistory";
 import FeedbackForm from "./components/Feedback/FeedbackForm";
 import VoyageTracking from "./components/Tracking/VoyageTracking";
-import AgentDashboard from "./components/Agent/AgentDashboard";
+import AgentDashboard from "./pages/AgentDashboard";
 import PmrAssistance from "./components/PmrAssistance/PmrAssistance";
 import PmrHome from "./components/Pmr_home/Pmr_home";
 
@@ -93,9 +97,21 @@ function App() {
                         <Route path="/user/tracking/:reservationId" element={<RouteProtect><VoyageTracking /></RouteProtect>} />
                         <Route path="/user/pmr-assistance" element={<RouteProtect><PmrAssistance /></RouteProtect>} />
                         <Route path="/pmr/home" element={<RouteProtect><PmrHome /></RouteProtect>} />
-                        <Route path="/agent/dashboard" element={<RouteProtect><AgentDashboard /></RouteProtect>} />
                         <Route path="/user/agent-assignment" element={<RouteProtect><AgentAssignmentPage /></RouteProtect>} />
                         <Route path="/suivi-prise-en-charge/:reservationId" element={<RouteProtect><SuiviPriseEnCharge /></RouteProtect>} />
+
+                        {/* Chat (PMR / Agent) */}
+                        <Route path="/chat/reservation/:reservationId/etape/:etapeNumero" element={<RouteProtect allowedRoles={["PMR", "Agent"]}><ChatPage /></RouteProtect>} />
+
+                        {/* Bagages (PMR / Accompagnant) */}
+                        <Route path="/user/bagages" element={<RouteProtect allowedRoles={["PMR", "Accompagnant"]}><BaggageDashboard /></RouteProtect>} />
+                        <Route path="/user/bagages/:bagageId" element={<RouteProtect allowedRoles={["PMR", "Accompagnant"]}><BaggageDetail /></RouteProtect>} />
+
+                        {/* Agent PMR Dashboard */}
+                        <Route path="/agent/dashboard" element={<RouteProtect allowedRoles={["Agent"]}><AgentDashboard /></RouteProtect>} />
+
+                        {/* Agent: scan bagage */}
+                        <Route path="/agent/bagages/scan" element={<RouteProtect allowedRoles={["Agent"]}><BaggageScan /></RouteProtect>} />
                       </Routes>
                       <Footer />
                     </>

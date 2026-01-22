@@ -73,15 +73,7 @@ exports.validateBoarding = async (req, res) => {
 
     // Validation Porte (Gate)
     // Dans le schéma Supabase, on n'a pas de colonne gate explicite dans reservations.
-    // On vérifie si la gate demandée correspond à une étape du voyage ou info lieu_depart
-    // Pour l'instant, on loggue juste un warning si ça ne matche pas, pour ne pas bloquer.
-    /*
-    const isValidGate = checkGateMatch(reservation, gate);
-    if (!isValidGate) {
-         console.warn(`⚠️ Warning: Gate mismatch. Expected from reservation logic vs ${gate}`);
-         // On pourrait retourner une erreur ici si strict
-    }
-    */
+    // On loggue un warning si besoin sans bloquer l'accès.
 
     // Face matching optionnel
     let faceMatchScore = null;

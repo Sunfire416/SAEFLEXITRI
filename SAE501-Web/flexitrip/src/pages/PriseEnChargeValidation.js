@@ -12,7 +12,7 @@ const PriseEnChargeValidation = () => {
   const [loading, setLoading] = useState(true);
   const [priseEnCharge, setPriseEnCharge] = useState(null);
   const [error, setError] = useState(null);
-  const [validatedBy, setValidatedBy] = useState('');
+  const [agentQrPublicId, setAgentQrPublicId] = useState('');
   const [validating, setValidating] = useState(false);
   const [validated, setValidated] = useState(false);
   
@@ -45,8 +45,8 @@ const PriseEnChargeValidation = () => {
   const handleValidate = async (e) => {
     e.preventDefault();
     
-    if (!validatedBy.trim()) {
-      alert('Veuillez saisir votre nom et fonction');
+    if (!agentQrPublicId.trim()) {
+      alert('Veuillez saisir le QR Code de l\'agent');
       return;
     }
     
@@ -54,7 +54,7 @@ const PriseEnChargeValidation = () => {
       setValidating(true);
       const response = await axios.post(
         `${API_BASE_URL}/prise-en-charge/${token}/validate`,
-        { validated_by: validatedBy.trim() }
+        { agent_qr_public_id: agentQrPublicId.trim() }
       );
       
       if (response.data.success) {
@@ -170,10 +170,10 @@ const PriseEnChargeValidation = () => {
               <span className="label">Étape :</span>
               <strong>#{priseEnCharge.etape_numero}</strong>
             </div>
-            {priseEnCharge.reservation.assistance_PMR && (
+            {priseEnCharge.reservation.assistance_pmr && (
               <div className="pec-row">
                 <span className="label">Assistance PMR :</span>
-                <strong>{priseEnCharge.reservation.assistance_PMR}</strong>
+                <strong>{priseEnCharge.reservation.assistance_pmr}</strong>
               </div>
             )}
           </div>
@@ -249,27 +249,26 @@ const PriseEnChargeValidation = () => {
             </div>
             
             <div className="pec-form-group">
-              <label htmlFor="validated_by">
-                Votre nom et fonction <span className="required">*</span>
+              <label htmlFor="agent_qr_public_id">
+                QR Code Agent PMR <span className="required">*</span>
               </label>
               <input
-                id="validated_by"
+                id="agent_qr_public_id"
                 type="text"
-                value={validatedBy}
-                onChange={(e) => setValidatedBy(e.target.value)}
-                placeholder="Ex: Jean Dupont - Agent SNCF Gare de Lyon"
-                required
                 disabled={validating}
+                value={agentQrPublicId}
+                onChange={(e) => setAgentQrPublicId(e.target.value)}
+                placeholder="Scannez ou collez le QR de l'agent"
+                required
                 className="pec-input"
               />
               <small className="pec-help-text">
-                Cette information sera enregistrée et visible par le passager
+                Le PMR doit saisir/coller le contenu du QR Code fourni par l’agent. Cette information sera enregistrée et visible par le passager.
               </small>
             </div>
-            
             <button 
               type="submit" 
-              disabled={validating || !validatedBy.trim()} 
+              disabled={validating || !agentQrPublicId.trim()} 
               className="pec-btn-validate"
             >
               {validating ? (

@@ -262,6 +262,95 @@
   gap: 4px;
 }
 
+/* Bagages (additif) */
+.voyage-bagages-summary {
+  margin-top: -4px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.bagages-section {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.bagages-title {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.bagages-list {
+  display: grid;
+  gap: 8px;
+}
+
+.bagage-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background: white;
+  border: 1px solid #eef2f7;
+}
+
+.bagage-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.bagage-dot {
+  color: #94a3b8;
+}
+
+.bagage-sub {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #475569;
+  font-size: 12px;
+}
+
+.bagage-sep {
+  color: #cbd5e1;
+}
+
+.bagage-actions {
+  display: flex;
+  align-items: center;
+}
+
+.btn-bagage-view {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-bagage-view:hover {
+  filter: brightness(0.98);
+}
 .route-dot.start {
   background: #10b981;
   box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);

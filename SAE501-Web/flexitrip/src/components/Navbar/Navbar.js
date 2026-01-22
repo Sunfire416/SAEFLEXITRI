@@ -142,14 +142,17 @@ function Navbar() {
                             <li className="nav-item">
                                 <a href="/user/voyages" className="nav-links">✈️ Mes Voyages</a>
                             </li>
-                            <li className="nav-item">
-                                <a href="/user/checkin" className="nav-links">📋 Check-in</a>
                             </li>
-                            <li className="nav-item">
-                                <a href="/user/baggage-tracking" className="nav-links">Baggage Tracking</a>
-                            </li>
+                            {(user.role === 'PMR' || user.role === 'Accompagnant') && (
+                                <li className="nav-item">
+                                    <a href="/user/bagages" className="nav-links">🧳 Mes bagages</a>
+                                </li>
+                            )}
                             <li className="nav-item">
                                 <a href="/user/pmr-assistance" className="nav-links">PMR Assistance</a>
+                            </li>
+                            <li className="nav-item">
+                                <a href="/user/checkin" className="nav-links">📋 Check-in</a>
                             </li>
                             <li className="nav-item">
                                 <a href="/user/boarding" className="nav-links">🎫 Boarding Pass</a>
@@ -188,11 +191,20 @@ function Navbar() {
                                 <a href="/user/settings">⚙️ Paramètres <AngleRightIcon className="icon-Drop" /></a>
                                 <a href="/user/notifications">📬 Notifications <AngleRightIcon className="icon-Drop" /></a>
                                 <a href="/user/voyages">✈️ Mes Voyages <AngleRightIcon className="icon-Drop" /></a>
+                                {(user.role === 'PMR' || user.role === 'Accompagnant') && (
+                                    <a href="/user/bagages">🧳 Mes bagages <AngleRightIcon className="icon-Drop" /></a>
+                                )}
                                 <a href="/user/checkin">📋 Check-in <AngleRightIcon className="icon-Drop" /></a>
                                 <a href="/user/boarding">🎫 Boarding Pass <AngleRightIcon className="icon-Drop" /></a>
                                 <a href="/user/boarding-gate">🚪 Porte Embarquement <AngleRightIcon className="icon-Drop" /></a>
                                 <a href="/user/ewallet">💰 Wallet <AngleRightIcon className="icon-Drop" /></a>
                                 <a href="/user/agent-assignment">🤖 Agent IA <AngleRightIcon className="icon-Drop" /></a>
+                                {user.role === 'Agent' && (
+                                    <>
+                                        <a href="/agent/dashboard">🧑‍✈️ Dashboard Agent <AngleRightIcon className="icon-Drop" /></a>
+                                        <a href="/agent/bagages/scan">📦 Scan bagage <AngleRightIcon className="icon-Drop" /></a>
+                                    </>
+                                )}
                                 <label className="upload-label">
                                     Changer l’image de profil
                                     <input
@@ -286,14 +298,17 @@ function Navbar() {
                             <li className="nav-item">
                                 <a href="/user/voyages" className="nav-links" onClick={toggleMobileMenu}>Mes Voyages<AngleRightIcon className="icon-angle"/></a>
                             </li>
-                            <li className="nav-item">
-                                <a href="/user/checkin" className="nav-links" onClick={toggleMobileMenu}>Check-in<AngleRightIcon className="icon-angle"/></a>
                             </li>
-                            <li className="nav-item">
-                                <a href="/user/baggage-tracking" className="nav-links" onClick={toggleMobileMenu}>Baggage Tracking<AngleRightIcon className="icon-angle"/></a>
-                            </li>
+                            {(user.role === 'PMR' || user.role === 'Accompagnant') && (
+                                <li className="nav-item">
+                                    <a href="/user/bagages" className="nav-links" onClick={toggleMobileMenu}>Mes bagages<AngleRightIcon className="icon-angle"/></a>
+                                </li>
+                            )}
                             <li className="nav-item">
                                 <a href="/user/pmr-assistance" className="nav-links" onClick={toggleMobileMenu}>PMR Assistance<AngleRightIcon className="icon-angle"/></a>
+                            </li>
+                            <li className="nav-item">
+                                <a href="/user/checkin" className="nav-links" onClick={toggleMobileMenu}>Check-in<AngleRightIcon className="icon-angle"/></a>
                             </li>
                             <li className="nav-item">
                                 <a href="/user/boarding" className="nav-links" onClick={toggleMobileMenu}>Boarding Pass<AngleRightIcon className="icon-angle"/></a>
@@ -307,6 +322,16 @@ function Navbar() {
                             <li className="nav-item">
                                 <a href="/user/agent-assignment" className="nav-links" onClick={toggleMobileMenu}>Agent IA<AngleRightIcon className="icon-angle"/></a>
                             </li>
+                            {user.role === 'Agent' && (
+                                <>
+                                    <li className="nav-item">
+                                        <a href="/agent/dashboard" className="nav-links" onClick={toggleMobileMenu}>Dashboard Agent<AngleRightIcon className="icon-angle"/></a>
+                                    </li>
+                                    <li className="nav-item">
+                                        <a href="/agent/bagages/scan" className="nav-links" onClick={toggleMobileMenu}>Scan bagage<AngleRightIcon className="icon-angle"/></a>
+                                    </li>
+                                </>
+                            )}
                         </>
                     )}
                 </ul>

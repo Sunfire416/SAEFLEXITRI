@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import './VoyageCard.css';
 
-const VoyageCard = ({ voyage, onOpenQR, onCancelCheckin, onDeleteVoyage }) => {
+const VoyageCard = ({ voyage, bagagesByReservationId = {}, onOpenQR, onCancelCheckin, onDeleteVoyage }) => {
   const [expanded, setExpanded] = useState(false);
 
   const getStatusBadge = (status) => {
@@ -65,6 +65,29 @@ const VoyageCard = ({ voyage, onOpenQR, onCancelCheckin, onDeleteVoyage }) => {
   const hasReservations = voyage.reservations && voyage.reservations.length > 0;
   const hasBoardingPass = hasReservations && voyage.reservations.some(r => r.boarding_pass);
 
+  const bagageStatusLabel = (status) => {
+    const labels = {
+      created: 'Créé',
+      tagged: 'Tag généré',
+      dropped: 'Déposé',
+      in_transit: 'En transit',
+      loaded: 'Chargé',
+      arrived: 'Arrivé',
+      delivered: 'Livré',
+      exception: 'Incident'
+    };
+    return labels[status] || status || '—';
+  };
+
+  const formatDateTime = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString('fr-FR');
+  };
+
+  const reservationIds = hasReservations ? voyage.reservations.map(r => String(r.reservation_id)) : [];
+  const bagageCount = reservationIds.reduce((sum, id) => sum + ((bagagesByReservationId[id] || []).length), 0);
   // Utiliser les heures réelles des segments si disponibles
   const firstSegment = voyage.etapes && voyage.etapes.length > 0 ? voyage.etapes[0] : null;
   const lastSegment = voyage.etapes && voyage.etapes.length > 0 ? voyage.etapes[voyage.etapes.length - 1] : null;
@@ -126,6 +149,13 @@ const VoyageCard = ({ voyage, onOpenQR, onCancelCheckin, onDeleteVoyage }) => {
           </div>
         </div>
       </div>
+
+      {/* Bagages (résumé) */}
+      {bagageCount > 0 && (
+        <div className="voyage-bagages-summary">
+          🧳 {bagageCount} bagage{bagageCount > 1 ? 's' : ''}
+        </div>
+      )}
 
       {/* Etapes (si expanded) */}
       {expanded && voyage.etapes && voyage.etapes.length > 0 && (
@@ -238,6 +268,50 @@ const VoyageCard = ({ voyage, onOpenQR, onCancelCheckin, onDeleteVoyage }) => {
                   )}
                 </div>
               )}
+
+              {/* Bagages liés à la réservation */}
+              {(() => {
+                const bagages = bagagesByReservationId[String(resa.reservation_id)] || [];
+                if (bagages.length === 0) return null;
+                return (
+                  <div className="bagages-section">
+                    <div className="bagages-title">
+                      🧳 Bagages ({bagages.length})
+                    </div>
+                    <div className="bagages-list">
+                      {bagages.map((b) => (
+                        <div key={b.bagage_id} className="bagage-item">
+                          <div className="bagage-main">
+                            <div className="bagage-line">
+                              <strong>#{b.bagage_id}</strong>
+                              <span className="bagage-dot">•</span>
+                              <span>{b.bagage_type}</span>
+                              <span className="bagage-dot">•</span>
+                              <span className={`bagage-status ${b.status || ''}`}>{bagageStatusLabel(b.status)}</span>
+                            </div>
+                            <div className="bagage-sub">
+                              {b.last_location ? <span>📍 {b.last_location}</span> : <span>📍 —</span>}
+                              {b.last_event_at ? <span className="bagage-sep">|</span> : null}
+                              {b.last_event_at ? <span>🕒 {formatDateTime(b.last_event_at)}</span> : null}
+                            </div>
+                          </div>
+                          <div className="bagage-actions">
+                            <button
+                              type="button"
+                              className="btn-bagage-view"
+                              onClick={() => {
+                                window.location.href = `/user/bagages/${b.bagage_id}`;
+                              }}
+                            >
+                              Voir tracking
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           ))}
         </div>

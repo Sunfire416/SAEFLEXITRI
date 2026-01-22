@@ -81,11 +81,11 @@ export const NotificationProvider = ({ children }) => {
   const markAsRead = async (notificationId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.patch(
+            const response = await axios.patch(
         `${API_BASE_URL}/notification/${notificationId}/read`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
-      );
+            );
 
       if (response.data.success) {
         // Mettre à jour état local
@@ -113,11 +113,11 @@ export const NotificationProvider = ({ children }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.patch(
+            const response = await axios.patch(
         `${API_BASE_URL}/notification/mark-all-read`,
         { user_id: user.user_id },
         { headers: { Authorization: `Bearer ${token}` } }
-      );
+            );
 
       if (response.data.success) {
         // Mettre à jour état local

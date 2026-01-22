@@ -1,5 +1,4 @@
-const { PriseEnCharge, Reservations, User, Agent } = require('../models');
-const Voyage = require('../models/Voyage');
+const SupabaseService = require('../services/SupabaseService');
 const notificationService = require('../services/notificationService');
 
 /**
@@ -9,118 +8,99 @@ const notificationService = require('../services/notificationService');
 exports.getByToken = async (req, res) => {
   try {
     const { token } = req.params;
-    
+
     console.log(`📋 Récupération prise en charge avec token: ${token}`);
-    
-    const priseEnCharge = await PriseEnCharge.findOne({
-      where: { validation_token: token },
-      include: [
-        {
-          model: Reservations,
-          as: 'reservation',
-          include: [
-            { 
-              model: User, 
-              as: 'user', 
-              attributes: ['user_id', 'name', 'surname', 'phone', 'type_handicap'] 
-            }
-          ]
-        },
-        {
-          model: Agent,
-          as: 'agent',
-          attributes: ['id_agent', 'name', 'surname', 'phone', 'email', 'entreprise'],
-          required: false // LEFT JOIN si agent_id null
-        }
-      ]
-    });
-    
-    if (!priseEnCharge) {
-      console.log(`❌ Prise en charge introuvable pour token: ${token}`);
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Prise en charge introuvable' 
+
+    const { data: reservation, error: reservationError } = await SupabaseService.client
+      .from('reservations')
+      .select(`
+        *,
+        user:users(user_id, name, surname, phone, type_handicap),
+        voyage:voyages(id_voyage, date_debut, date_fin, lieu_depart, lieu_arrivee, etapes)
+      `)
+      .or(`reservation_id.eq.${token},num_reza_mmt.eq.${token},booking_reference.eq.${token}`)
+      .single();
+
+    if (reservationError || !reservation) {
+      return res.status(404).json({
+        success: false,
+        error: 'Prise en charge introuvable'
       });
     }
-    
-    // Récupérer voyage MongoDB
-    let voyage = null;
+
+    const { data: mission } = await SupabaseService.client
+      .from('pmr_missions')
+      .select('*')
+      .eq('reservation_id', reservation.reservation_id)
+      .single();
+
+    const etapeIndex = Math.max((reservation.etape_voyage || 1) - 1, 0);
     let segmentDetails = null;
-    if (priseEnCharge.voyage_id_mongo) {
-      voyage = await Voyage.findById(priseEnCharge.voyage_id_mongo);
-      
-      // Trouver l'étape correspondante dans le voyage
-      if (voyage && voyage.etapes && voyage.etapes.length > 0) {
-        const etapeIndex = priseEnCharge.etape_numero - 1;
-        if (etapeIndex >= 0 && etapeIndex < voyage.etapes.length) {
-          const etape = voyage.etapes[etapeIndex];
-          segmentDetails = {
-            mode: etape.type || priseEnCharge.reservation.Type_Transport,
-            line: etape.line || null,
-            operator: etape.compagnie || 'Unknown',
-            departure_station: etape.departure_station || etape.adresse_1,
-            arrival_station: etape.arrival_station || etape.adresse_2,
-            departure_time: etape.departure_time,
-            arrival_time: etape.arrival_time,
-            vehicle_type: etape.vehicle_type || null
-          };
-        }
+    if (reservation.voyage?.etapes && Array.isArray(reservation.voyage.etapes)) {
+      const etape = reservation.voyage.etapes[etapeIndex];
+      if (etape) {
+        segmentDetails = {
+          mode: etape.type || reservation.type_transport,
+          line: etape.line || null,
+          operator: etape.compagnie || 'Unknown',
+          departure_station: etape.departure_station || etape.adresse_1 || reservation.lieu_depart,
+          arrival_station: etape.arrival_station || etape.adresse_2 || reservation.lieu_arrivee,
+          departure_time: etape.departure_time || reservation.date_depart,
+          arrival_time: etape.arrival_time || reservation.date_arrivee,
+          vehicle_type: etape.vehicle_type || null
+        };
       }
     }
-    
-    console.log(`✅ Prise en charge trouvée: ID ${priseEnCharge.id}, Statut: ${priseEnCharge.status}`);
-    
+
+    const validation = reservation.pmr_options?.validation || null;
+
     res.json({
       success: true,
       prise_en_charge: {
-        id: priseEnCharge.id,
-        status: priseEnCharge.status,
-        etape_numero: priseEnCharge.etape_numero,
-        location: priseEnCharge.location,
-        validated_at: priseEnCharge.validated_at,
-        validated_by: priseEnCharge.validated_by,
-        notes: priseEnCharge.notes,
-        segment: segmentDetails, // 🆕 Détails du segment réel
-        user: {
-          user_id: priseEnCharge.reservation.user.user_id,
-          name: priseEnCharge.reservation.user.name,
-          surname: priseEnCharge.reservation.user.surname,
-          phone: priseEnCharge.reservation.user.phone,
-          type_handicap: priseEnCharge.reservation.user.type_handicap
-        },
-        agent: priseEnCharge.agent ? {
-          id_agent: priseEnCharge.agent.id_agent,
-          name: priseEnCharge.agent.name,
-          surname: priseEnCharge.agent.surname,
-          phone: priseEnCharge.agent.phone,
-          email: priseEnCharge.agent.email,
-          entreprise: priseEnCharge.agent.entreprise
+        id: mission?.id || null,
+        status: mission?.status || 'pending',
+        etape_numero: reservation.etape_voyage || 1,
+        location: mission?.agent_lat && mission?.agent_lng ? {
+          lat: mission.agent_lat,
+          lng: mission.agent_lng
         } : null,
+        validated_at: validation?.validated_at || null,
+        validated_by: validation?.validated_by || null,
+        notes: validation?.notes || null,
+        segment: segmentDetails,
+        user: reservation.user ? {
+          user_id: reservation.user.user_id,
+          name: reservation.user.name,
+          surname: reservation.user.surname,
+          phone: reservation.user.phone,
+          type_handicap: reservation.user.type_handicap
+        } : null,
+        agent: mission?.agent_id ? { user_id: mission.agent_id } : null,
         reservation: {
-          reservation_id: priseEnCharge.reservation.reservation_id,
-          num_reza: priseEnCharge.reservation.num_reza_mmt,
-          type_transport: priseEnCharge.reservation.Type_Transport,
-          lieu_depart: priseEnCharge.reservation.Lieu_depart,
-          lieu_arrivee: priseEnCharge.reservation.Lieu_arrivee,
-          date_depart: priseEnCharge.reservation.Date_depart,
-          assistance_PMR: priseEnCharge.reservation.assistance_PMR
+          reservation_id: reservation.reservation_id,
+          num_reza: reservation.num_reza_mmt,
+          type_transport: reservation.type_transport,
+          lieu_depart: reservation.lieu_depart,
+          lieu_arrivee: reservation.lieu_arrivee,
+          date_depart: reservation.date_depart,
+          assistance_pmr: reservation.assistance_pmr
         },
-        voyage: voyage ? {
-          id_voyage: voyage.id_voyage,
-          depart: voyage.lieu_depart?.id || 'N/A',
-          arrivee: voyage.lieu_arrive?.id || 'N/A',
-          date_debut: voyage.date_debut,
-          date_fin: voyage.date_fin,
-          etapes: voyage.etapes || []
+        voyage: reservation.voyage ? {
+          id_voyage: reservation.voyage.id_voyage,
+          depart: reservation.voyage.lieu_depart,
+          arrivee: reservation.voyage.lieu_arrivee,
+          date_debut: reservation.voyage.date_debut,
+          date_fin: reservation.voyage.date_fin,
+          etapes: reservation.voyage.etapes || []
         } : null
       }
     });
-    
+
   } catch (error) {
     console.error('❌ Erreur getByToken:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 };
@@ -128,202 +108,218 @@ exports.getByToken = async (req, res) => {
 /**
  * POST /prise-en-charge/:token/validate
  * Valide la prise en charge (PUBLIC)
- * Body: { validated_by: "Nom du validateur" }
  */
 exports.validate = async (req, res) => {
   try {
     const { token } = req.params;
-    const { validated_by } = req.body;
-    
-    if (!validated_by || validated_by.trim() === '') {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Le champ validated_by est requis' 
+    const { validated_by, agent_qr_public_id } = req.body;
+
+    const trimmedValidatedBy = typeof validated_by === 'string' ? validated_by.trim() : '';
+    const trimmedQr = typeof agent_qr_public_id === 'string' ? agent_qr_public_id.trim() : '';
+
+    if (!trimmedQr && !trimmedValidatedBy) {
+      return res.status(400).json({
+        success: false,
+        error: 'Le champ agent_qr_public_id est requis (validated_by toléré pour compatibilité)'
       });
     }
-    
-    console.log(`🔍 Validation prise en charge token: ${token} par ${validated_by}`);
-    
-    const priseEnCharge = await PriseEnCharge.findOne({
-      where: { validation_token: token },
-      include: [
-        { 
-          model: Reservations, 
-          as: 'reservation',
-          include: [{ model: User, as: 'user' }]
-        }
-      ]
-    });
-    
-    if (!priseEnCharge) {
-      console.log(`❌ Prise en charge introuvable pour token: ${token}`);
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Prise en charge introuvable' 
+
+    const { data: reservation, error: reservationError } = await SupabaseService.client
+      .from('reservations')
+      .select('*')
+      .or(`reservation_id.eq.${token},num_reza_mmt.eq.${token},booking_reference.eq.${token}`)
+      .single();
+
+    if (reservationError || !reservation) {
+      return res.status(404).json({
+        success: false,
+        error: 'Prise en charge introuvable'
       });
     }
-    
-    if (priseEnCharge.status === 'validated') {
-      console.log(`⚠️ Prise en charge ${priseEnCharge.id} déjà validée`);
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Prise en charge déjà validée',
-        validated_at: priseEnCharge.validated_at,
-        validated_by: priseEnCharge.validated_by
+
+    const { data: mission } = await SupabaseService.client
+      .from('pmr_missions')
+      .select('*')
+      .eq('reservation_id', reservation.reservation_id)
+      .single();
+
+    if (mission && mission.status === 'validated') {
+      return res.status(400).json({
+        success: false,
+        error: 'Prise en charge déjà validée'
       });
     }
-    
-    // Mettre à jour le statut
-    priseEnCharge.status = 'validated';
-    priseEnCharge.validated_at = new Date();
-    priseEnCharge.validated_by = validated_by.trim();
-    await priseEnCharge.save();
-    
-    console.log(`✅ Prise en charge ${priseEnCharge.id} validée par ${validated_by}`);
-    
-    // 🆕 ENVOYER NOTIFICATION TEMPS RÉEL À L'UTILISATEUR
+
+    let resolvedValidatedBy = trimmedValidatedBy || 'Agent PMR';
+    let resolvedAgentUserId = null;
+    const resolvedMethod = trimmedQr ? 'qr' : 'manual';
+
+    if (trimmedQr) {
+      const { data: agentUser } = await SupabaseService.client
+        .from('users')
+        .select('user_id, name, surname, role')
+        .eq('agent_qr_public_id', trimmedQr)
+        .single();
+
+      if (!agentUser || agentUser.role !== 'Agent') {
+        return res.status(400).json({
+          success: false,
+          error: 'QR Agent invalide (aucun compte Agent trouvé)'
+        });
+      }
+
+      resolvedAgentUserId = agentUser.user_id;
+      resolvedValidatedBy = `${agentUser.surname} ${agentUser.name} - Agent`;
+    }
+
+    if (mission) {
+      await SupabaseService.client
+        .from('pmr_missions')
+        .update({
+          status: 'validated',
+          agent_id: resolvedAgentUserId || mission.agent_id || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', mission.id);
+    }
+
+    const validationPayload = {
+      validated_by: resolvedValidatedBy,
+      validated_at: new Date().toISOString(),
+      validation_method: resolvedMethod,
+      validated_agent_user_id: resolvedAgentUserId || null
+    };
+
+    const mergedPmrOptions = {
+      ...(reservation.pmr_options || {}),
+      validation: validationPayload
+    };
+
+    await SupabaseService.client
+      .from('reservations')
+      .update({ pmr_options: mergedPmrOptions })
+      .eq('reservation_id', reservation.reservation_id);
+
     try {
       await notificationService.createNotification({
-        user_id: priseEnCharge.user_id,
+        user_id: reservation.user_id,
         type: 'PRISE_EN_CHARGE_VALIDATED',
         title: '✅ Prise en charge validée',
-        message: `Votre prise en charge pour l'étape ${priseEnCharge.etape_numero} a été validée par ${validated_by}.`,
+        message: `Votre prise en charge pour l'étape ${reservation.etape_voyage || 1} a été validée par ${resolvedValidatedBy}.`,
         data: {
-          prise_en_charge_id: priseEnCharge.id,
-          reservation_id: priseEnCharge.reservation_id,
-          voyage_id_mongo: priseEnCharge.voyage_id_mongo,
-          validated_by: validated_by,
-          validated_at: priseEnCharge.validated_at,
-          location: priseEnCharge.location,
-          etape_numero: priseEnCharge.etape_numero
+          reservation_id: reservation.reservation_id,
+          validated_by: resolvedValidatedBy,
+          validated_at: validationPayload.validated_at,
+          etape_numero: reservation.etape_voyage || 1
         },
         priority: 'high',
-        icon: '✅'
+        icon: '✅',
+        action_url: `/suivi-prise-en-charge/${reservation.reservation_id}`
       });
-      
-      console.log(`📧 Notification envoyée à l'utilisateur ${priseEnCharge.user_id}`);
-    } catch (notifError) {
-      console.error('❌ Erreur envoi notification:', notifError);
-      // Ne pas bloquer la validation si notification échoue
+    } catch (notificationError) {
+      console.error('⚠️ Erreur notification prise en charge:', notificationError);
     }
-    
+
     res.json({
       success: true,
       message: 'Prise en charge validée avec succès',
       prise_en_charge: {
-        id: priseEnCharge.id,
+        id: mission?.id || null,
         status: 'validated',
-        validated_at: priseEnCharge.validated_at,
-        validated_by: priseEnCharge.validated_by,
-        reservation_id: priseEnCharge.reservation_id,
-        etape_numero: priseEnCharge.etape_numero,
-        location: priseEnCharge.location
+        validated_at: validationPayload.validated_at,
+        validated_by: resolvedValidatedBy,
+        validation_method: resolvedMethod,
+        validated_agent_user_id: resolvedAgentUserId,
+        reservation_id: reservation.reservation_id,
+        etape_numero: reservation.etape_voyage || 1
       }
     });
-    
+
   } catch (error) {
-    console.error('❌ Erreur validate:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+    console.error('❌ Erreur validation:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 };
 
 /**
  * GET /prise-en-charge/reservation/:reservation_id
- * Récupère toutes les prises en charge d'une réservation
  */
 exports.getByReservation = async (req, res) => {
   try {
     const { reservation_id } = req.params;
-    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    
-    console.log(`📋 Récupération prises en charge pour réservation: ${reservation_id}`);
-    
-    const prisesEnCharge = await PriseEnCharge.findAll({
-      where: { reservation_id: parseInt(reservation_id) },
-      include: [
-        {
-          model: Agent,
-          as: 'agent',
-          attributes: ['id_agent', 'name', 'surname', 'phone', 'entreprise'],
-          required: false
-        }
-      ],
-      order: [['etape_numero', 'ASC']]
-    });
-    
-    console.log(`✅ ${prisesEnCharge.length} prise(s) en charge trouvée(s)`);
-    
-    // Enrichir les données avec validation_url calculé
-    const enrichedPrisesEnCharge = prisesEnCharge.map(pec => ({
-      ...pec.toJSON(),
-      validation_url: `${baseUrl}/prise-en-charge/validate/${pec.validation_token}`
-    }));
-    
+
+    const { data: reservation, error: reservationError } = await SupabaseService.client
+      .from('reservations')
+      .select(`
+        *,
+        user:users(user_id, name, surname, phone, type_handicap),
+        voyage:voyages(id_voyage, date_debut, date_fin, lieu_depart, lieu_arrivee, etapes)
+      `)
+      .eq('reservation_id', reservation_id)
+      .single();
+
+    if (reservationError || !reservation) {
+      return res.status(404).json({
+        success: false,
+        error: 'Réservation introuvable'
+      });
+    }
+
+    const { data: missions } = await SupabaseService.client
+      .from('pmr_missions')
+      .select('*')
+      .eq('reservation_id', reservation_id);
+
     res.json({
       success: true,
-      count: enrichedPrisesEnCharge.length,
-      prises_en_charge: enrichedPrisesEnCharge
+      count: missions?.length || 0,
+      reservation,
+      prises_en_charge: missions || []
     });
-    
   } catch (error) {
     console.error('❌ Erreur getByReservation:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 };
 
 /**
  * GET /prise-en-charge/agent/:agent_id
- * Récupère toutes les prises en charge d'un agent
  */
 exports.getByAgent = async (req, res) => {
   try {
     const { agent_id } = req.params;
-    const { status } = req.query; // Filtrer par statut optionnel
-    
-    console.log(`📋 Récupération prises en charge pour agent: ${agent_id}`);
-    
-    const whereClause = { agent_id: parseInt(agent_id) };
+    const { status } = req.query;
+
+    let query = SupabaseService.client
+      .from('pmr_missions')
+      .select('*, reservation:reservations(*)')
+      .eq('agent_id', agent_id)
+      .order('updated_at', { ascending: false });
+
     if (status) {
-      whereClause.status = status;
+      query = query.eq('status', status);
     }
-    
-    const prisesEnCharge = await PriseEnCharge.findAll({
-      where: whereClause,
-      include: [
-        {
-          model: Reservations,
-          as: 'reservation',
-          include: [
-            { 
-              model: User, 
-              as: 'user', 
-              attributes: ['user_id', 'name', 'surname', 'phone', 'type_handicap'] 
-            }
-          ]
-        }
-      ],
-      order: [['createdAt', 'DESC']]
-    });
-    
-    console.log(`✅ ${prisesEnCharge.length} prise(s) en charge trouvée(s) pour agent ${agent_id}`);
-    
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
     res.json({
       success: true,
-      count: prisesEnCharge.length,
-      prises_en_charge: prisesEnCharge
+      count: data.length,
+      prises_en_charge: data
     });
-    
   } catch (error) {
     console.error('❌ Erreur getByAgent:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 };

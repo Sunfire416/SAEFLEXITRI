@@ -17,6 +17,7 @@ const VoyageHistory = () => {
   const { user } = useContext(AuthContext);
 
   const [voyages, setVoyages] = useState([]);
+  const [bagagesByReservationId, setBagagesByReservationId] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all'); // 'all', 'pending', 'confirmed', 'completed', 'cancelled'
@@ -24,6 +25,43 @@ const VoyageHistory = () => {
   // Modal QR
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [selectedVoyage, setSelectedVoyage] = useState(null);
+
+  /**
+   * Récupérer bagages (additif, pour enrichir les cards)
+   * - Ne doit jamais casser l'écran "Mes voyages" si l'API bagages est indisponible.
+   */
+  const fetchBagages = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      // Les bagages sont visibles PMR/Accompagnant; on garde soft-fail pour les autres rôles.
+      if (user?.role && !['PMR', 'Accompagnant'].includes(user.role)) {
+        setBagagesByReservationId({});
+        return;
+      }
+
+      const response = await axios.get(`${API_BASE_URL}/bagages`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      const bagages = response.data?.bagages || [];
+      const grouped = bagages.reduce((acc, bagage) => {
+        const key = String(bagage.reservation_id);
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(bagage);
+        return acc;
+      }, {});
+
+      setBagagesByReservationId(grouped);
+    } catch (err) {
+      // Soft fail: on log, mais on ne bloque pas l'écran.
+      console.warn('⚠️ Impossible de charger les bagages (soft fail):', err);
+      setBagagesByReservationId({});
+    }
+  };
 
   /**
    * Récupérer historique voyages
@@ -98,6 +136,7 @@ const VoyageHistory = () => {
 
   useEffect(() => {
     fetchVoyages();
+    fetchBagages();
   }, [user, filter]);
 
   /**
@@ -292,6 +331,7 @@ const VoyageHistory = () => {
                 <VoyageCard
                   key={voyage.voyage_id}
                   voyage={voyage}
+                  bagagesByReservationId={bagagesByReservationId}
                   onOpenQR={handleOpenQR}
                   onCancelCheckin={handleCancelCheckin}
                   onDeleteVoyage={handleDeleteVoyage}

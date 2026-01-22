@@ -56,6 +56,16 @@ const PriseEnCharge = sequelize.define('prise_en_charge', {
     allowNull: true,
     comment: 'Nom/fonction du validateur (ex: Jean Dupont - Agent SNCF)'
   },
+  validated_agent_user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'ID du compte User (role=Agent) ayant validé via QR (nullable)'
+  },
+  validation_method: {
+    type: DataTypes.STRING(32),
+    allowNull: true,
+    comment: 'Méthode de validation (ex: qr, manual)'
+  },
   location: {
     type: DataTypes.STRING(255),
     allowNull: true,

@@ -8,7 +8,6 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // ✅ Backend = /api (cf. app.js)
     const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
     const isTokenValid = (token) => {
@@ -20,7 +19,6 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Charger l'utilisateur au démarrage
     useEffect(() => {
         const fetchUser = async () => {
             try {
@@ -32,16 +30,11 @@ export const AuthProvider = ({ children }) => {
                     return;
                 }
 
-                const decodedToken = jwtDecode(token);
-                const userId = decodedToken.user_id || decodedToken.id;
-
-                // ✅ GET /api/users/:id (protégé)
-                const { data } = await axios.get(`${API_BASE_URL}/users/${userId}`, {
+                const { data } = await axios.get(`${API_BASE_URL}/auth/me`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
 
-                // routes/users.js renvoie: { success: true, user: {...} }
-                setUser(data.user);
+                setUser(data.user || data);
             } catch (error) {
                 console.error('Erreur lors de la récupération de l’utilisateur :', error);
                 localStorage.removeItem('token');
@@ -52,13 +45,10 @@ export const AuthProvider = ({ children }) => {
         };
 
         fetchUser();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [API_BASE_URL]);
 
-    // Connexion utilisateur
     const login = async (credentials) => {
         try {
-            // ✅ POST /api/auth/login
             const { data } = await axios.post(`${API_BASE_URL}/auth/login`, credentials);
 
             localStorage.setItem('token', data.token);
@@ -74,13 +64,11 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Récupération utilisateur par id
     const getUserById = async (id) => {
         try {
             const token = localStorage.getItem('token');
             if (!token) throw new Error('Utilisateur non authentifié');
 
-            // ✅ GET /api/users/:id
             const { data } = await axios.get(`${API_BASE_URL}/users/${id}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -89,11 +77,10 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             console.error(`Erreur lors de la récupération de l'utilisateur avec ID ${id} :`, error);
             if (error.response?.status === 404) throw new Error('Utilisateur non trouvé.');
-            throw new Error("Erreur lors de la récupération des données utilisateur.");
+            throw new Error('Erreur lors de la récupération des données utilisateur.');
         }
     };
 
-    // Déconnexion utilisateur (JWT custom => logout local)
     const logout = () => {
         localStorage.removeItem('token');
         setUser(null);
@@ -101,21 +88,21 @@ export const AuthProvider = ({ children }) => {
 
     // Inscription utilisateur
     const signup = async (credentials) => {
-        try {
-            // ✅ POST /api/auth/register
-            const { data } = await axios.post(`${API_BASE_URL}/auth/register`, credentials);
-
-            localStorage.setItem('token', data.token);
-            setUser(data.user);
-
-            return data.user;
-        } catch (error) {
-            console.error("Erreur lors de l’inscription :", error);
-            throw error;
-        }
+        return (
+            <AuthContext.Provider
+                value={{
+                    user,
+                    loading,
+                    login,
+                    logout,
+                    getUserById,
+                    setUser,
+                }}
+            >
+                {children}
+            </AuthContext.Provider>
+        );
     };
-
-    // Mise à jour du profil utilisateur
     const updateUserProfile = async (updates) => {
         try {
             const token = localStorage.getItem('token');
