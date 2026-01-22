@@ -2,94 +2,94 @@ const neo4j = require('neo4j-driver');
 
 /**
  * ============================================================
- * 🧠 NEO4J SERVICE - FLEXITRIP
+ * 🧠 NEO4J SERVICE - FLEXITRIP (Lazy Loading)
  * ============================================================
- * Ce service gère la connexion à la base de données orientée graphe.
- * Il inclut une logique de reconnexion automatique pour Docker.
+ * Gère la connexion à la base de données orientée graphe.
+ * Ne plante PAS si la configuration est absente.
  */
 class Neo4jService {
     constructor() {
         this.driver = null;
+        this.isConnected = false;
     }
 
     /**
-     * Initialise la connexion avec un système de tentatives (Retry)
-     * @param {number} maxRetries - Nombre d'essais avant de couper l'API
+     * Initialise la connexion (appelé à la demande ou au boot)
+     * Ne throw PAS d'erreur bloquante si config manquante.
      */
-    async init(maxRetries = 20) {
-        // Éviter une double initialisation
-        if (this.driver) return;
+    async init() {
+        if (this.driver) return true; // Déjà init
 
-        // Récupération des variables d'environnement
-        const uri = process.env.NEO4J_URL || 'bolt://neo4j:7687';
-        const user = process.env.NEO4J_USER || 'neo4j';
-        const password = process.env.NEO4J_PASSWORD || 'password';
+        const uri = process.env.NEO4J_URL;
+        const user = process.env.NEO4J_USER;
+        const password = process.env.NEO4J_PASSWORD;
 
-        for (let i = 1; i <= maxRetries; i++) {
-            try {
-                console.log(`🔗 [Tentative ${i}/${maxRetries}] Connexion à Neo4j sur ${uri}...`);
+        if (!uri || !user || !password) {
+            console.warn('⚠️ Neo4j configuration missing. Service will be disabled.');
+            return false;
+        }
 
-                this.driver = neo4j.driver(
-                    uri,
-                    neo4j.auth.basic(user, password),
-                    {
-                        maxConnectionLifetime: 3 * 60 * 60 * 1000, // 3 heures
-                        maxConnectionPoolSize: 50,
-                        connectionAcquisitionTimeout: 5000, // 5 secondes
-                        disableLosslessIntegers: true
-                    }
-                );
-
-                // Vérification réelle de la connectivité
-                await this.driver.verifyConnectivity();
-
-                console.log('✅ Neo4j est prêt et connecté avec succès !');
-                return true;
-
-            } catch (error) {
-                this.driver = null;
-                console.error(`⚠️ Échec de la tentative ${i}: ${error.message}`);
-
-                if (i === maxRetries) {
-                    console.error('❌ ERREUR FATALE: Neo4j est injoignable après plusieurs tentatives.');
-                    throw error; // L'API s'arrêtera ici comme tu le souhaites
+        try {
+            console.log(`🔗 Connecting to Neo4j on ${uri}...`);
+            this.driver = neo4j.driver(
+                uri,
+                neo4j.auth.basic(user, password),
+                {
+                    maxConnectionLifetime: 3 * 60 * 60 * 1000,
+                    maxConnectionPoolSize: 50,
+                    connectionAcquisitionTimeout: 5000,
+                    disableLosslessIntegers: true
                 }
+            );
 
-                // Délai d'attente avant la prochaine tentative (laisse le temps à Neo4j de chauffer)
-                const delay = 5000;
-                console.log(`⏳ Attente de ${delay / 1000}s avant le prochain essai...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-            }
+            // Verify connectivity without throwing fatal
+            await this.driver.verifyConnectivity();
+            console.log('✅ Neo4j connected successfully!');
+            this.isConnected = true;
+            return true;
+
+        } catch (error) {
+            console.error(`⚠️ Neo4j connection failed: ${error.message}`);
+            this.driver = null;
+            this.isConnected = false;
+            return false;
         }
     }
 
     /**
-     * Vérifie si le driver est disponible avant d'exécuter une requête
+     * Récupère le driver ou tente de l'initialiser
      */
-    ensureDriver() {
+    async getDriver() {
         if (!this.driver) {
-            throw new Error("Le service Neo4j n'est pas initialisé ou est déconnecté.");
+            await this.init();
         }
+        return this.driver;
     }
 
     /**
-     * Ferme proprement la connexion
+     * Ferme la connexion
      */
     async close() {
         if (this.driver) {
             await this.driver.close();
             this.driver = null;
-            console.log('🔌 Connexion Neo4j fermée.');
+            this.isConnected = false;
+            console.log('🔌 Neo4j connection closed.');
         }
     }
 
     /**
-     * Exemple de méthode pour récupérer une station
+     * Exemple : Récupérer une station par ID
      */
     async getStationById(stationId) {
         try {
-            this.ensureDriver();
-            const session = this.driver.session();
+            const driver = await this.getDriver();
+            if (!driver) {
+                console.warn('⚠️ Neo4j not available, skipping getStationById');
+                return null;
+            }
+
+            const session = driver.session();
             try {
                 const result = await session.run(`
                     MATCH (s:Station {id: $id})
@@ -111,11 +111,11 @@ class Neo4jService {
                 await session.close();
             }
         } catch (error) {
-            console.error('❌ Erreur Neo4j (getStationById):', error.message);
-            throw error;
+            console.error('❌ Neo4j error (getStationById):', error.message);
+            return null; // Fail safe
         }
     }
 }
 
-// Exportation en tant que Singleton
+// Export Singleton
 module.exports = new Neo4jService();

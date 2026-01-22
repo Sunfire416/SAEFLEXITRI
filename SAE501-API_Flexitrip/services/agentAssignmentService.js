@@ -1,60 +1,38 @@
 /**
  * Service Agent Assignment - Auto-assignation agents PMR
- * ÉTAPE 8 : Assigne automatiquement un agent PMR selon les besoins utilisateur
+ * MIGRÉ VERS SUPABASE
  * 
- * ==========================================
- * FONCTIONNALITÉS :
- * ==========================================
- * - Détecte si assistance PMR nécessaire (assistance_level)
- * - Assigne agent disponible selon critères (localisation, disponibilité)
- * - Envoie notifications utilisateur + agent
- * - Évite double assignation
+ * Utilise la table pmr_missions pour assignation agents
  */
 
-const Agent = require('../models/Agent');
-const Voyage = require('../models/Voyage');
-const { Reservations } = require('../models/index');
+const supabaseService = require('./SupabaseService');
 const notificationService = require('./notificationService');
-const agentService = require('./agentService');
 
 /**
  * Détermine si un agent PMR est nécessaire
- * @param {Object} pmrNeeds - Besoins PMR
- * @returns {Boolean} true si agent nécessaire
  */
 function requiresAgentAssistance(pmrNeeds) {
-    // Agent nécessaire si :
-    // - assistance_level !== 'none'
-    // - OU mobility_aid existe (fauteuil, déambulateur, etc.)
-    
-    const needsAssistance = pmrNeeds.assistance_level && pmrNeeds.assistance_level !== 'none';
-    const hasMobilityAid = pmrNeeds.mobility_aid && pmrNeeds.mobility_aid !== 'none';
-    
+    const needsAssistance = pmrNeeds?.assistance_level && pmrNeeds.assistance_level !== 'none';
+    const hasMobilityAid = pmrNeeds?.mobility_aid && pmrNeeds.mobility_aid !== 'none';
+
     return needsAssistance || hasMobilityAid;
 }
 
 /**
  * Assigner automatiquement un agent PMR
- * @param {Object} params - Paramètres
- * @param {Number} params.user_id - ID utilisateur
- * @param {String} params.voyage_id - ID voyage MongoDB
- * @param {Number} params.reservation_id - ID réservation
- * @param {Object} params.pmr_needs - Besoins PMR
- * @param {String} params.location - Localisation (départ)
- * @param {String} params.transport_type - Type de transport
- * @returns {Promise<Object>} Résultat de l'assignation
+ * Crée une entrée dans pmr_missions
  */
 async function autoAssignAgent(params) {
     try {
         const { user_id, voyage_id, reservation_id, pmr_needs, location, transport_type } = params;
-        
-        console.log(`🔍 ÉTAPE 8: Vérification besoins agent pour user ${user_id}...`);
-        
+
+        console.log(`🔍 Auto-assign agent pour réservation ${reservation_id}...`);
+
         // ==========================================
         // ÉTAPE 1 : VÉRIFIER SI AGENT NÉCESSAIRE
         // ==========================================
-        if (!requiresAgentAssistance(pmr_needs)) {
-            console.log('ℹ️ Pas d\'assistance nécessaire (assistance_level = none)');
+        if (!requiresAgentAssistance(pmrNeeds)) {
+            console.log('ℹ️ Pas d\'assistance nécessaire');
             return {
                 success: false,
                 reason: 'no_assistance_needed',
@@ -62,203 +40,201 @@ async function autoAssignAgent(params) {
                 agent_assigned: false
             };
         }
-        
-        console.log(`✅ Assistance nécessaire: ${pmr_needs.assistance_level} | Aide: ${pmr_needs.mobility_aid || 'aucune'}`);
-        
+
+        console.log(`✅ Assistance nécessaire: ${pmr_needs.assistance_level}`);
+
         // ==========================================
-        // ÉTAPE 2 : VÉRIFIER SI AGENT DÉJÀ ASSIGNÉ
+        // ÉTAPE 2 : VÉRIFIER SI MISSION DÉJÀ EXISTE
         // ==========================================
-        // Vérifier dans Voyage MongoDB si agent_id existe
-        const voyage = await Voyage.findById(voyage_id);
-        if (voyage && voyage.id_accompagnant) {
-            console.log(`ℹ️ Agent déjà assigné: ${voyage.id_accompagnant}`);
-            
-            const existingAgent = await agentService.getAgentById(voyage.id_accompagnant);
+        const existingMission = await supabaseService.getPmrMission(reservation_id);
+
+        if (existingMission) {
+            console.log(`ℹ️ Mission déjà assignée: agent ${existingMission.agent_id}`);
             return {
                 success: false,
-                reason: 'agent_already_assigned',
-                message: 'Agent déjà assigné à ce voyage',
-                agent_assigned: true,
-                agent: existingAgent
+                reason: 'mission_already_exists',
+                message: 'Mission déjà assignée',
+                mission: existingMission
             };
         }
-        
+
         // ==========================================
-        // ÉTAPE 3 : ASSIGNER AGENT SELON LOCALISATION
+        // ÉTAPE 3 : ASSIGNER AGENT DISPONIBLE
         // ==========================================
-        console.log(`📍 Assignation agent pour localisation: ${location}...`);
-        
-        const agent = agentService.assignAgentByLocation(location);
-        
-        // Mise à jour Voyage MongoDB avec id_accompagnant
-        if (voyage) {
-            voyage.id_accompagnant = agent.agent_id;
-            await voyage.save();
-            console.log(`✅ Voyage ${voyage_id} mis à jour avec agent ${agent.agent_id}`);
+        console.log(`📍 Recherche agent disponible pour ${location}...`);
+
+        // TODO: Implémenter logique de sélection selon:
+        // - Localisation (distance)
+        // - Disponibilité
+        // - Compétences
+        // - Charge de travail
+
+        // Simulé: assigner un agent (à remplacer par logique réelle)
+        const agents = await supabaseService.getAllUsers({ role: 'Agent' });
+
+        if (!agents || agents.length === 0) {
+            return {
+                success: false,
+                reason: 'no_agents_available',
+                message: 'Aucun agent disponible'
+            };
         }
-        
+
+        const selectedAgent = agents[0]; // À remplacer par sélection intelligente
+
         // ==========================================
-        // ÉTAPE 4 : ENVOYER NOTIFICATIONS
+        // ÉTAPE 4 : CRÉER LA MISSION
         // ==========================================
-        
-        // Notification utilisateur
-        await notificationService.createNotification({
-            user_id: user_id,
-            type: 'AGENT_ASSIGNED',
-            title: '👤 Agent PMR assigné',
-            message: `${agent.name} vous accompagnera pour votre voyage. Vous serez contacté(e) prochainement.`,
-            data: {
-                source: 'agent_assignment_service',
-                voyage_id: voyage_id,
-                reservation_id: reservation_id,
-                agent_id: agent.agent_id,
-                agent_name: agent.name,
-                agent_phone: agent.phone,
-                location: location,
-                transport_type: transport_type,
-                assistance_level: pmr_needs.assistance_level,
-                mobility_aid: pmr_needs.mobility_aid
-            },
-            agent_info: {
-                name: agent.name,
-                phone: agent.phone,
-                email: agent.email || null,
-                company: agent.company || 'FlexiTrip',
-                location: location
-            },
-            priority: 'high',
-            icon: '👤',
-            action_url: `/voyage/${voyage_id}`,
-            expires_in_days: 30
+        const mission = await supabaseService.createPmrMission({
+            reservation_id,
+            agent_id: selectedAgent.user_id,
+            status: 'pending'
         });
-        
-        console.log(`📨 Notification utilisateur envoyée`);
-        
-        // TODO: Notification agent (future ÉTAPE)
-        // Notification vers système agent pour l'informer de la mission
-        console.log(`ℹ️ Notification agent ${agent.name} (à implémenter)`);
-        
+
+        console.log(`✅ Mission créée pour agent ${selectedAgent.user_id}`);
+
+        // ==========================================
+        // ÉTAPE 5 : NOTIFIER L'AGENT
+        // ==========================================
+        try {
+            await notificationService.createNotification({
+                user_id: selectedAgent.user_id,
+                type: 'mission',
+                title: 'Nouvelle mission PMR',
+                message: `Vous avez été assigné à une mission PMR pour la réservation ${reservation_id}`,
+                data: {
+                    reservation_id,
+                    mission_id: mission.id
+                }
+            });
+        } catch (notifError) {
+            console.warn('⚠️ Erreur notification agent:', notifError.message);
+        }
+
+        // ==========================================
+        // ÉTAPE 6 : NOTIFIER L'UTILISATEUR
+        // ==========================================
+        try {
+            await notificationService.createNotification({
+                user_id,
+                type: 'mission',
+                title: 'Agent assigné',
+                message: `Un agent a été assigné à votre réservation: ${selectedAgent.name} ${selectedAgent.surname}`,
+                data: {
+                    agent_id: selectedAgent.user_id,
+                    agent_name: `${selectedAgent.name} ${selectedAgent.surname}`,
+                    agent_phone: selectedAgent.phone
+                }
+            });
+        } catch (notifError) {
+            console.warn('⚠️ Erreur notification utilisateur:', notifError.message);
+        }
+
         return {
             success: true,
-            agent_assigned: true,
-            agent: agent,
-            voyage_id: voyage_id,
-            reservation_id: reservation_id,
-            message: `Agent ${agent.name} assigné avec succès`,
-            notifications_sent: {
-                user: true,
-                agent: false // Pas encore implémenté
-            }
+            reason: 'agent_assigned',
+            message: 'Agent assigné avec succès',
+            mission,
+            agent: selectedAgent
         };
-        
+
     } catch (error) {
-        console.error('❌ Erreur auto-assignation agent:', error);
+        console.error('❌ Error in autoAssignAgent:', error.message);
         throw error;
     }
 }
 
+
 /**
- * Récupérer agent assigné à un voyage
- * @param {String} voyage_id - ID voyage MongoDB
- * @returns {Promise<Object|null>} Agent ou null
+ * Récupérer mission assignée à une réservation
  */
-async function getAssignedAgent(voyage_id) {
+async function getAssignedMission(reservationId) {
     try {
-        const voyage = await Voyage.findById(voyage_id);
-        
-        if (!voyage || !voyage.id_accompagnant) {
-            return null;
-        }
-        
-        const agent = await agentService.getAgentById(voyage.id_accompagnant);
-        return agent;
-        
+        return await supabaseService.getPmrMission(reservationId);
     } catch (error) {
-        console.error('❌ Erreur récupération agent assigné:', error);
+        console.error('❌ Erreur récupération mission:', error.message);
         return null;
     }
 }
 
 /**
- * Déterminer niveau d'urgence assignation agent
- * @param {Object} pmrNeeds - Besoins PMR
- * @returns {String} Niveau d'urgence (low, normal, high, urgent)
+ * Déterminer niveau d'urgence assignation
  */
 function determineAssignmentPriority(pmrNeeds) {
-    // URGENT: Fauteuil électrique, aide vitale
-    if (pmrNeeds.mobility_aid === 'electric_wheelchair' || pmrNeeds.assistance_level === 'complete') {
-        return 'urgent';
-    }
-    
-    // HIGH: Fauteuil manuel, déambulateur
-    if (pmrNeeds.mobility_aid === 'wheelchair' || pmrNeeds.assistance_level === 'significant') {
-        return 'high';
-    }
-    
-    // NORMAL: Canne, assistance modérée
-    if (pmrNeeds.mobility_aid === 'cane' || pmrNeeds.assistance_level === 'moderate') {
-        return 'normal';
-    }
-    
-    // LOW: Assistance minimale
+    if (pmrNeeds?.assistance_level === 'complete') return 'urgent';
+    if (pmrNeeds?.assistance_level === 'significant') return 'high';
+    if (pmrNeeds?.assistance_level === 'moderate') return 'normal';
     return 'low';
 }
 
 /**
  * Traiter batch d'assignations agents
- * @param {Array} bookings - Liste des bookings nécessitant agent
- * @returns {Promise<Object>} Résultat du traitement
  */
-async function processBatchAgentAssignments(bookings) {
+async function processBatchAgentAssignments(reservations) {
     const results = {
-        total: bookings.length,
+        total: reservations.length,
         assigned: 0,
         skipped: 0,
         errors: 0,
         details: []
     };
-    
-    for (const booking of bookings) {
+
+    for (const reservation of reservations) {
         try {
-            if (!requiresAgentAssistance(booking.pmr_needs)) {
-                results.skipped++;
-                continue;
-            }
-            
             const result = await autoAssignAgent({
-                user_id: booking.user_id,
-                voyage_id: booking.voyage_id,
-                reservation_id: booking.reservation_id,
-                pmr_needs: booking.pmr_needs,
-                location: booking.location,
-                transport_type: booking.transport_type
+                user_id: reservation.user_id,
+                reservation_id: reservation.reservation_id,
+                pmr_needs: reservation.pmr_options || {},
+                location: reservation.lieu_depart,
+                transport_type: reservation.type_transport
             });
-            
+
             if (result.success) {
                 results.assigned++;
             } else {
                 results.skipped++;
             }
-            
+
             results.details.push(result);
-            
         } catch (error) {
             results.errors++;
             results.details.push({
                 success: false,
-                voyage_id: booking.voyage_id,
+                reservation_id: reservation.reservation_id,
                 error: error.message
             });
         }
     }
-    
+
+    console.log(`📊 Batch results: ${results.assigned} assignées, ${results.skipped} skipped, ${results.errors} erreurs`);
     return results;
 }
 
+/**
+ * Mettre à jour le statut d'une mission
+ */
+async function updateMissionStatus(missionId, status) {
+    try {
+        return await supabaseService.updatePmrMission(missionId, { status });
+    } catch (error) {
+        console.error('❌ Erreur mise à jour mission:', error.message);
+        throw error;
+    }
+}
+
+// ==========================================
+// EXPORTS
+// ==========================================
+
 module.exports = {
     autoAssignAgent,
-    requiresAgentAssistance,
-    getAssignedAgent,
+    getAssignedMission,
     determineAssignmentPriority,
-    processBatchAgentAssignments
+    processBatchAgentAssignments,
+    updateMissionStatus,
+    requiresAgentAssistance
 };
+
+
+// ✅ FIN DU FICHIER - Code restant supprimé (doublon/ancien)
+

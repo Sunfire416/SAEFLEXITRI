@@ -3,6 +3,7 @@ const SupabaseService = require('../services/SupabaseService');
 /**
  * Controller Voyage History - Supabase
  * Gestion historique, QR, annulations
+ * Refactored to use SupabaseService methods only.
  */
 class VoyageHistoryController {
   async getHistory(req, res) {
@@ -14,15 +15,11 @@ class VoyageHistoryController {
         return res.status(400).json({ success: false, error: 'user_id requis' });
       }
 
+      // 1. Get Voyages
       const voyages = await SupabaseService.getVoyagesByUser(user_id, role);
 
-      const { data: reservations, error } = await SupabaseService.client
-        .from('reservations')
-        .select('*')
-        .eq('user_id', user_id)
-        .order('date_reservation', { ascending: false });
-
-      if (error) throw error;
+      // 2. Get Reservations
+      const reservations = await SupabaseService.getReservationsByUser(user_id);
 
       const grouped = new Map();
       (voyages || []).forEach((voyage) => {
@@ -41,6 +38,7 @@ class VoyageHistoryController {
       });
 
       (reservations || []).forEach((reservation) => {
+        // Fallback for standalone reservations without voyage object loaded
         const key = reservation.id_voyage || `standalone_${reservation.reservation_id}`;
         if (!grouped.has(key)) {
           grouped.set(key, {
@@ -91,21 +89,16 @@ class VoyageHistoryController {
   async generateQR(req, res) {
     try {
       const { id } = req.params;
+      const result = await SupabaseService.getReservationQR(id);
 
-      const { data: reservation, error } = await SupabaseService.client
-        .from('reservations')
-        .select('qr_code_data, ticket_qr_code')
-        .eq('id_voyage', id)
-        .single();
-
-      if (error || !reservation) {
+      if (!result) {
         return res.status(404).json({ success: false, error: 'Réservation non trouvée pour ce voyage' });
       }
 
       res.json({
         success: true,
-        qr_code: reservation.ticket_qr_code,
-        qr_data: reservation.qr_code_data
+        qr_code: result.ticket_qr_code,
+        qr_data: result.qr_code_data
       });
     } catch (error) {
       console.error('❌ Erreur generateQR:', error);
@@ -136,14 +129,7 @@ class VoyageHistoryController {
   async deleteVoyage(req, res) {
     try {
       const { id } = req.params;
-
-      const { error } = await SupabaseService.client
-        .from('voyages')
-        .delete()
-        .eq('id_voyage', id);
-
-      if (error) throw error;
-
+      await SupabaseService.deleteVoyage(id);
       res.json({ success: true, message: 'Voyage supprimé avec succès' });
     } catch (error) {
       console.error('❌ Erreur deleteVoyage:', error);

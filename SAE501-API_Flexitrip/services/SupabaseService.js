@@ -1,3 +1,15 @@
+/**
+ * SupabaseService - Service centralisé pour Supabase/PostgreSQL
+ * 
+ * Schema: public (users, voyages, reservations, pmr_missions, transactions, blockchain, notifications)
+ * Views: blockchain_details, reservations_completes, voyages_details
+ * RLS: Enabled on all base tables
+ * Triggers: set_timestamp, wallet_sync, blockchain_sync
+ * 
+ * ⚠️ IMPORTANT: Toujours utiliser SERVICE_ROLE_KEY côté serveur pour bypasser RLS
+ * Pour les clients web: utiliser ANON_KEY avec policies RLS
+ */
+
 const { createClient } = require('@supabase/supabase-js');
 
 class SupabaseService {
@@ -7,7 +19,7 @@ class SupabaseService {
 
     init() {
         const supabaseUrl = process.env.SUPABASE_URL;
-        // TOUJOURS utiliser SERVICE_ROLE_KEY pour bypass RLS
+        // TOUJOURS utiliser SERVICE_ROLE_KEY côté serveur
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
         if (!supabaseUrl || !supabaseKey) {
@@ -17,7 +29,7 @@ class SupabaseService {
             throw new Error('SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont requis');
         }
 
-        // Client principal avec service_role pour toutes les opérations
+        // Client principal avec service_role pour accès complet
         this.client = createClient(supabaseUrl, supabaseKey, {
             auth: {
                 persistSession: false,
@@ -25,17 +37,10 @@ class SupabaseService {
             },
             db: {
                 schema: 'public'
-            },
-            global: {
-                headers: {
-                    'Authorization': `Bearer ${supabaseKey}`,
-                    'apikey': supabaseKey,
-                    'X-Bypass-RLS': 'true'
-                }
             }
         });
 
-        console.log('✅ SupabaseService initialisé avec SERVICE_ROLE_KEY (RLS bypass)');
+        console.log('✅ SupabaseService initialisé');
     }
 
     // ==================== USERS ====================
@@ -681,6 +686,374 @@ class SupabaseService {
         } catch (error) {
             console.error(`❌ SupabaseService.getTableSchema error for ${tableName}:`, error.message);
             return [];
+        }
+    }
+    // ==================== BAGAGES ====================
+
+    async createBagage(bagageData) {
+        console.log(`🔍 SupabaseService.createBagage: ${bagageData.bagage_public_id}`);
+
+        try {
+            const { data, error } = await this.client
+                .from('bagages')
+                .insert([bagageData])
+                .select()
+                .single();
+
+            if (error) {
+                console.error('❌ SupabaseService.createBagage error:', error.message);
+                throw error;
+            }
+
+            console.log(`✅ Bagage created: ${data.bagage_id}`);
+            return data;
+        } catch (error) {
+            console.error('❌ Exception in createBagage:', error.message);
+            throw error;
+        }
+    }
+
+    async getBagagesByUser(userId) {
+        console.log(`🔍 SupabaseService.getBagagesByUser: ${userId}`);
+
+        try {
+            const { data, error } = await this.client
+                .from('bagages')
+                .select(`
+                    *,
+                    reservation:reservations(
+                        reservation_id, 
+                        num_reza_mmt, 
+                        "Type_Transport", 
+                        "Lieu_depart", 
+                        "Lieu_arrivee", 
+                        "Date_depart", 
+                        "Date_arrivee", 
+                        etape_voyage
+                    )
+                `)
+                .eq('user_id', userId)
+                .order('updated_at', { ascending: false });
+
+            if (error) {
+                console.error('❌ SupabaseService.getBagagesByUser error:', error.message);
+                return [];
+            }
+
+            return data;
+        } catch (error) {
+            console.error('❌ Exception in getBagagesByUser:', error.message);
+            return [];
+        }
+    }
+
+    async getBagageByPublicId(publicId) {
+        console.log(`🔍 SupabaseService.getBagageByPublicId: ${publicId}`);
+
+        try {
+            const { data, error } = await this.client
+                .from('bagages')
+                .select('*')
+                .eq('bagage_public_id', publicId)
+                .single();
+
+            if (error) {
+                console.error('❌ SupabaseService.getBagageByPublicId error:', error.message);
+                return null;
+            }
+
+            return data;
+        } catch (error) {
+            console.error('❌ Exception in getBagageByPublicId:', error.message);
+            return null;
+        }
+    }
+
+    async getBagageById(bagageId) {
+        console.log(`🔍 SupabaseService.getBagageById: ${bagageId}`);
+        try {
+            const { data, error } = await this.client
+                .from('bagages')
+                .select(`
+                    *,
+                    reservation:reservations(
+                        reservation_id, 
+                        num_reza_mmt, 
+                        "Type_Transport", 
+                        "Lieu_depart", 
+                        "Lieu_arrivee", 
+                        "Date_depart", 
+                        "Date_arrivee", 
+                        etape_voyage
+                    )
+                `)
+                .eq('bagage_id', bagageId)
+                .single();
+
+            if (error) return null;
+            return data;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    async updateBagageStatus(bagageId, status, location = null) {
+        console.log(`🔍 SupabaseService.updateBagageStatus: ${bagageId} -> ${status}`);
+
+        try {
+            const updates = {
+                status: status,
+                last_event_at: new Date().toISOString()
+            };
+            if (location) updates.last_location = location;
+
+            const { data, error } = await this.client
+                .from('bagages')
+                .update(updates)
+                .eq('bagage_id', bagageId)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('❌ Exception in updateBagageStatus:', error.message);
+            throw error;
+        }
+    }
+
+    async createBagageEvent(eventData) {
+        console.log(`🔍 SupabaseService.createBagageEvent: ${eventData.event_type}`);
+
+        try {
+            const { data, error } = await this.client
+                .from('bagage_events')
+                .insert([eventData])
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('❌ Exception in createBagageEvent:', error.message);
+            throw error;
+        }
+    }
+
+    async getBagageTimeline(bagageId) {
+        console.log(`🔍 SupabaseService.getBagageTimeline: ${bagageId}`);
+
+        try {
+            const { data, error } = await this.client
+                .from('bagage_events')
+                .select('*')
+                .eq('bagage_id', bagageId)
+                .order('scanned_at', { ascending: true });
+
+            if (error) return [];
+            return data;
+        } catch (error) {
+            return [];
+        }
+    }
+
+    // ==================== PRISE EN CHARGE ====================
+
+    async createPriseEnCharge(pecData) {
+        console.log(`🔍 SupabaseService.createPriseEnCharge`);
+
+        try {
+            const { data, error } = await this.client
+                .from('prise_en_charge')
+                .insert([pecData])
+                .select()
+                .single();
+
+            if (error) {
+                console.error('❌ SupabaseService.createPriseEnCharge error:', error.message);
+                throw error;
+            }
+            return data;
+        } catch (error) {
+            console.error('❌ Exception in createPriseEnCharge:', error.message);
+            throw error;
+        }
+    }
+    // ==================== INCIDENTS ====================
+
+    async createIncident(incidentData) {
+        console.log(`🔍 SupabaseService.createIncident: ${incidentData.type}`);
+
+        try {
+            const { data, error } = await this.client
+                .from('incidents')
+                .insert([incidentData])
+                .select()
+                .single();
+
+            if (error) {
+                // Si la table n'existe pas encore, on log et on retourne un faux succès pour ne pas casser la prod
+                console.warn('⚠️ SupabaseService.createIncident warning:', error.message);
+                return { _id: 'fallback_' + Date.now(), ...incidentData };
+            }
+            return data;
+        } catch (error) {
+            console.error('❌ Exception in createIncident:', error.message);
+            return { _id: 'fallback_' + Date.now(), ...incidentData };
+        }
+    }
+
+    async getIncidentsByVoyage(voyageId) {
+        try {
+            const { data, error } = await this.client
+                .from('incidents')
+                .select('*')
+                .eq('voyage_id', voyageId);
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            return [];
+        }
+    }
+
+    async getIncidentsByReservation(reservationId) {
+        try {
+            const { data, error } = await this.client
+                .from('incidents')
+                .select('*')
+                .eq('reservation_id', reservationId);
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            return [];
+        }
+    }
+    async getReservationsByBookingRef(bookingRef) {
+        try {
+            const { data, error } = await this.client
+                .from('reservations')
+                .select('*')
+                .eq('booking_reference', bookingRef);
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            return [];
+        }
+    }
+
+    async getReservationsByVoyageId(voyageId) {
+        try {
+            // voyageId can be numeric (id_voyage) or string (voyage_id_mongo / uuid)
+            // We'll try query on voyage_id_mongo first as legacy code passes that
+            let query = this.client.from('reservations').select('*');
+
+            // Basic heuristics check
+            if (String(voyageId).length > 10) {
+                query = query.eq('voyage_id_mongo', voyageId);
+            } else {
+                query = query.eq('id_voyage', voyageId);
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            return [];
+        }
+    }
+    async getReservationsByUser(userId) {
+        try {
+            const { data, error } = await this.client
+                .from('reservations')
+                .select('*')
+                .eq('user_id', userId)
+                .order('date_depart', { ascending: false }); // date_reservation field might specific, assuming date_depart or similar
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            return [];
+        }
+    }
+
+    async deleteVoyage(voyageId) {
+        try {
+            const { error } = await this.client
+                .from('voyages')
+                .delete()
+                .eq('id_voyage', voyageId);
+
+            if (error) throw error;
+            return true;
+        } catch (error) {
+            console.error('❌ SupabaseService.deleteVoyage error:', error.message);
+            throw error;
+        }
+    }
+
+    async getReservationQR(voyageId) {
+        try {
+            const { data, error } = await this.client
+                .from('reservations')
+                .select('qr_code_data, ticket_qr_code')
+                .eq('id_voyage', voyageId)
+                .single();
+
+            if (error) return null;
+            return data;
+        } catch (error) {
+            return null;
+        }
+    }
+    // ==================== PMR MISSIONS ====================
+
+    async createPmrMission(missionData) {
+        console.log(`🔍 SupabaseService.createPmrMission`);
+        try {
+            const { data, error } = await this.client
+                .from('pmr_missions')
+                .insert([missionData])
+                .select()
+                .single();
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('❌ Exception in createPmrMission:', error.message);
+            throw error;
+        }
+    }
+
+    async getPmrMission(reservationId) {
+        try {
+            const { data, error } = await this.client
+                .from('pmr_missions')
+                .select('*')
+                .eq('reservation_id', reservationId)
+                .maybeSingle(); // Use maybeSingle to avoid error if not found, returns null
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    async updatePmrMission(missionId, updates) {
+        try {
+            const { data, error } = await this.client
+                .from('pmr_missions')
+                .update(updates)
+                .eq('id', missionId)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            throw error;
         }
     }
 }

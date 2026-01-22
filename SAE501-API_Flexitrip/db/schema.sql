@@ -127,6 +127,12 @@ CREATE TABLE reservations (
     facturation_id UUID,
     etape_voyage INTEGER DEFAULT 1,
     
+    -- Boarding Info
+    gate VARCHAR(20),
+    seat VARCHAR(20),
+    boarding_time TIMESTAMPTZ,
+    flight_train_number VARCHAR(50),
+
     -- Metadata
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -219,7 +225,83 @@ CREATE INDEX idx_notifications_created_at ON notifications(created_at);
 CREATE INDEX idx_notifications_type ON notifications(type);
 
 -- ============================================
+-- 6. TABLE BLOCKCHAIN (Traçabilité)
+-- ============================================
+CREATE TABLE blockchain (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(user_id),
+    transaction_id UUID,
+    amount NUMERIC(10,2) NOT NULL DEFAULT 0,
+    transaction_type VARCHAR(50),
+    balance_before NUMERIC(10,2) DEFAULT 0,
+    balance_after NUMERIC(10,2) DEFAULT 0,
+    
+    hash VARCHAR(64) NOT NULL,
+    previous_hash VARCHAR(64) NOT NULL,
+    nonce INTEGER DEFAULT 0,
+    timestamp TIMESTAMPTZ DEFAULT NOW(),
+    
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================
+-- 7. TABLE PMR_MISSIONS (Assignation Agents)
+-- ============================================
+CREATE TABLE pmr_missions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    reservation_id UUID REFERENCES reservations(reservation_id) ON DELETE CASCADE,
+    agent_id UUID REFERENCES users(user_id) ON DELETE SET NULL,
+    
+    status VARCHAR(20) DEFAULT 'pending' 
+        CHECK (status IN ('pending', 'assigned', 'in_progress', 'completed', 'cancelled')),
+    
+    notes TEXT,
+    started_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes ajoutés
+CREATE INDEX idx_blockchain_user_id ON blockchain(user_id);
+CREATE INDEX idx_blockchain_hash ON blockchain(hash);
+CREATE INDEX idx_pmr_missions_reservation ON pmr_missions(reservation_id);
+CREATE INDEX idx_pmr_missions_agent ON pmr_missions(agent_id);
+CREATE INDEX idx_pmr_missions_status ON pmr_missions(status);
+
+-- ============================================
+-- 8. TABLE CHAT (Communication PMR/Agent)
+-- ============================================
+CREATE TABLE chat_conversations (
+    conversation_id SERIAL PRIMARY KEY,
+    reservation_id UUID REFERENCES reservations(reservation_id),
+    etape_numero INTEGER DEFAULT 1,
+    pmr_user_id UUID REFERENCES users(user_id),
+    agent_user_id UUID REFERENCES users(user_id),
+    status VARCHAR(20) DEFAULT 'open',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE chat_messages (
+    message_id SERIAL PRIMARY KEY,
+    conversation_id INTEGER REFERENCES chat_conversations(conversation_id),
+    sender_user_id UUID REFERENCES users(user_id),
+    message_type VARCHAR(20) DEFAULT 'text',
+    content TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes Chat
+CREATE INDEX idx_chat_reservation ON chat_conversations(reservation_id);
+CREATE INDEX idx_chat_participants ON chat_conversations(pmr_user_id, agent_user_id);
+CREATE INDEX idx_chat_messages_conv ON chat_messages(conversation_id);
+
+-- ============================================
 -- TRIGGERS ET FONCTIONS
+
 -- ============================================
 
 -- Fonction pour updated_at
@@ -717,3 +799,46 @@ ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
 
 -- Assure que les tables sont répliquées pour Realtime
 ALTER TABLE notifications REPLICA IDENTITY FULL;
+
+-- =============================================================================
+-- 9. TABLE BAGAGES & EVENTS
+-- =============================================================================
+
+CREATE TABLE bagages (
+    bagage_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    reservation_id UUID REFERENCES reservations(reservation_id) ON DELETE SET NULL,
+    
+    bagage_public_id VARCHAR(50) UNIQUE, -- ID scannable (tag)
+    weight NUMERIC(5,2),
+    status VARCHAR(20) DEFAULT 'checked_in'
+        CHECK (status IN ('checked_in', 'security', 'loading', 'in_transit', 'unloading', 'carousel', 'delivered', 'lost')),
+    
+    current_location VARCHAR(255),
+    last_scanned_at TIMESTAMP WITH TIME ZONE,
+    
+    description TEXT,
+    photo_url TEXT,
+    
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE bagage_events (
+    event_id SERIAL PRIMARY KEY,
+    bagage_id UUID REFERENCES bagages(bagage_id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL,
+    location VARCHAR(255),
+    scanned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    metadata JSONB DEFAULT '{}'
+);
+
+-- Index pour optimiser les performances
+CREATE INDEX idx_bagages_user ON bagages(user_id);
+CREATE INDEX idx_bagages_reservation ON bagages(reservation_id);
+CREATE INDEX idx_bagages_public_id ON bagages(bagage_public_id);
+CREATE INDEX idx_bagage_events_bagage ON bagage_events(bagage_id);
+
+-- Activation de la réplication pour Realtime sur ces nouvelles tables
+ALTER TABLE bagages REPLICA IDENTITY FULL;
+ALTER TABLE bagage_events REPLICA IDENTITY FULL;

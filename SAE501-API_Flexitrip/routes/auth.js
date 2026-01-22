@@ -2,34 +2,14 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const { createClient } = require('@supabase/supabase-js');
+const SupabaseService = require('../services/SupabaseService');
 
 // Configuration JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'flexitrip-secret-key-2024';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 
-// Initialisation Supabase
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('❌ Variables Supabase manquantes');
-    process.exit(1);
-}
-
-const supabaseAdmin = createClient(
-    supabaseUrl,
-    supabaseServiceKey,
-    {
-        auth: { persistSession: false },
-        global: {
-            headers: {
-                'Authorization': `Bearer ${supabaseServiceKey}`,
-                'apikey': supabaseServiceKey
-            }
-        }
-    }
-);
+// Initialisation Supabase via Service Centralisé
+// Pas de duplication de createClient ici
 
 /**
  * @route POST /api/auth/login
@@ -49,14 +29,10 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Recherche de l'utilisateur
-        const { data: user, error } = await supabaseAdmin
-            .from('users')
-            .select('*')
-            .eq('email', email.toLowerCase())
-            .single();
+        // Recherche de l'utilisateur via SupabaseService
+        const user = await SupabaseService.getUserByEmail(email);
 
-        if (error || !user) {
+        if (!user) {
             console.log('❌ Utilisateur non trouvé:', email);
             return res.status(401).json({
                 success: false,
@@ -67,7 +43,7 @@ router.post('/login', async (req, res) => {
         console.log('👤 Utilisateur trouvé:', user.user_id, user.role);
 
         // Vérification du mot de passe
-        const isPasswordValid = await bcrypt.compare(password, user.password);
+        const isPasswordValid = await bcrypt.compare(password, user.password || '');
         if (!isPasswordValid) {
             console.log('❌ Mot de passe incorrect pour:', email);
             return res.status(401).json({
@@ -139,11 +115,7 @@ router.post('/register', async (req, res) => {
         }
 
         // Vérifier si l'utilisateur existe déjà
-        const { data: existingUser } = await supabaseAdmin
-            .from('users')
-            .select('user_id')
-            .eq('email', email.toLowerCase())
-            .single();
+        const existingUser = await SupabaseService.getUserByEmail(email);
 
         if (existingUser) {
             return res.status(409).json({
@@ -155,32 +127,20 @@ router.post('/register', async (req, res) => {
         // Hacher le mot de passe
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Créer l'utilisateur
+        // Créer l'utilisateur via SupabaseService
         const newUser = {
-            user_id: require('uuid').v4(),
-            email: email.toLowerCase(),
-            password: hashedPassword,
             name,
             surname,
+            email: email.toLowerCase(),
+            password: hashedPassword,
             phone: phone || null,
             role,
             pmr_profile: role === 'PMR' ? pmr_profile : null,
             needs_assistance: role === 'PMR',
-            solde: 100.00, // Solde initial
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            solde: 100.00 // Solde initial
         };
 
-        const { data: createdUser, error: insertError } = await supabaseAdmin
-            .from('users')
-            .insert([newUser])
-            .select()
-            .single();
-
-        if (insertError) {
-            console.error('❌ Erreur insertion utilisateur:', insertError);
-            throw insertError;
-        }
+        const createdUser = await SupabaseService.createUser(newUser);
 
         // Générer le token JWT
         const token = jwt.sign(
@@ -233,13 +193,9 @@ router.post('/refresh', async (req, res) => {
         }
 
         // Récupérer l'utilisateur
-        const { data: user, error } = await supabaseAdmin
-            .from('users')
-            .select('user_id, email, role, name, surname')
-            .eq('user_id', user_id)
-            .single();
+        const user = await SupabaseService.getUserById(user_id);
 
-        if (error || !user) {
+        if (!user) {
             return res.status(404).json({
                 success: false,
                 error: 'Utilisateur non trouvé'
@@ -304,13 +260,9 @@ router.get('/me', async (req, res) => {
         }
 
         // Récupérer l'utilisateur
-        const { data: user, error } = await supabaseAdmin
-            .from('users')
-            .select('*')
-            .eq('user_id', decoded.user_id)
-            .single();
+        const user = await SupabaseService.getUserById(decoded.user_id);
 
-        if (error || !user) {
+        if (!user) {
             return res.status(404).json({
                 success: false,
                 error: 'Utilisateur non trouvé'
