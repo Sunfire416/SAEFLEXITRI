@@ -73,7 +73,11 @@ const CheckInInterface = () => {
 
             const response = await axios.post(
                 `${API_BASE_URL}/api/checkin/${reservationId}`,
-                { user_id: user?.user_id }
+                { 
+                    user_id: user?.user_id,
+                    reservation_id: parseInt(reservationId),
+                    location: 'Web Interface'
+                }
             );
 
             if (response.data.success) {

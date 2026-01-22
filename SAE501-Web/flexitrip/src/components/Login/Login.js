@@ -49,10 +49,12 @@ function LoginPage() {
             console.log(user); // Vérifiez les informations utilisateur retournées
     
             // Rediriger en fonction du rôle de l'utilisateur
-            if (user.role === 'Accompagnant') {
+            if (user.role === 'Agent') {
+                navigate('/agent/dashboard');
+            } else if (user.role === 'Accompagnant') {
                 navigate('/accompagnant/home'); // Redirection spécifique pour les accompagnants
             } else {
-                navigate('/user/home'); // Redirection par défaut pour les autres utilisateurs
+                navigate('/user/home'); // Redirection par défaut
             }
         } catch (error) {
             if (error.response && error.response.status === 401) {

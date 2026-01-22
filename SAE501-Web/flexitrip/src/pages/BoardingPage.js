@@ -1,9 +1,9 @@
 import React from 'react';
-import BoardingPassGenerator from '../components/Boarding/BoardingPassGenerator';
+import BoardingPassList from '../components/Boarding/BoardingPassList';
 
 
 const BoardingPage = () => 
 
-    <BoardingPassGenerator />;
+    <BoardingPassList />;
 
 export default BoardingPage;

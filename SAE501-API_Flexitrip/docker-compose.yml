@@ -74,6 +74,7 @@ services:
     command: ["sh", "-c", "sleep 15 && node app.js"]
     
     environment:
+      CHAT_ENABLED: "true"
       DB_USER: root
       DB_PASSWORD: root
       DB_HOST: mysql

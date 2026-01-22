@@ -8,6 +8,26 @@ const searchControllerV2 = require('../controllers/searchControllerV2');
 
 /**
  * @swagger
+ * /api/search/autocomplete:
+ *   get:
+ *     summary: Autocomplétion d'adresses avec Google Places
+ *     tags: [Search]
+ *     parameters:
+ *       - in: query
+ *         name: input
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Texte saisi par l'utilisateur (min 2 caractères)
+ *         example: "Paris Gare de"
+ *     responses:
+ *       200:
+ *         description: Liste de suggestions d'adresses
+ */
+router.get('/autocomplete', searchControllerV2.getAutocomplete);
+
+/**
+ * @swagger
  * /api/search/multimodal:
  *   post:
  *     summary: Recherche itinéraire multimodal avec filtres PMR

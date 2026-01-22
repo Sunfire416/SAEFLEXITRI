@@ -6,12 +6,13 @@
 import React, { useState } from 'react';
 import './VoyageCard.css';
 
-const VoyageCard = ({ voyage, onOpenQR, onCancelCheckin, onDeleteVoyage }) => {
+const VoyageCard = ({ voyage, bagagesByReservationId = {}, onOpenQR, onCancelCheckin, onDeleteVoyage }) => {
   const [expanded, setExpanded] = useState(false);
 
   const getStatusBadge = (status) => {
     const badges = {
-      pending: { label: 'En attente', color: '#f59e0b', icon: '⏳' },
+      pending: { label: 'À venir', color: '#f59e0b', icon: '⏳' },
+      en_cours: { label: 'En cours', color: '#3b82f6', icon: '🚀' },
       confirmed: { label: 'Confirmé', color: '#3b82f6', icon: '✅' },
       completed: { label: 'Terminé', color: '#10b981', icon: '🎯' },
       cancelled: { label: 'Annulé', color: '#ef4444', icon: '❌' }
@@ -29,19 +30,71 @@ const VoyageCard = ({ voyage, onOpenQR, onCancelCheckin, onDeleteVoyage }) => {
     });
   };
 
+  const formatTime = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Europe/Paris'
+    }).replace(':', 'h');
+  };
+
   const getTransportIcon = (type) => {
     const icons = {
       train: '🚄',
       avion: '✈️',
       bus: '🚌',
-      taxi: '🚕'
+      taxi: '🚕',
+      tram: '🚊',
+      metro: '🚇',
+      walking: '🚶',
+      WALKING: '🚶',
+      TRANSIT: '🚇',
+      HEAVY_RAIL: '🚄',
+      METRO_RAIL: '🚇',
+      SUBWAY: '🚇',
+      TRAM: '🚊',
+      BUS: '🚌',
+      RAIL: '🚆'
     };
-    return icons[type] || '🚆';
+    return icons[type] || icons[type?.toUpperCase()] || '🚆';
   };
 
   const statusBadge = getStatusBadge(voyage.status);
   const hasReservations = voyage.reservations && voyage.reservations.length > 0;
   const hasBoardingPass = hasReservations && voyage.reservations.some(r => r.boarding_pass);
+
+  const bagageStatusLabel = (status) => {
+    const labels = {
+      created: 'Créé',
+      tagged: 'Tag généré',
+      dropped: 'Déposé',
+      in_transit: 'En transit',
+      loaded: 'Chargé',
+      arrived: 'Arrivé',
+      delivered: 'Livré',
+      exception: 'Incident'
+    };
+    return labels[status] || status || '—';
+  };
+
+  const formatDateTime = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString('fr-FR');
+  };
+
+  const reservationIds = hasReservations ? voyage.reservations.map(r => String(r.reservation_id)) : [];
+  const bagageCount = reservationIds.reduce((sum, id) => sum + ((bagagesByReservationId[id] || []).length), 0);
+
+  // Utiliser les heures réelles des segments si disponibles
+  const firstSegment = voyage.etapes && voyage.etapes.length > 0 ? voyage.etapes[0] : null;
+  const lastSegment = voyage.etapes && voyage.etapes.length > 0 ? voyage.etapes[voyage.etapes.length - 1] : null;
+  
+  const departureTime = firstSegment?.departure_time || voyage.date_debut || voyage.Date_depart;
+  const arrivalTime = lastSegment?.arrival_time || voyage.date_fin || voyage.Date_arrivee;
 
   return (
     <div className={`voyage-card ${voyage.status}`}>
@@ -55,6 +108,13 @@ const VoyageCard = ({ voyage, onOpenQR, onCancelCheckin, onDeleteVoyage }) => {
         </div>
       </div>
 
+      {/* Booking Reference */}
+      {(voyage.booking_reference || (voyage.reservations && voyage.reservations[0]?.booking_reference)) && (
+        <div className="voyage-booking-ref">
+          📋 Référence : <strong>{voyage.booking_reference || voyage.reservations[0].booking_reference}</strong>
+        </div>
+      )}
+
       {/* Route */}
       <div className="voyage-route">
         <div className="route-point">
@@ -62,7 +122,7 @@ const VoyageCard = ({ voyage, onOpenQR, onCancelCheckin, onDeleteVoyage }) => {
           <div className="route-location">
             <span className="location-name">{voyage.depart || voyage.Lieu_depart}</span>
             <span className="location-time">
-              {formatDate(voyage.date_debut || voyage.Date_depart)}
+              {formatDate(departureTime)}
             </span>
           </div>
         </div>
@@ -85,26 +145,99 @@ const VoyageCard = ({ voyage, onOpenQR, onCancelCheckin, onDeleteVoyage }) => {
           <div className="route-location">
             <span className="location-name">{voyage.arrivee || voyage.Lieu_arrivee}</span>
             <span className="location-time">
-              {formatDate(voyage.date_fin || voyage.Date_arrivee)}
+              {formatDate(arrivalTime)}
             </span>
           </div>
         </div>
       </div>
 
+      {/* Bagages (résumé) */}
+      {bagageCount > 0 && (
+        <div className="voyage-bagages-summary">
+          🧳 {bagageCount} bagage{bagageCount > 1 ? 's' : ''}
+        </div>
+      )}
+
       {/* Etapes (si expanded) */}
       {expanded && voyage.etapes && voyage.etapes.length > 0 && (
         <div className="voyage-etapes">
-          <h4>📍 Étapes du voyage</h4>
-          {voyage.etapes.map((etape, index) => (
-            <div key={index} className="etape-item">
-              <span className="etape-icon">{getTransportIcon(etape.type)}</span>
-              <div className="etape-details">
-                <strong>{etape.compagnie || etape.type}</strong>
-                <span>{etape.adresse_1} → {etape.adresse_2}</span>
-                {etape.id && <span className="etape-id">{etape.id}</span>}
-              </div>
-            </div>
-          ))}
+          <h4>📍 Itinéraire détaillé</h4>
+          <div className="itinerary-timeline">
+            {voyage.etapes.map((etape, index) => {
+              const hasEnrichedData = etape.line || etape.departure_station || etape.departure_time;
+              
+              return (
+                <div key={index} className="segment-timeline-item">
+                  <div className="segment-timeline-marker">
+                    <div className="timeline-icon">{getTransportIcon(etape.type || etape.vehicle_type)}</div>
+                    {index < voyage.etapes.length - 1 && <div className="timeline-connector"></div>}
+                  </div>
+                  
+                  <div className="segment-content">
+                    {/* Transport info */}
+                    <div className="segment-header">
+                      {hasEnrichedData ? (
+                        <>
+                          {etape.line && (
+                            <span className="segment-line-badge">
+                              {etape.line}
+                            </span>
+                          )}
+                          <span className="segment-operator">
+                            {etape.compagnie || etape.type || 'Transport'}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="segment-operator-fallback">
+                          {getTransportIcon(etape.type)} {etape.compagnie || etape.type || 'Transport'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Departure */}
+                    {hasEnrichedData && etape.departure_station ? (
+                      <div className="segment-station departure">
+                        <span className="station-time">{formatTime(etape.departure_time)}</span>
+                        <span className="station-name">📍 {etape.departure_station}</span>
+                      </div>
+                    ) : (
+                      <div className="segment-station-fallback">
+                        <span className="station-name">📍 {etape.adresse_1}</span>
+                      </div>
+                    )}
+
+                    {/* Duration and accessibility */}
+                    {hasEnrichedData && (
+                      <div className="segment-details">
+                        {etape.duration_minutes && (
+                          <span className="segment-duration">
+                            ⏱️ {etape.duration_minutes} min
+                          </span>
+                        )}
+                        {etape.accessible === false && (
+                          <span className="segment-warning">
+                            ⚠️ Accessibilité limitée
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Arrival */}
+                    {hasEnrichedData && etape.arrival_station ? (
+                      <div className="segment-station arrival">
+                        <span className="station-time">{formatTime(etape.arrival_time)}</span>
+                        <span className="station-name">📍 {etape.arrival_station}</span>
+                      </div>
+                    ) : (
+                      <div className="segment-station-fallback">
+                        <span className="station-name">📍 {etape.adresse_2}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -136,6 +269,50 @@ const VoyageCard = ({ voyage, onOpenQR, onCancelCheckin, onDeleteVoyage }) => {
                   )}
                 </div>
               )}
+
+              {/* Bagages liés à la réservation */}
+              {(() => {
+                const bagages = bagagesByReservationId[String(resa.reservation_id)] || [];
+                if (bagages.length === 0) return null;
+                return (
+                  <div className="bagages-section">
+                    <div className="bagages-title">
+                      🧳 Bagages ({bagages.length})
+                    </div>
+                    <div className="bagages-list">
+                      {bagages.map((b) => (
+                        <div key={b.bagage_id} className="bagage-item">
+                          <div className="bagage-main">
+                            <div className="bagage-line">
+                              <strong>#{b.bagage_id}</strong>
+                              <span className="bagage-dot">•</span>
+                              <span>{b.bagage_type}</span>
+                              <span className="bagage-dot">•</span>
+                              <span className={`bagage-status ${b.status || ''}`}>{bagageStatusLabel(b.status)}</span>
+                            </div>
+                            <div className="bagage-sub">
+                              {b.last_location ? <span>📍 {b.last_location}</span> : <span>📍 —</span>}
+                              {b.last_event_at ? <span className="bagage-sep">|</span> : null}
+                              {b.last_event_at ? <span>🕒 {formatDateTime(b.last_event_at)}</span> : null}
+                            </div>
+                          </div>
+                          <div className="bagage-actions">
+                            <button
+                              type="button"
+                              className="btn-bagage-view"
+                              onClick={() => {
+                                window.location.href = `/user/bagages/${b.bagage_id}`;
+                              }}
+                            >
+                              Voir tracking
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           ))}
         </div>
@@ -157,6 +334,16 @@ const VoyageCard = ({ voyage, onOpenQR, onCancelCheckin, onDeleteVoyage }) => {
         >
           📱 QR Code
         </button>
+
+        {/* Bouton Suivi PMR si assistance activée */}
+        {voyage.reservations?.some(r => r.assistance_PMR === 'Oui') && (
+          <button
+            className="btn-suivi-pmr"
+            onClick={() => window.location.href = `/suivi-prise-en-charge/${voyage.reservations.find(r => r.assistance_PMR === 'Oui')?.reservation_id}`}
+          >
+            ♿ Suivi PMR
+          </button>
+        )}
 
         {voyage.status !== 'cancelled' && voyage.status !== 'completed' && (
           <button

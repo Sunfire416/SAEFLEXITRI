@@ -2,6 +2,8 @@ import React, { useState, useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Autocomplete, TextField } from '@mui/material';
+import { debounce } from 'lodash';
 import './MultimodalSearch.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
@@ -33,6 +35,41 @@ const MultimodalSearch = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [bookingLoading, setBookingLoading] = useState(false);
+
+    // États pour l'autocomplétion
+    const [originSuggestions, setOriginSuggestions] = useState([]);
+    const [destinationSuggestions, setDestinationSuggestions] = useState([]);
+    const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
+    // Fonction pour récupérer les suggestions d'adresses
+    const fetchAddressSuggestions = debounce(async (input, setterFunction) => {
+        if (!input || input.length < 3) {
+            setterFunction([]);
+            return;
+        }
+
+        setLoadingSuggestions(true);
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/api/search/autocomplete`,
+                {
+                    params: { input },
+                    headers: { 'Content-Type': 'application/json' }
+                }
+            );
+
+            if (response.data.success && response.data.predictions) {
+                setterFunction(response.data.predictions.map(p => p.description));
+            } else {
+                setterFunction([]);
+            }
+        } catch (err) {
+            console.error('❌ Erreur autocomplétion:', err);
+            setterFunction([]);
+        } finally {
+            setLoadingSuggestions(false);
+        }
+    }, 300);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -280,27 +317,55 @@ const MultimodalSearch = () => {
                     <div className="form-row">
                         <div className="form-group">
                             <label htmlFor="origin">📍 Départ</label>
-                            <input
-                                type="text"
-                                id="origin"
-                                name="origin"
+                            <Autocomplete
+                                freeSolo
+                                options={originSuggestions}
                                 value={searchForm.origin}
-                                onChange={handleInputChange}
-                                placeholder="Paris Gare de Lyon"
-                                required
+                                onInputChange={(event, newValue) => {
+                                    setSearchForm(prev => ({ ...prev, origin: newValue }));
+                                    fetchAddressSuggestions(newValue, setOriginSuggestions);
+                                }}
+                                loading={loadingSuggestions}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        placeholder="Paris Gare de Lyon"
+                                        variant="outlined"
+                                        required
+                                        sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                                backgroundColor: 'white',
+                                            }
+                                        }}
+                                    />
+                                )}
                             />
                         </div>
 
                         <div className="form-group">
                             <label htmlFor="destination">🎯 Arrivée</label>
-                            <input
-                                type="text"
-                                id="destination"
-                                name="destination"
+                            <Autocomplete
+                                freeSolo
+                                options={destinationSuggestions}
                                 value={searchForm.destination}
-                                onChange={handleInputChange}
-                                placeholder="Lyon Part-Dieu"
-                                required
+                                onInputChange={(event, newValue) => {
+                                    setSearchForm(prev => ({ ...prev, destination: newValue }));
+                                    fetchAddressSuggestions(newValue, setDestinationSuggestions);
+                                }}
+                                loading={loadingSuggestions}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        placeholder="Lyon Part-Dieu"
+                                        variant="outlined"
+                                        required
+                                        sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                                backgroundColor: 'white',
+                                            }
+                                        }}
+                                    />
+                                )}
                             />
                         </div>
 
@@ -470,12 +535,19 @@ const MultimodalSearch = () => {
                                                     <div className="segment-info">
                                                         <div className="segment-mode">
                                                             <strong>{segment.mode.toUpperCase()}</strong>
+                                                            {segment.line && (
+                                                                <span className="segment-line">
+                                                                    Ligne {segment.line}
+                                                                </span>
+                                                            )}
                                                             {segment.operator && (
                                                                 <span className="operator">{segment.operator}</span>
                                                             )}
                                                         </div>
                                                         <div className="segment-details">
-                                                            <span>{segment.from} → {segment.to}</span>
+                                                            <span>
+                                                                {segment.departure_station || segment.from} → {segment.arrival_station || segment.to}
+                                                            </span>
                                                         </div>
                                                         <div className="segment-time">
                                                             <span>🕐 {new Date(segment.departure_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>

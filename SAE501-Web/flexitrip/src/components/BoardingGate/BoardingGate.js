@@ -73,8 +73,20 @@ const BoardingGate = () => {
     setError(null);
 
     try {
+      // 🆕 Détecter si c'est un QR JSON ou juste un pass_id
+      let qrPayload = qrData;
+      
+      if (!qrData.startsWith('{')) {
+        // Si c'est juste un numéro (pass_id), créer le JSON
+        console.log('🔍 Pass ID détecté, conversion en QR JSON...');
+        qrPayload = JSON.stringify({
+          type: 'BOARDING_PASS',
+          pass_id: parseInt(qrData)
+        });
+      }
+
       const boardingData = {
-        qr_data: qrData,
+        qr_data: qrPayload,
         live_photo: verificationMode === 'qr_face' ? livePhoto : undefined,
         gate: gateNumber
       };
@@ -122,10 +134,22 @@ const BoardingGate = () => {
     setError(null);
 
     try {
+      // 🆕 Détecter si c'est un QR JSON ou juste un pass_id
+      let qrPayload = qrData;
+      
+      if (!qrData.startsWith('{')) {
+        // Si c'est juste un numéro (pass_id), créer le JSON
+        console.log('🔍 Pass ID détecté, conversion en QR JSON...');
+        qrPayload = JSON.stringify({
+          type: 'BOARDING_PASS',
+          pass_id: parseInt(qrData)
+        });
+      }
+
       const response = await axios.post(
         `${API_BASE_URL}/boarding/scan-gate`,
         {
-          qr_data: qrData,
+          qr_data: qrPayload,
           gate: gateNumber
         }
       );

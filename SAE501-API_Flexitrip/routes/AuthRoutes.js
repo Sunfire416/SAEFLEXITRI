@@ -39,6 +39,24 @@ router.get('/verify-token', authenticateToken, (req, res) => {
 });
 
 /**
+ * GET /auth/me
+ * Retourne l'utilisateur connecté (source d'autorité côté serveur)
+ */
+router.get('/me', authenticateToken, userController.getMe);
+
+/**
+ * GET /auth/me/qr
+ * Retourne (et génère si absent) le QR public d'un Agent
+ */
+router.get('/me/qr', authenticateToken, userController.getMyAgentQr);
+
+/**
+ * GET /auth/me/assignments
+ * Retourne les prises en charge validées par l'Agent connecté
+ */
+router.get('/me/assignments', authenticateToken, userController.getMyAgentAssignments);
+
+/**
  * @swagger
  * /users/login:
  *   post:

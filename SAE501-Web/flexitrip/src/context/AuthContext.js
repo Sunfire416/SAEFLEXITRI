@@ -26,18 +26,23 @@
              try {
                  const token = localStorage.getItem('token');
                  if (token && isTokenValid(token)) {
-                     // Décoder le token JWT
-                     const decodedToken = jwtDecode(token);
-                     const userId = decodedToken.user_id || decodedToken.id; // Adapter au champ réel dans votre token
-
                      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
 
-                     // Récupérer les données utilisateur depuis le backend
-                     const { data } = await axios.get(`${API_BASE_URL}/users/get/${userId}`, {
-                         headers: { Authorization: `Bearer ${token}` },
-                     });
-
-                     setUser(data); // Mettre à jour l'utilisateur unique avec des données utilisateur
+                     try {
+                         // ✅ Source d'autorité serveur
+                         const { data } = await axios.get(`${API_BASE_URL}/auth/me`, {
+                             headers: { Authorization: `Bearer ${token}` },
+                         });
+                         setUser(data);
+                     } catch (e) {
+                         // Fallback non régressif (ancien comportement)
+                         const decodedToken = jwtDecode(token);
+                         const userId = decodedToken.user_id || decodedToken.id;
+                         const { data } = await axios.get(`${API_BASE_URL}/users/get/${userId}`, {
+                             headers: { Authorization: `Bearer ${token}` },
+                         });
+                         setUser(data);
+                     }
                  } else {
                      localStorage.removeItem('token'); // Nettoyez le token (clé d'authentification) expiré
                  }

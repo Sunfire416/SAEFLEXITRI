@@ -30,4 +30,7 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
+// Export par défaut pour compatibilité
 module.exports = authenticateToken;
+// Export nommé pour les nouveaux fichiers
+module.exports.authenticateToken = authenticateToken;

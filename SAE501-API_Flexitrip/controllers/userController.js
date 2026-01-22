@@ -1,7 +1,8 @@
-const { User, Voyage } = require('../models');
+const { User, Voyage, PriseEnCharge, Reservations } = require('../models');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const { Op } = require('sequelize');
+const crypto = require('crypto');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret';
 
@@ -65,6 +66,194 @@ exports.logoutUser = async (req, res) => {
         });
     } catch (err) {
         res.status(500).json({ error: 'Erreur serveur' });
+    }
+};
+
+/**
+ * ==========================================
+ * ENDPOINTS ADDITIFS (NON RÉGRESSIFS)
+ * ==========================================
+ */
+
+/**
+ * GET /auth/me
+ * Retourne l'utilisateur connecté depuis la DB (source d'autorité serveur)
+ */
+exports.getMe = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'Utilisateur non authentifié' });
+        }
+
+        const user = await User.findByPk(userId, {
+            attributes: { exclude: ['password'] }
+        });
+
+        if (!user) {
+            return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        }
+
+        const userResponse = user.toJSON();
+        userResponse.age = user.getAge();
+        res.status(200).json(userResponse);
+    } catch (error) {
+        console.error('Erreur /auth/me :', error);
+        res.status(500).json({ error: 'Erreur serveur', details: error.message });
+    }
+};
+
+const generateAgentQrPublicId = () => crypto.randomBytes(16).toString('hex');
+
+/**
+ * GET /auth/me/qr
+ * Génère (si absent) et retourne l'identifiant QR public du compte Agent
+ */
+exports.getMyAgentQr = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'Utilisateur non authentifié' });
+        }
+
+        const user = await User.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        }
+
+        if (user.role !== 'Agent') {
+            return res.status(403).json({ error: 'Accès réservé aux Agents' });
+        }
+
+        if (!user.agent_qr_public_id) {
+            // Génération lazy, non bloquante, avec retries en cas de collision unique
+            for (let attempt = 0; attempt < 5; attempt++) {
+                try {
+                    user.agent_qr_public_id = generateAgentQrPublicId();
+                    await user.save();
+                    break;
+                } catch (e) {
+                    if (e?.name === 'SequelizeUniqueConstraintError') {
+                        continue;
+                    }
+                    throw e;
+                }
+            }
+        }
+
+        res.status(200).json({
+            agent_qr_public_id: user.agent_qr_public_id,
+            qr_content: user.agent_qr_public_id
+        });
+    } catch (error) {
+        console.error('Erreur /auth/me/qr :', error);
+        res.status(500).json({ error: 'Erreur serveur', details: error.message });
+    }
+};
+
+/**
+ * GET /auth/me/assignments
+ * Liste les prises en charge validées par l'Agent connecté (filtrage strict)
+ */
+exports.getMyAgentAssignments = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'Utilisateur non authentifié' });
+        }
+
+        const user = await User.findByPk(userId, {
+            attributes: ['user_id', 'role']
+        });
+        if (!user) {
+            return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        }
+        if (user.role !== 'Agent') {
+            return res.status(403).json({ error: 'Accès réservé aux Agents' });
+        }
+
+        const prisesEnCharge = await PriseEnCharge.findAll({
+            where: { validated_agent_user_id: userId },
+            include: [
+                {
+                    model: Reservations,
+                    as: 'reservation',
+                    include: [
+                        {
+                            model: User,
+                            as: 'user',
+                            attributes: ['user_id', 'name', 'surname', 'phone', 'type_handicap']
+                        }
+                    ]
+                }
+            ],
+            order: [['validated_at', 'DESC'], ['id', 'DESC']]
+        });
+
+        const enriched = [];
+        for (const pec of prisesEnCharge) {
+            let segment = null;
+
+            if (pec.voyage_id_mongo) {
+                try {
+                    const voyage = await Voyage.findById(pec.voyage_id_mongo);
+                    const idx = (pec.etape_numero || 1) - 1;
+                    if (voyage?.etapes?.length && idx >= 0 && idx < voyage.etapes.length) {
+                        const etape = voyage.etapes[idx];
+                        segment = {
+                            mode: etape.type || pec.reservation?.Type_Transport,
+                            line: etape.line || null,
+                            operator: etape.compagnie || 'Unknown',
+                            departure_station: etape.departure_station || etape.adresse_1 || null,
+                            arrival_station: etape.arrival_station || etape.adresse_2 || null,
+                            departure_time: etape.departure_time || null,
+                            arrival_time: etape.arrival_time || null,
+                            vehicle_type: etape.vehicle_type || null
+                        };
+                    }
+                } catch (e) {
+                    // Ne pas bloquer le dashboard si Mongo n'est pas dispo
+                    segment = null;
+                }
+            }
+
+            enriched.push({
+                id: pec.id,
+                status: pec.status,
+                etape_numero: pec.etape_numero,
+                location: pec.location,
+                validated_at: pec.validated_at,
+                validated_by: pec.validated_by,
+                validation_method: pec.validation_method,
+                voyage_id_mongo: pec.voyage_id_mongo,
+                reservation_id: pec.reservation?.reservation_id || null,
+                reservation: pec.reservation ? {
+                    reservation_id: pec.reservation.reservation_id,
+                    num_reza: pec.reservation.num_reza_mmt,
+                    type_transport: pec.reservation.Type_Transport,
+                    lieu_depart: pec.reservation.Lieu_depart,
+                    lieu_arrivee: pec.reservation.Lieu_arrivee,
+                    date_depart: pec.reservation.Date_depart,
+                    assistance_PMR: pec.reservation.assistance_PMR
+                } : null,
+                pmr: pec.reservation?.user ? {
+                    user_id: pec.reservation.user.user_id,
+                    name: pec.reservation.user.name,
+                    surname: pec.reservation.user.surname,
+                    phone: pec.reservation.user.phone,
+                    type_handicap: pec.reservation.user.type_handicap
+                } : null,
+                segment
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            assignments: enriched
+        });
+    } catch (error) {
+        console.error('Erreur /auth/me/assignments :', error);
+        res.status(500).json({ error: 'Erreur serveur', details: error.message });
     }
 };
 

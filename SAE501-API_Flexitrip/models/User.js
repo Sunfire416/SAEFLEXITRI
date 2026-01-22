@@ -63,6 +63,15 @@ const User = sequelize.define('User', {
         allowNull: false,
         comment: 'Rôle de l\'utilisateur'
     },
+    // ==========================================
+    // AGENT PMR - IDENTITÉ QR
+    // ==========================================
+    agent_qr_public_id: {
+        type: DataTypes.STRING(64),
+        allowNull: true,
+        unique: true,
+        comment: 'Identifiant public (QR) pour les comptes Agent (nullable)'
+    },
     password: {
         type: DataTypes.STRING(255),
         allowNull: false,
@@ -135,7 +144,8 @@ const User = sequelize.define('User', {
     timestamps: false,
     indexes: [
         { fields: ['email'] },
-        { fields: ['role'] }
+        { fields: ['role'] },
+        { fields: ['agent_qr_public_id'] }
     ]
 });
 

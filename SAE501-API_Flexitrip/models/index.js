@@ -11,6 +11,14 @@ const BoardingPass = require('./BoardingPass');
 const Notification = require('./Notification');
 const Voyage = require('./Voyage');
 const Agent = require('./Agent');
+const PriseEnCharge = require('./PriseEnCharge');
+const Bagage = require('./Bagage');
+const BagageEvent = require('./BagageEvent');
+// ==========================================
+// 💬 CHAT (PMR <-> Agent) - Additif
+// ==========================================
+const ChatConversation = require('./ChatConversation');
+const ChatMessage = require('./ChatMessage');
 
 // Associations
 
@@ -47,6 +55,108 @@ User.hasMany(BoardingPass, {
     as: 'boarding_passes'
 });
 
+// ==========================================
+// 🆕 ASSOCIATIONS PRISE EN CHARGE PMR
+// ==========================================
+// PriseEnCharge et Reservations
+PriseEnCharge.belongsTo(Reservations, {
+    foreignKey: 'reservation_id',
+    as: 'reservation'
+});
+Reservations.hasOne(PriseEnCharge, {
+    foreignKey: 'reservation_id',
+    as: 'prise_en_charge'
+});
+
+// PriseEnCharge et User
+PriseEnCharge.belongsTo(User, {
+    foreignKey: 'user_id',
+    as: 'user'
+});
+User.hasMany(PriseEnCharge, {
+    foreignKey: 'user_id',
+    as: 'prises_en_charge'
+});
+
+// PriseEnCharge et Agent (optionnel)
+PriseEnCharge.belongsTo(Agent, {
+    foreignKey: 'agent_id',
+    as: 'agent'
+});
+Agent.hasMany(PriseEnCharge, {
+    foreignKey: 'agent_id',
+    as: 'prises_en_charge'
+});
+
+// ==========================================
+// 🧳 ASSOCIATIONS BAGAGES (TRACKING)
+// ==========================================
+Bagage.belongsTo(Reservations, {
+    foreignKey: 'reservation_id',
+    as: 'reservation'
+});
+Reservations.hasMany(Bagage, {
+    foreignKey: 'reservation_id',
+    as: 'bagages'
+});
+
+Bagage.belongsTo(User, {
+    foreignKey: 'user_id',
+    as: 'user'
+});
+User.hasMany(Bagage, {
+    foreignKey: 'user_id',
+    as: 'bagages'
+});
+
+BagageEvent.belongsTo(Bagage, {
+    foreignKey: 'bagage_id',
+    as: 'bagage'
+});
+Bagage.hasMany(BagageEvent, {
+    foreignKey: 'bagage_id',
+    as: 'events'
+});
+
+// ==========================================
+// 💬 ASSOCIATIONS CHAT (Additif)
+// ==========================================
+ChatConversation.belongsTo(User, {
+    foreignKey: 'pmr_user_id',
+    as: 'pmr_user'
+});
+User.hasMany(ChatConversation, {
+    foreignKey: 'pmr_user_id',
+    as: 'pmr_conversations'
+});
+
+ChatConversation.belongsTo(User, {
+    foreignKey: 'agent_user_id',
+    as: 'agent_user'
+});
+User.hasMany(ChatConversation, {
+    foreignKey: 'agent_user_id',
+    as: 'agent_conversations'
+});
+
+ChatMessage.belongsTo(ChatConversation, {
+    foreignKey: 'conversation_id',
+    as: 'conversation'
+});
+ChatConversation.hasMany(ChatMessage, {
+    foreignKey: 'conversation_id',
+    as: 'messages'
+});
+
+ChatMessage.belongsTo(User, {
+    foreignKey: 'sender_user_id',
+    as: 'sender'
+});
+User.hasMany(ChatMessage, {
+    foreignKey: 'sender_user_id',
+    as: 'sent_messages'
+});
+
 module.exports = {
     Facturation,
     Agent,
@@ -59,6 +169,11 @@ module.exports = {
     CheckInLog,
     BoardingPass,
     // ==========================================
+    PriseEnCharge,
+    Bagage,
+    BagageEvent,
+    ChatConversation,
+    ChatMessage,
     Notification,
     Voyage,
 };

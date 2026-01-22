@@ -51,12 +51,22 @@ const Reservations = sequelize.define('reservations', {
     },
     id_voyage: {
         type: DataTypes.INTEGER,
-        allowNull: true,  // Changé de false à true pour le système de booking adaptatif
-        comment: 'Identifiant du voyage multimodal (MongoDB) - Optionnel'
+        allowNull: true,
+        comment: 'Identifiant numérique du voyage (Voyage.id_voyage) - Optionnel'
+    },
+    voyage_id_mongo: {
+        type: DataTypes.STRING(24),
+        allowNull: true,
+        comment: 'ObjectId MongoDB du voyage (Voyage._id) - Lien vers collection Voyage'
+    },
+    enrollment_id: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+        comment: 'ID enrollment biométrique (workflows MODERATE/FULL uniquement)'
     },
     etape_voyage: {
         type: DataTypes.INTEGER,
-        allowNull: true,  // Changé de false à true pour le système de booking adaptatif
+        allowNull: true,
         defaultValue: 1,
         comment: 'Numéro de l\'étape dans le voyage (1, 2, 3...)'
     },
