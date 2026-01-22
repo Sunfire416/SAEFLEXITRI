@@ -142,7 +142,6 @@ function Navbar() {
                             <li className="nav-item">
                                 <a href="/user/voyages" className="nav-links">✈️ Mes Voyages</a>
                             </li>
-                            </li>
                             {(user.role === 'PMR' || user.role === 'Accompagnant') && (
                                 <li className="nav-item">
                                     <a href="/user/bagages" className="nav-links">🧳 Mes bagages</a>
@@ -297,7 +296,6 @@ function Navbar() {
                             </li>
                             <li className="nav-item">
                                 <a href="/user/voyages" className="nav-links" onClick={toggleMobileMenu}>Mes Voyages<AngleRightIcon className="icon-angle"/></a>
-                            </li>
                             </li>
                             {(user.role === 'PMR' || user.role === 'Accompagnant') && (
                                 <li className="nav-item">

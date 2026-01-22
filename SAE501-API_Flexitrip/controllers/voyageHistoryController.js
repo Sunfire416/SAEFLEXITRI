@@ -1,7 +1,5 @@
 const SupabaseService = require('../services/SupabaseService');
 
-const SupabaseService = require('../services/SupabaseService');
-
 /**
  * Controller Voyage History - Supabase
  * Gestion historique, QR, annulations
@@ -155,4 +153,3 @@ class VoyageHistoryController {
 }
 
 module.exports = new VoyageHistoryController();
-      prix_total: 0,

@@ -71,10 +71,16 @@ services:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - DATABASE_URL=${DATABASE_URL}
+      - NEO4J_URL=${NEO4J_URL}
+      - NEO4J_USER=${NEO4J_USER}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
       - PORT=17777
       - NODE_ENV=production
     ports:
       - "17777:17777"
+    depends_on:
+      - neo4j
+      - redis
     # IMPORTANT: curl n'existe pas forcément dans l'image node
     # => je te mets une version "sans curl" (voir plus bas explication)
     healthcheck:
