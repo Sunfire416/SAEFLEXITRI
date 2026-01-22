@@ -1,18 +1,6 @@
 /**
  * CHECKIN CONTROLLER - VERSION DEBUG
- * Désactive temporairement la vérification HMAC pour tester
- */
-
-const EnrollmentBiometric = require('../models/EnrollmentBiometric');
-const CheckInLog = require('../models/CheckInLog');
-const BoardingPass = require('../models/BoardingPass');
-const faceMatchService = require('../services/faceMatchService');
-const { Reservations } = require('../models');
-const checkinService = require('../services/checkinService'); // 🆕 ÉTAPE 5
-
-// ==========================================
-// 🆕 POINT 4 - IMPORTS NOTIFICATIONS + AGENT
-// ==========================================
+    console.log(`ℹ️ Check-in log ignoré (Mongo retiré) : ${checkinId}`);
 const notificationService = require('../services/notificationService');
 const agentService = require('../services/agentService');
 
@@ -100,59 +88,11 @@ exports.scanCheckIn = async (req, res) => {
     const reservationId = qrPayload.reservation_id;
 
     // ==========================================
-    // ÉTAPE 2 : Récupérer Enrollment
+    // ÉTAPE 2/3 : Vérifications biométriques désactivées (Mongo retiré)
     // ==========================================
-    console.log('🔍 Étape 2/5 : Récupération enrollment...');
-    const enrollment = await EnrollmentBiometric.findOne({ enrollment_id: enrollmentId });
-
-    if (!enrollment) {
-      return res.status(404).json({
-        success: false,
-        error: `Enrollment introuvable : ${enrollmentId}`
-      });
-    }
-
-    if (enrollment.status !== 'active') {
-      return res.status(403).json({
-        success: false,
-        error: 'Enrollment révoqué ou expiré'
-      });
-    }
-
-    console.log('✅ Enrollment trouvé:', enrollmentId);
-
-    // ==========================================
-    // ÉTAPE 3 : Face Matching
-    // ==========================================
-    console.log('📷 Étape 3/5 : Face matching...');
-    
-    let faceMatchResult;
-    
-    // Vérifier si biometric_data existe
-    if (!enrollment.biometric_data || !enrollment.biometric_data.face_template) {
-      console.warn('⚠️ Pas de face_template, simulation du face matching...');
-      // Simuler un score de matching
-      faceMatchResult = {
-        match: true,
-        similarity: 92.5
-      };
-    } else {
-      // Face matching réel
-      faceMatchResult = await faceMatchService.compareFaces(
-        enrollment.biometric_data.face_template,
-        live_photo
-      );
-      
-      if (!faceMatchResult.match) {
-        return res.status(403).json({
-          success: false,
-          error: 'Vérification faciale échouée',
-          similarity_score: faceMatchResult.similarity
-        });
-      }
-    }
-
-    console.log(`✅ Face match réussi (score: ${faceMatchResult.similarity}%)`);
+    console.log('ℹ️ Enrollment/biométrie désactivés (mode Supabase uniquement)');
+    const enrollment = null;
+    const faceMatchResult = { match: true, similarity: null };
 
     // ==========================================
     // ÉTAPE 4 : Récupérer Réservation
@@ -195,17 +135,7 @@ exports.scanCheckIn = async (req, res) => {
     // Log check-in
     const checkinId = `CHK-${userId}-${Date.now()}`;
     
-    await CheckInLog.create({
-      checkin_id: checkinId,
-      enrollment_id: enrollmentId,
-      user_id: userId,
-      reservation_id: reservationId,
-      checkin_type: checkin_type || 'kiosk',
-      location,
-      face_match_score: faceMatchResult.similarity,
-      verification_method: 'biometric',
-      status: 'success'
-    });
+    console.log(`ℹ️ Check-in log ignoré (Mongo retiré) : ${checkinId}`);
 
     // ==========================================
     // 🆕 POINT 4 - NOTIFICATION CHECK-IN + AGENT
@@ -310,13 +240,7 @@ exports.manualCheckIn = async (req, res) => {
     const userId = qrPayload.user_id;
     const reservationId = qrPayload.reservation_id;
 
-    const enrollment = await EnrollmentBiometric.findOne({ enrollment_id: enrollmentId });
-    if (!enrollment) {
-      return res.status(404).json({
-        success: false,
-        error: 'Enrollment introuvable'
-      });
-    }
+    const enrollment = null;
 
     const boardingPass = await BoardingPass.create({
       reservation_id: reservationId,
@@ -329,16 +253,7 @@ exports.manualCheckIn = async (req, res) => {
       issued_at: new Date()
     });
 
-    await CheckInLog.create({
-      enrollment_id: enrollmentId,
-      user_id: userId,
-      reservation_id: reservationId,
-      checkin_type: 'manual',
-      agent_id,
-      notes,
-      override_reason: override_face_match ? 'Manual override by agent' : null,
-      status: 'success'
-    });
+    console.log('ℹ️ Check-in log ignoré (Mongo retiré)');
 
     res.json({
       success: true,
@@ -369,15 +284,11 @@ exports.getCheckInStatus = async (req, res) => {
   try {
     const reservation_id = req.params.id || req.params.reservation_id;
 
-    const checkInLog = await CheckInLog.findOne({
-      reservation_id: parseInt(reservation_id)
-    }).sort({ created_at: -1 });
-
     const boardingPass = await BoardingPass.findOne({
       where: { reservation_id: parseInt(reservation_id) }
     });
 
-    if (!checkInLog && !boardingPass) {
+    if (!boardingPass) {
       return res.json({
         success: true,
         checked_in: false,
@@ -387,13 +298,8 @@ exports.getCheckInStatus = async (req, res) => {
 
     res.json({
       success: true,
-      checked_in: !!boardingPass,
-      check_in_log: checkInLog ? {
-        checkin_type: checkInLog.checkin_type,
-        location: checkInLog.location,
-        timestamp: checkInLog.created_at,
-        status: checkInLog.status
-      } : null,
+      checked_in: true,
+      check_in_log: null,
       boarding_pass: boardingPass ? {
         pass_id: boardingPass.pass_id,
         flight_train: boardingPass.flight_train_number,

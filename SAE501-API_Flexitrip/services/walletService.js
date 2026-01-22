@@ -6,7 +6,7 @@
 // ======================================================================
 
 const { User } = require('../models');
-const Transaction = require('../models/Transaction');
+const SupabaseService = require('./SupabaseService');
 const notificationService = require('./notificationService');
 
 /**
@@ -71,21 +71,25 @@ async function deductFromWallet(params) {
         
         await user.update({ solde: newBalance });
 
-        // 3) Créer transaction MongoDB (historique)
-        const transaction = new Transaction({
-            sender: user_id.toString(),
-            receiver: 'system',
-            amount: amount,
-            timestamp: new Date(),
-            booking_reference: booking_reference,
-            voyage_id: voyage_id,
-            description: description,
-            type: 'booking_payment',
-            balance_before: oldBalance,
-            balance_after: newBalance
-        });
+        // 3) Créer transaction Supabase (historique)
+        const { data: transaction, error: txError } = await SupabaseService.client
+            .from('transactions')
+            .insert({
+                user_id: user_id,
+                reservation_id: null,
+                amount: amount,
+                payment_status: 'paid',
+                type: 'debit',
+                date_payement: new Date().toISOString(),
+                balance_after: newBalance,
+                description: description
+            })
+            .select('*')
+            .single();
 
-        await transaction.save();
+        if (txError) {
+            throw txError;
+        }
 
         // 4) Envoyer notification de paiement réussi
         try {
@@ -95,7 +99,7 @@ async function deductFromWallet(params) {
                 title: 'Paiement effectué',
                 message: `${amount} points déduits pour le booking ${booking_reference}`,
                 data: {
-                    transaction_id: transaction._id.toString(),
+                    transaction_id: transaction.id,
                     booking_reference: booking_reference,
                     amount: amount,
                     balance_after: newBalance
@@ -112,7 +116,7 @@ async function deductFromWallet(params) {
 
         return {
             success: true,
-            transaction_id: transaction._id.toString(),
+            transaction_id: transaction.id,
             amount_deducted: amount,
             balance_before: oldBalance,
             balance_after: newBalance,
@@ -182,20 +186,25 @@ async function creditToWallet(params) {
         
         await user.update({ solde: newBalance });
 
-        // 2) Créer transaction MongoDB (historique)
-        const transaction = new Transaction({
-            sender: 'system',
-            receiver: user_id.toString(),
-            amount: amount,
-            timestamp: new Date(),
-            booking_reference: booking_reference,
-            description: reason,
-            type: 'refund',
-            balance_before: oldBalance,
-            balance_after: newBalance
-        });
+        // 2) Créer transaction Supabase (historique)
+        const { data: transaction, error: txError } = await SupabaseService.client
+            .from('transactions')
+            .insert({
+                user_id: user_id,
+                reservation_id: null,
+                amount: amount,
+                payment_status: 'paid',
+                type: 'credit',
+                date_payement: new Date().toISOString(),
+                balance_after: newBalance,
+                description: reason
+            })
+            .select('*')
+            .single();
 
-        await transaction.save();
+        if (txError) {
+            throw txError;
+        }
 
         // 3) Envoyer notification de crédit
         try {
@@ -205,7 +214,7 @@ async function creditToWallet(params) {
                 title: 'Remboursement effectué',
                 message: `${amount} points crédités - ${reason}`,
                 data: {
-                    transaction_id: transaction._id.toString(),
+                    transaction_id: transaction.id,
                     booking_reference: booking_reference,
                     amount: amount,
                     balance_after: newBalance
@@ -221,7 +230,7 @@ async function creditToWallet(params) {
 
         return {
             success: true,
-            transaction_id: transaction._id.toString(),
+            transaction_id: transaction.id,
             amount_credited: amount,
             balance_before: oldBalance,
             balance_after: newBalance
@@ -260,16 +269,16 @@ async function getBalance(user_id) {
  */
 async function getTransactionHistory(user_id, limit = 50) {
     try {
-        const transactions = await Transaction.find({
-            $or: [
-                { sender: user_id.toString() },
-                { receiver: user_id.toString() }
-            ]
-        })
-        .sort({ timestamp: -1 })
-        .limit(limit);
+        const { data, error } = await SupabaseService.client
+            .from('transactions')
+            .select('*')
+            .eq('user_id', user_id)
+            .order('created_at', { ascending: false })
+            .limit(limit);
 
-        return transactions;
+        if (error) throw error;
+
+        return data || [];
     } catch (error) {
         console.error('[walletService] Erreur récupération historique:', error);
         return [];

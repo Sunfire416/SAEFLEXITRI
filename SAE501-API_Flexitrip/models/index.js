@@ -4,11 +4,8 @@ const User = require('./User');
 // ==========================================
 // 🆕 POINT 3 - MODÈLES BIOMÉTRIQUES
 // ==========================================
-const EnrollmentBiometric = require('./EnrollmentBiometric');
-const CheckInLog = require('./CheckInLog');
 const BoardingPass = require('./BoardingPass');
 // ==========================================
-const Notification = require('./Notification');
 const Voyage = require('./Voyage');
 const Agent = require('./Agent');
 const PriseEnCharge = require('./PriseEnCharge');
@@ -192,8 +189,6 @@ module.exports = {
     // ==========================================
     // 🆕 POINT 3 - EXPORTS MODÈLES BIOMÉTRIQUES
     // ==========================================
-    EnrollmentBiometric,
-    CheckInLog,
     BoardingPass,
     // ==========================================
     PriseEnCharge,
@@ -201,7 +196,6 @@ module.exports = {
     BagageEvent,
     ChatConversation,
     ChatMessage,
-    Notification,
     Voyage,
     // ==========================================
     // 🆕 EXPORTS MODÈLES IA - ASSIGNATION INTELLIGENTE

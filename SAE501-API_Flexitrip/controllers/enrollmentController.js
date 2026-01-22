@@ -8,7 +8,6 @@
  * - DELETE /enrollment/:enrollment_id : Révoquer consentement (RGPD)
  */
 
-const { EnrollmentBiometric } = require('../models');
 const ocrService = require('../services/ocrService');
 const faceMatchService = require('../services/faceMatchService');
 const qrService = require('../services/qrService');
@@ -20,11 +19,19 @@ const encryptionService = require('../services/encryptionService');
 const notificationService = require('../services/notificationService');
 const agentService = require('../services/agentService');
 
+const enrollmentDisabled = (res) => {
+  return res.status(501).json({
+    success: false,
+    error: 'Enrollment biométrique désactivé (Mongo retiré)'
+  });
+};
+
 /**
  * POST /enrollment/register
  * Créer un nouvel enrollment biométrique
  */
 exports.registerEnrollment = async (req, res) => {
+  return enrollmentDisabled(res);
   try {
     const {
       user_id,
@@ -276,6 +283,7 @@ exports.registerEnrollment = async (req, res) => {
  * Vérifier un enrollment existant (pour check-in)
  */
 exports.verifyEnrollment = async (req, res) => {
+  return enrollmentDisabled(res);
   try {
     const { enrollment_id, live_photo } = req.body;
 
@@ -341,6 +349,7 @@ exports.verifyEnrollment = async (req, res) => {
  * Récupérer enrollment d'un utilisateur
  */
 exports.getEnrollmentByUserId = async (req, res) => {
+  return enrollmentDisabled(res);
   try {
     const { user_id } = req.params;
 
@@ -393,6 +402,7 @@ exports.getEnrollmentByUserId = async (req, res) => {
  * Révoquer consentement (RGPD - Droit à l'oubli)
  */
 exports.revokeConsent = async (req, res) => {
+  return enrollmentDisabled(res);
   try {
     const { enrollment_id } = req.params;
 
@@ -440,6 +450,7 @@ exports.revokeConsent = async (req, res) => {
  * Anonymiser données (RGPD - Droit à l'oubli complet)
  */
 exports.anonymizeEnrollment = async (req, res) => {
+  return enrollmentDisabled(res);
   try {
     const { enrollment_id } = req.params;
 

@@ -8,8 +8,7 @@
  * 3. Manuel (fallback sans biométrie)
  */
 
-const { EnrollmentBiometric, Reservations, CheckInLog, BoardingPass } = require('../models');
-const enrollmentService = require('./enrollmentService');
+const { Reservations, BoardingPass } = require('../models');
 const faceMatchService = require('./faceMatchService');
 const notificationService = require('./notificationService');
 const agentService = require('./agentService');
@@ -63,62 +62,12 @@ async function performCheckIn(params) {
         // ⚠️ WORKFLOWS MINIMAL/LIGHT : enrollment_id = null (ÉTAPE 6)
         // ✅ WORKFLOWS MODERATE/FULL : enrollment_id existe (ÉTAPE 4)
         // ==========================================
-        let enrollmentData = null;
         let faceMatchResult = null;
         let biometricVerified = false;
-        
-        // Récupérer enrollment_id depuis la réservation (ÉTAPE 4)
-        const enrollmentId = reservation.enrollment_id;
-        
-        if (enrollmentId) {
-            // Enrollment existe uniquement pour MODERATE/FULL
-            console.log(`🔐 Enrollment trouvé: ${enrollmentId}`);
-            
-            try {
-                // Récupérer enrollment depuis MongoDB
-                enrollmentData = await EnrollmentBiometric.findOne({ 
-                    enrollment_id: enrollmentId 
-                });
-                
-                if (!enrollmentData) {
-                    console.warn(`⚠️ Enrollment ${enrollmentId} introuvable dans MongoDB`);
-                } else if (enrollmentData.status !== 'active') {
-                    console.warn(`⚠️ Enrollment ${enrollmentId} non actif (status: ${enrollmentData.status})`);
-                } else {
-                    console.log(`✅ Enrollment ${enrollmentId} actif`);
-                    
-                    // Si photo fournie, faire la vérification biométrique
-                    if (live_photo) {
-                        console.log('📷 Vérification biométrique...');
-                        
-                        // Vérifier si face_encoding existe
-                        if (enrollmentData.face_encoding && enrollmentData.face_encoding.length > 0) {
-                            faceMatchResult = await faceMatchService.compareFaces(
-                                enrollmentData.face_encoding,
-                                live_photo
-                            );
-                            
-                            if (faceMatchResult.match) {
-                                biometricVerified = true;
-                                console.log(`✅ Face match réussi: ${faceMatchResult.confidence}%`);
-                            } else {
-                                console.warn(`⚠️ Face match échoué: ${faceMatchResult.confidence}%`);
-                                // Ne pas bloquer le check-in, juste enregistrer le score
-                            }
-                        } else {
-                            console.warn('⚠️ Pas de face_encoding dans enrollment, skip verification');
-                        }
-                    } else {
-                        console.log('ℹ️ Pas de photo fournie, skip verification biométrique');
-                    }
-                }
-            } catch (enrollError) {
-                console.error('❌ Erreur vérification enrollment:', enrollError.message);
-                // Ne pas bloquer le check-in si erreur enrollment
-            }
-        } else {
-            // WORKFLOWS MINIMAL (bus) et LIGHT (train) : pas d'enrollment (ÉTAPE 6)
-            console.log('ℹ️ Pas d\'enrollment associé à cette réservation (workflow MINIMAL/LIGHT)');
+        const enrollmentId = reservation.enrollment_id || null;
+
+        if (enrollmentId && live_photo) {
+            console.log('ℹ️ Vérification biométrique désactivée (Mongo retiré)');
         }
         
         // ==========================================
@@ -158,25 +107,7 @@ async function performCheckIn(params) {
         // ==========================================
         const checkinId = `CHK-${user_id}-${Date.now()}`;
         
-        await CheckInLog.create({
-            checkin_id: checkinId,
-            enrollment_id: enrollmentId || null, // 🆕 ÉTAPE 5
-            reservation_id,
-            user_id,
-            checkin_type,
-            location: location || 'Unknown',
-            qr_scanned: false, // Mode direct (pas de QR)
-            face_verified: biometricVerified,
-            face_match_score: faceMatchResult?.confidence || null,
-            liveness_check_passed: faceMatchResult?.liveness_check?.is_live || false,
-            pmr_assistance_confirmed: reservation.assistance_PMR === 'Oui',
-            boarding_pass_issued: true,
-            boarding_pass_id: boardingPass.pass_id.toString(),
-            verification_method: biometricVerified ? 'biometric' : 'manual',
-            status: 'success'
-        });
-        
-        console.log(`✅ Check-in log ${checkinId} créé`);
+        console.log(`ℹ️ Check-in log ignoré (Mongo retiré) : ${checkinId}`);
         
         // ==========================================
         // ÉTAPE 5 : ASSIGNER AGENT PMR (si nécessaire)

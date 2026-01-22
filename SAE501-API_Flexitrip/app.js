@@ -35,8 +35,8 @@ const notificationRoutes = require('./routes/notificationRoutesV2');
 const assistanceRoutes = require('./routes/assistance');
 const priseEnChargeRoutes = require('./routes/priseEnChargeRoutes');
 const intelligentAssignmentRoutes = require('./routes/intelligentAssignmentRoutes');
-const incidentRoutes = require('./routes/incidentRoutes');
-const reviewRoutes = require('./routes/reviewRoutes');
+// const incidentRoutes = require('./routes/incidentRoutes'); // TEMPORAIREMENT DÉSACTIVÉ
+// const reviewRoutes = require('./routes/reviewRoutes'); // TEMPORAIREMENT DÉSACTIVÉ
 
 // ==========================================
 // INITIALISATION EXPRESS
@@ -50,7 +50,9 @@ app.use(helmet());
 // ✅ CORS (fix login React localhost:3000 -> API localhost:17777)
 const allowedOrigins = [
     'http://localhost:3000',
-    'http://127.0.0.1:3000'
+    'http://localhost:3001',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001'
 ];
 
 if (process.env.CORS_ORIGIN) {
@@ -120,6 +122,74 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/api/auth', authRoutes);
 app.use('/api/prise-en-charge', priseEnChargeRoutes);
 
+// Route d'inscription publique (sans authentification)
+const bcrypt = require('bcrypt');
+app.post('/api/users/insert', async (req, res) => {
+    try {
+        const { name, surname, email, password, phone, role = 'Passager', needs_assistance = false } = req.body;
+
+        if (!name || !surname || !email || !password) {
+            return res.status(400).json({
+                success: false,
+                error: 'Champs requis: name, surname, email, password'
+            });
+        }
+
+        // Vérifier si l'email existe déjà
+        const { data: existing } = await SupabaseService.client
+            .from('users')
+            .select('user_id')
+            .eq('email', email.toLowerCase())
+            .single();
+
+        if (existing) {
+            return res.status(409).json({
+                success: false,
+                error: 'Un compte avec cet email existe déjà'
+            });
+        }
+
+        // Hasher le mot de passe
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Créer l'utilisateur
+        const { data: newUser, error } = await SupabaseService.client
+            .from('users')
+            .insert([{
+                name,
+                surname,
+                email: email.toLowerCase(),
+                password: hashedPassword,
+                phone: phone || null,
+                role: role,
+                needs_assistance: needs_assistance,
+                solde: 0,
+                created_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        const { password: _, ...userWithoutPassword } = newUser;
+
+        console.log('✅ Nouvel utilisateur créé:', userWithoutPassword.email);
+
+        res.status(201).json({
+            success: true,
+            message: 'Compte créé avec succès',
+            user: userWithoutPassword
+        });
+
+    } catch (error) {
+        console.error('❌ Erreur création compte:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Erreur lors de la création du compte'
+        });
+    }
+});
+
 // ==========================================
 // ROUTES PROTÉGÉES (authentification requise)
 // ==========================================
@@ -139,8 +209,8 @@ app.use('/api/blockchain', blockchainRoutes);
 app.use('/api/assistance', assistanceRoutes);
 app.use('/api/prise-en-charge', priseEnChargeRoutes);
 app.use('/api/intelligent-assignment', intelligentAssignmentRoutes);
-app.use('/api/incidents', incidentRoutes);
-app.use('/api/review', reviewRoutes);
+// app.use('/api/incidents', incidentRoutes); // TEMPORAIREMENT DÉSACTIVÉ
+// app.use('/api/review', reviewRoutes); // TEMPORAIREMENT DÉSACTIVÉ
 
 // ==========================================
 // ENDPOINTS DE TEST (dev uniquement)

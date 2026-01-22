@@ -28,7 +28,6 @@
 
 const { PriseEnCharge, Agent, AgentAvailability, User } = require('../models');
 const Voyage = require('../models/Voyage');
-const Incident = require('../models/Incident');
 const intelligentAssignmentService = require('./intelligentAssignmentService');
 const notificationService = require('./notificationService');
 const { Op } = require('sequelize');
@@ -444,19 +443,8 @@ async function reassignAgent(prise_en_charge_id, reason) {
  * Helpers
  */
 
-async function checkActiveIncidents(priseEnCharge) {
-  try {
-    // Chercher les incidents actifs qui affectent cette réservation
-    const incidents = await Incident.find({
-      status: { $in: ['actif', 'en_cours'] },
-      affectedUsers: priseEnCharge.user_id
-    }).sort({ severity: -1 });
-    
-    return incidents;
-  } catch (error) {
-    console.error('❌ Erreur checkActiveIncidents:', error);
-    return [];
-  }
+async function checkActiveIncidents() {
+  return [];
 }
 
 async function checkCriticalConnection(priseEnCharge) {

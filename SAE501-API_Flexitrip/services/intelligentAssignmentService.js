@@ -34,7 +34,6 @@
 
 const { Agent, AgentAvailability, AgentSkills, PriseEnCharge, User } = require('../models');
 const Voyage = require('../models/Voyage');
-const Incident = require('../models/Incident');
 const notificationService = require('./notificationService');
 const { Op } = require('sequelize');
 

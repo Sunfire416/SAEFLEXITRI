@@ -240,4 +240,104 @@ router.put('/:id/pmr-profile', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/users/insert:
+ *   post:
+ *     summary: Inscription d'un nouvel utilisateur (PUBLIC - pas d'auth requise)
+ *     tags: [Users]
+ */
+const bcrypt = require('bcrypt');
+const { v4: uuidv4 } = require('uuid');
+
+router.post('/insert', async (req, res) => {
+    try {
+        const {
+            email,
+            password,
+            name,
+            surname,
+            phone,
+            role = 'PMR',
+            type_handicap,
+            besoins_specifiques,
+            pmr_profile = {}
+        } = req.body;
+
+        console.log('📝 [INSERT] Tentative d\'inscription pour:', email);
+
+        // Validation des données
+        if (!email || !password || !name || !surname) {
+            return res.status(400).json({
+                success: false,
+                error: 'Email, mot de passe, nom et prénom sont requis'
+            });
+        }
+
+        // Vérifier si l'utilisateur existe déjà
+        const { data: existingUser } = await SupabaseService.client
+            .from('users')
+            .select('user_id')
+            .eq('email', email.toLowerCase())
+            .single();
+
+        if (existingUser) {
+            return res.status(409).json({
+                success: false,
+                error: 'Un utilisateur avec cet email existe déjà'
+            });
+        }
+
+        // Hacher le mot de passe
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Créer l'utilisateur
+        const newUser = {
+            user_id: uuidv4(),
+            email: email.toLowerCase(),
+            password: hashedPassword,
+            name,
+            surname,
+            phone: phone || null,
+            role,
+            type_handicap: type_handicap || null,
+            besoins_specifiques: besoins_specifiques || null,
+            pmr_profile: role === 'PMR' ? pmr_profile : null,
+            needs_assistance: role === 'PMR',
+            solde: 100.00,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        const { data: createdUser, error: insertError } = await SupabaseService.client
+            .from('users')
+            .insert([newUser])
+            .select()
+            .single();
+
+        if (insertError) {
+            console.error('❌ [INSERT] Erreur insertion utilisateur:', insertError);
+            throw insertError;
+        }
+
+        console.log('✅ [INSERT] Inscription réussie pour:', email);
+
+        // Retourner les informations (sans le mot de passe)
+        const { password: _, ...userWithoutPassword } = createdUser;
+
+        res.status(201).json({
+            success: true,
+            message: 'Inscription réussie',
+            user: userWithoutPassword
+        });
+
+    } catch (error) {
+        console.error('❌ [INSERT] Erreur inscription:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Erreur lors de l\'inscription'
+        });
+    }
+});
+
 module.exports = router;

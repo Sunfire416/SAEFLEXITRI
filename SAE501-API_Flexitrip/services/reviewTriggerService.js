@@ -11,10 +11,7 @@
  * - Éviter spam (max 1 notification par voyage)
  */
 
-const Review = require('../models/Review');
-const { Reservations } = require('../models/index');
 const notificationService = require('./notificationService');
-const Notification = require('../models/Notification');
 
 /**
  * Déclenche demande d'avis après fin de voyage
@@ -28,6 +25,7 @@ const Notification = require('../models/Notification');
  * @returns {Promise<Object>} Résultat du déclenchement
  */
 async function triggerReviewRequest(params) {
+    return { success: false, disabled: true, reason: 'reviews_disabled' };
     try {
         const { voyage_id, user_id, reservations, depart, arrivee, transport_type } = params;
         

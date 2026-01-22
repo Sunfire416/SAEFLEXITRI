@@ -7,7 +7,7 @@
  */
 
 const notificationService = require('../services/notificationService');
-const Notification = require('../models/Notification');
+const SupabaseService = require('../services/SupabaseService');
 
 /**
  * GET /notifications?user_id=4&limit=50&skip=0&unread_only=false&type=null
@@ -47,10 +47,16 @@ exports.getUnreadNotifications = async (req, res) => {
       return res.status(400).json({ success: false, error: 'user_id requis' });
     }
 
-    const notifications = await Notification.findUnreadByUser(user_id);
-    const unread_count = await Notification.countUnreadByUser(user_id);
+    const { data, error } = await SupabaseService.client
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user_id)
+      .eq('read', false)
+      .order('created_at', { ascending: false });
 
-    res.json({ success: true, notifications, unread_count });
+    if (error) throw error;
+
+    res.json({ success: true, notifications: data || [], unread_count: (data || []).length });
   } catch (error) {
     console.error('❌ Erreur getUnreadNotifications:', error);
     res.status(500).json({ success: false, error: 'Erreur serveur', details: error.message });
@@ -68,8 +74,14 @@ exports.getUnreadCount = async (req, res) => {
       return res.status(400).json({ success: false, error: 'user_id requis' });
     }
 
-    const unread_count = await Notification.countUnreadByUser(user_id);
-    res.json({ success: true, unread_count });
+    const { count, error } = await SupabaseService.client
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user_id)
+      .eq('read', false);
+
+    if (error) throw error;
+    res.json({ success: true, unread_count: count || 0 });
   } catch (error) {
     console.error('❌ Erreur getUnreadCount:', error);
     res.status(500).json({ success: false, error: 'Erreur serveur', details: error.message });
@@ -82,13 +94,17 @@ exports.getUnreadCount = async (req, res) => {
  */
 exports.getNotificationById = async (req, res) => {
   try {
-    const notification = await Notification.findOne({ notification_id: req.params.id });
-    
-    if (!notification) {
+    const { data, error } = await SupabaseService.client
+      .from('notifications')
+      .select('*')
+      .eq('notification_id', req.params.id)
+      .single();
+
+    if (error || !data) {
       return res.status(404).json({ success: false, error: 'Notification introuvable' });
     }
 
-    res.json({ success: true, notification });
+    res.json({ success: true, notification: data });
   } catch (error) {
     console.error('❌ Erreur getNotificationById:', error);
     res.status(500).json({ success: false, error: 'Erreur serveur', details: error.message });
@@ -115,14 +131,18 @@ exports.createNotification = async (req, res) => {
  */
 exports.markAsRead = async (req, res) => {
   try {
-    const notification = await Notification.findOne({ notification_id: req.params.id });
-    
-    if (!notification) {
+    const { data, error } = await SupabaseService.client
+      .from('notifications')
+      .update({ read: true, read_at: new Date().toISOString() })
+      .eq('notification_id', req.params.id)
+      .select('*')
+      .single();
+
+    if (error || !data) {
       return res.status(404).json({ success: false, error: 'Notification introuvable' });
     }
-    
-    await notification.markRead();
-    res.json({ success: true, notification });
+
+    res.json({ success: true, notification: data });
   } catch (error) {
     console.error('❌ Erreur markAsRead:', error);
     res.status(500).json({ success: false, error: 'Erreur serveur', details: error.message });
