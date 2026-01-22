@@ -1,0 +1,42 @@
+/* Styles de base pour AgentDashboard */
+.agent-dashboard {
+    padding: 24px;
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.refresh-btn {
+    border: none;
+    background: #0d6efd;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.severity-badge {
+    display: inline-block;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    text-transform: capitalize;
+}

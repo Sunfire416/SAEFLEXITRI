@@ -88,6 +88,59 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // ==========================================
 
 app.get('/api/health', async (req, res) => {
+    try {
+        const health = {
+            status: 'healthy',
+            timestamp: new Date().toISOString(),
+            services: {
+                api: 'running',
+                neo4j: 'unknown',
+                supabase: 'unknown'
+            }
+        };
+
+        // Vérifier Neo4j
+        try {
+            if (Neo4jService.driver) {
+                await Neo4jService.driver.verifyConnectivity();
+                health.services.neo4j = 'connected';
+            } else {
+                health.services.neo4j = 'not initialized';
+            }
+        } catch (e) {
+            health.services.neo4j = 'error: ' + e.message;
+        }
+
+        // Vérifier Supabase
+        try {
+            await SupabaseService.client.from('users').select('count', { count: 'exact' }).limit(1);
+            health.services.supabase = 'connected';
+        } catch (e) {
+            health.services.supabase = 'error: ' + e.message;
+        }
+
+        res.json(health);
+    } catch (error) {
+        res.status(500).json({
+            status: 'unhealthy',
+            error: error.message
+        });
+    }
+});
+
+// ==========================================
+// SWAGGER DOCUMENTATION
+// ==========================================
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// ==========================================
+// ROUTES PUBLIQUES (sans authentification)
+// ==========================================
+
+app.use('/api/auth', authRoutes);
+app.use('/api/stations', stationRoutes);
+app.use('/api/search', searchRoutesV2);
+app.use('/api/dev-pmr', devPmrRoutes);
 app.use('/api/prise-en-charge', priseEnChargeRoutes);
 app.use('/api/checkin', checkinRoutes);
 

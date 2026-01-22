@@ -1,0 +1,53 @@
+/* Styles de base pour FeedbackForm */
+.feedback-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.feedback-header {
+    margin-bottom: 20px;
+}
+
+.feedback-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.rating-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.star-rating {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.star {
+    border: none;
+    background: transparent;
+    font-size: 20px;
+    cursor: pointer;
+    color: #c7c7c7;
+}
+
+.star.active {
+    color: #f39c12;
+}
+
+.loading-state {
+    text-align: center;
+    padding: 20px;
+}
+
+.transport-badge {
+    display: inline-block;
+    background: #eef2ff;
+    color: #3730a3;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
