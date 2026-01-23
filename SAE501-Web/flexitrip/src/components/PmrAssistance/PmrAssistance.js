@@ -18,24 +18,70 @@ function PMRTracking() {
   });
   
   // État pour la simulation locale
-  const [status, setStatus] = useState("en_route");
+  const [status, setStatus] = useState("pending");
   const [helpRequested, setHelpRequested] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
   const mapContainer = useRef(null);
   const map = useRef(null);
+  const simulationIntervalRef = useRef(null);
+
+  // Tous les états de la mission PMR
+  const stateSequence = [
+    "assigned",
+    "en_route",
+    "approaching",
+    "arrived",
+    "handover_started",
+    "in_mission",
+    "completed",
+  ];
 
   // Configuration des statuts
   const statusConfig = {
+    pending: {
+      text: "Un agent va vous être attribué dans quelques instants.",
+      color: "#95a5a6",
+      description: "En attente d'attribution d'agent",
+    },
+    assigned: {
+      text: "Agent assigné",
+      color: "#9b59b6",
+      description: "L'agent est désigné à la mission",
+    },
     en_route: {
       text: "Agent en route",
       color: "#f1c40f",
+      description: "L'agent se déplace vers le point",
+    },
+    approaching: {
+      text: "Agent à l'approche",
+      color: "#f39c12",
+      description: "L'agent est proche du point",
     },
     arrived: {
-      text: "Agent arrivé au point de rendez-vous",
+      text: "Agent arrivé",
       color: "#2ecc71",
+      description: "L'agent a atteint le point",
+    },
+    handover_started: {
+      text: "Transfert commencé",
+      color: "#1abc9c",
+      description: "L'agent commence la prise en charge",
     },
     in_mission: {
-      text: "Prise en charge en cours",
+      text: "Assistance en cours",
       color: "#3498db",
+      description: "Assistance PMR active",
+    },
+    completed: {
+      text: "Mission terminée",
+      color: "#27ae60",
+      description: "Assistance terminée avec succès",
+    },
+    cancelled: {
+      text: "Assistance annulée",
+      color: "#e74c3c",
+      description: "Mission annulée ou non réalisée",
     },
   };
 
@@ -65,7 +111,8 @@ function PMRTracking() {
         }
 
         setMissionData(data.mission);
-        setStatus(data.mission.status);
+        // Ne pas écraser le statut initial "pending" - laisser l'utilisateur cliquer sur le bouton
+        // setStatus(data.mission.status);
       } catch (err) {
         console.error('❌ Erreur fetch mission:', err);
         setError(err.message);
@@ -75,6 +122,37 @@ function PMRTracking() {
     };
 
     fetchMission();
+  }, []);
+
+  // Fonction pour démarrer la simulation automatique
+  const handleStartSimulation = () => {
+    setIsSimulating(true);
+    let currentStateIndex = 0;
+
+    // Changement immédiat au premier état
+    setStatus(stateSequence[currentStateIndex]);
+    currentStateIndex++;
+
+    // Puis transition aux états suivants toutes les 5 secondes
+    simulationIntervalRef.current = setInterval(() => {
+      if (currentStateIndex < stateSequence.length) {
+        setStatus(stateSequence[currentStateIndex]);
+        currentStateIndex++;
+      } else {
+        // Fin de la simulation
+        clearInterval(simulationIntervalRef.current);
+        setIsSimulating(false);
+      }
+    }, 5000);
+  };
+
+  // Nettoyer l'intervalle si le composant est démonté
+  useEffect(() => {
+    return () => {
+      if (simulationIntervalRef.current) {
+        clearInterval(simulationIntervalRef.current);
+      }
+    };
   }, []);
 
   const handleStatusChange = (newStatus) => {
@@ -244,6 +322,51 @@ function PMRTracking() {
     }
   }, [loading, missionData, departurePoint, destination, agentPosition, coordinates.departure, coordinates.destination]);
 
+  // Fetch real route from Mapbox Directions API and update map
+  useEffect(() => {
+    if (!map.current || !departurePoint || !destination) return;
+
+    const fetchAndUpdateRoute = async () => {
+      try {
+        const coords = `${departurePoint[0]},${departurePoint[1]};${destination[0]},${destination[1]}`;
+        const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?access_token=${mapboxgl.accessToken}&geometries=geojson`;
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Directions API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!data.routes || data.routes.length === 0) {
+          console.warn('⚠️ No route found from Mapbox Directions API');
+          return;
+        }
+
+        const route = data.routes[0];
+        const geometry = route.geometry;
+
+        // Update the route source with the real geometry
+        if (map.current && map.current.getSource("route")) {
+          map.current.getSource("route").setData({
+            type: "Feature",
+            properties: {},
+            geometry: geometry,
+          });
+          console.log('✅ Route updated with real geometry from Mapbox Directions API');
+        }
+      } catch (error) {
+        console.error("❌ Error fetching route from Directions API:", error);
+      }
+    };
+
+    // Only fetch route if map is fully loaded
+    if (map.current.isStyleLoaded()) {
+      fetchAndUpdateRoute();
+    } else {
+      map.current.once("load", fetchAndUpdateRoute);
+    }
+  }, [departurePoint, destination]);
+
   // Mettre à jour uniquement la couleur du marqueur agent sans recréer la carte
   useEffect(() => {
     if (map.current && map.current.getLayer("agent-marker")) {
@@ -353,19 +476,15 @@ function PMRTracking() {
           </svg>
           <span id="statusText">{currentConfig.text}</span>
         </p>
+        <p className="status-description">{currentConfig.description}</p>
 
         <div className="button-group">
           <button
             className="btn-status"
-            onClick={() => handleStatusChange("arrived")}
+            onClick={handleStartSimulation}
+            disabled={isSimulating}
           >
-            Simuler arrivée agent
-          </button>
-          <button
-            className="btn-status"
-            onClick={() => handleStatusChange("in_mission")}
-          >
-            Simuler prise en charge
+            {isSimulating ? "Simulation en cours..." : "Simuler la prise en charge PMR"}
           </button>
         </div>
       </section>

@@ -35,6 +35,7 @@ const notificationRoutes = require('./routes/notificationRoutesV2');
 const assistanceRoutes = require('./routes/assistance');
 const priseEnChargeRoutes = require('./routes/priseEnChargeRoutes');
 const intelligentAssignmentRoutes = require('./routes/intelligentAssignmentRoutes');
+const devPmrRoutes = require('./routes/devPmrRoutes');
 // const incidentRoutes = require('./routes/incidentRoutes'); // TEMPORAIREMENT DÉSACTIVÉ
 // const reviewRoutes = require('./routes/reviewRoutes'); // TEMPORAIREMENT DÉSACTIVÉ
 
@@ -209,6 +210,7 @@ app.use('/api/blockchain', blockchainRoutes);
 app.use('/api/assistance', assistanceRoutes);
 app.use('/api/prise-en-charge', priseEnChargeRoutes);
 app.use('/api/intelligent-assignment', intelligentAssignmentRoutes);
+app.use('/api/dev', devPmrRoutes);
 // app.use('/api/incidents', incidentRoutes); // TEMPORAIREMENT DÉSACTIVÉ
 // app.use('/api/review', reviewRoutes); // TEMPORAIREMENT DÉSACTIVÉ
 
