@@ -1,4 +1,6 @@
 services:
+  # ===== NEO4J (OPTIONNEL) =====
+  # Service de base de données graphe pour recommandations
   neo4j:
     image: neo4j:5
     container_name: flexitrip_neo4j
@@ -22,43 +24,14 @@ services:
     networks:
       - flexitrip-net
 
-  redis:
-    image: redis:alpine
-    container_name: flexitrip_redis
-    restart: always
-    ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes
-    networks:
-      - flexitrip-net
+  # ===== SUPPRIMÉ POUR DÉMO =====
+  # redis: → Remplacé par localStorage/AsyncStorage
+  # zookeeper: → Supprimé (dépendance Kafka)
+  # kafka: → Remplacé par Supabase Realtime
+  # mongodb: → Migré vers Supabase PostgreSQL
+  # mysql: → Migré vers Supabase PostgreSQL
 
-  zookeeper:
-    image: wurstmeister/zookeeper:latest
-    container_name: flexitrip_zookeeper
-    restart: always
-    ports:
-      - "2181:2181"
-    networks:
-      - flexitrip-net
-
-  kafka:
-    image: wurstmeister/kafka:latest
-    container_name: flexitrip_kafka
-    restart: always
-    depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
-    environment:
-      - KAFKA_BROKER_ID=1
-      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
-      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
-      - KAFKA_LISTENERS=INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9093
-      - KAFKA_ADVERTISED_LISTENERS=INTERNAL://localhost:9092,EXTERNAL://kafka:9093
-      - KAFKA_INTER_BROKER_LISTENER_NAME=INTERNAL
-    networks:
-      - flexitrip-net
-
+  # ===== API BACKEND =====
   api:
     build:
       context: .
@@ -80,7 +53,6 @@ services:
       - "17777:17777"
     depends_on:
       - neo4j
-      - redis
     # IMPORTANT: curl n'existe pas forcément dans l'image node
     # => je te mets une version "sans curl" (voir plus bas explication)
     healthcheck:

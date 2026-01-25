@@ -123,23 +123,24 @@ function AccompagnantHome() {
   };
 
   const consumeMessages = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/kafka/messages`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const grouped = processNotifications(data);
-        setGroupedNotifications(grouped);
-      }
-    } catch (error) {
-      console.error('Erreur réseau:', error);
-    } finally {
-      setLoading(false);
-    }
+    // TODO DEMO: Kafka supprimé - Remplacer par Supabase Realtime
+    console.warn('TODO DEMO: Endpoint /kafka/messages supprimé - Utiliser Supabase Realtime');
+    // Exemple d'implémentation :
+    // const channel = supabase.channel('missions')
+    //   .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pmr_missions' }, 
+    //     payload => {
+    //       const grouped = processNotifications([payload.new]);
+    //       setGroupedNotifications(grouped);
+    //     })
+    //   .subscribe();
+    
+    // Pour implémentation future : charger les notifications depuis Supabase
+    // const { data, error } = await supabase
+    //   .from('notifications')
+    //   .select('*')
+    //   .eq('user_id', userId);
+    
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -163,7 +164,7 @@ function AccompagnantHome() {
   }
 
   return (
-    <div className="kafka-container">
+    <div className="notifications-container">
       <h1>Bienvenue sur votre site pour les accompagnateurs !</h1>
       <h2>Suivi des notifications des PMR</h2>
 

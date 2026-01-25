@@ -3,17 +3,17 @@
 import React, { useState, useEffect, useContext } from 'react';
 import './Navbar.css';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Chip } from '@mui/material';
 import logo from '../../assets/images/Flexitrip.png';
 import defaultProfileImage from '../../assets/images/younes.png'; // Image par défaut
 import { AuthContext } from '../../context/AuthContext';
+import { isDemoMode, toggleDemoMode } from '../../config/demoConfig';
 import { ReactComponent as SettingsIcon } from '../../assets/icones/settings.svg';
 import { ReactComponent as UserIcon } from '../../assets/icones/utilisateur.svg';
 import { ReactComponent as LogoutIcon } from '../../assets/icones/logout.svg';
 import { ReactComponent as AngleDownIcon } from '../../assets/icones/angle-bas.svg';
 import { ReactComponent as AngleRightIcon } from '../../assets/icones/angle-droit.svg';
 import NotificationBell from '../Notifications/NotificationBell';
-//import { ReactComponent as MoonIcon } from '../../assets/icones/moon.svg'; // Icône pour le mode sombre
-//import { ReactComponent as SunIcon } from '../../assets/icones/sun.svg'; // Icône pour le mode clair
 
 
 function Navbar() {
@@ -122,52 +122,44 @@ function Navbar() {
                                 <a href="/login" className="nav-links">Connexion</a>
                             </li>
                             <li className="nav-item">
-                                <a href="/pmr-assistance" className="nav-links">PMR Assistance</a>
-                            </li>
-                            <li className="nav-item">
-                                <a href="/baggage-tracking" className="nav-links">Baggage Tracking</a>
-                            </li>
-                            <li className="nav-item">
-                                <a href="/ewallet" className="nav-links">e-Wallet</a>
+                                <a href="/pmr-assistance" className="nav-links">Assistance PMR</a>
                             </li>
                         </>
                     )}
 
-                    {/* Routes protégées */}
+                    {/* Routes protégées - SIMPLIFIÉES (3 items max) */}
                     {user && (
                         <>
                             <li className="nav-item">
-                                <a href="/user/home" className="nav-links">🏠 Accueil</a>
+                                <a href="/search" className="nav-links">Réserver</a>
                             </li>
                             <li className="nav-item">
-                                <a href="/user/voyages" className="nav-links">✈️ Mes Voyages</a>
-                            </li>
-                            {(user.role === 'PMR' || user.role === 'Accompagnant') && (
-                                <li className="nav-item">
-                                    <a href="/user/bagages" className="nav-links">🧳 Mes bagages</a>
-                                </li>
-                            )}
-                            <li className="nav-item">
-                                <a href="/user/pmr-assistance" className="nav-links">PMR Assistance</a>
+                                <a href="/mon-trajet" className="nav-links">Mon trajet</a>
                             </li>
                             <li className="nav-item">
-                                <a href="/user/checkin" className="nav-links">📋 Check-in</a>
-                            </li>
-                            <li className="nav-item">
-                                <a href="/user/boarding" className="nav-links">🎫 Boarding Pass</a>
-                            </li>
-                            <li className="nav-item">
-                                <a href="/user/boarding-gate" className="nav-links">🚪 Porte Embarquement</a>
-                            </li>
-                            <li className="nav-item">
-                                <a href="/user/ewallet" className="nav-links">💰 Wallet</a>
-                            </li>
-                            <li className="nav-item">
-                                <a href="/user/agent-assignment" className="nav-links">🤖 Agent IA</a>
+                                <a href="/user/access" className="nav-links">Wallet & QR</a>
                             </li>
                         </>
                     )}
                 </ul>
+
+                {/* Chip DEMO Mode */}
+                {isDemoMode() && (
+                    <Chip 
+                        label="DEMO" 
+                        size="small" 
+                        sx={{ 
+                            bgcolor: '#fff3cd', 
+                            color: '#856404',
+                            fontWeight: 600,
+                            fontFamily: 'Inter',
+                            mr: 2,
+                            cursor: 'pointer',
+                            '&:hover': { bgcolor: '#ffe69c' }
+                        }}
+                        onClick={toggleDemoMode}
+                    />
+                )}
 
                 {/* User Section */}
                 {user ? (
@@ -292,7 +284,10 @@ function Navbar() {
                     {user && (
                         <>
                             <li className="nav-item">
-                                <a href="/user/home" className="nav-links" onClick={toggleMobileMenu}>Accueil<AngleRightIcon className="icon-angle"/></a>
+                                <a href="/search" className="nav-links" onClick={toggleMobileMenu}>Réserver<AngleRightIcon className="icon-angle"/></a>
+                            </li>
+                            <li className="nav-item">
+                                <a href="/mon-trajet" className="nav-links" onClick={toggleMobileMenu}>Mon trajet<AngleRightIcon className="icon-angle"/></a>
                             </li>
                             <li className="nav-item">
                                 <a href="/user/voyages" className="nav-links" onClick={toggleMobileMenu}>Mes Voyages<AngleRightIcon className="icon-angle"/></a>
@@ -303,22 +298,13 @@ function Navbar() {
                                 </li>
                             )}
                             <li className="nav-item">
-                                <a href="/user/pmr-assistance" className="nav-links" onClick={toggleMobileMenu}>PMR Assistance<AngleRightIcon className="icon-angle"/></a>
-                            </li>
-                            <li className="nav-item">
                                 <a href="/user/checkin" className="nav-links" onClick={toggleMobileMenu}>Check-in<AngleRightIcon className="icon-angle"/></a>
                             </li>
                             <li className="nav-item">
                                 <a href="/user/boarding" className="nav-links" onClick={toggleMobileMenu}>Boarding Pass<AngleRightIcon className="icon-angle"/></a>
                             </li>
                             <li className="nav-item">
-                                <a href="/user/boarding-gate" className="nav-links" onClick={toggleMobileMenu}>Porte Embarquement<AngleRightIcon className="icon-angle"/></a>
-                            </li>
-                            <li className="nav-item">
-                                <a href="/user/ewallet" className="nav-links" onClick={toggleMobileMenu}>Wallet<AngleRightIcon className="icon-angle"/></a>
-                            </li>
-                            <li className="nav-item">
-                                <a href="/user/agent-assignment" className="nav-links" onClick={toggleMobileMenu}>Agent IA<AngleRightIcon className="icon-angle"/></a>
+                                <a href="/user/access" className="nav-links" onClick={toggleMobileMenu}>Wallet & QR<AngleRightIcon className="icon-angle"/></a>
                             </li>
                             {user.role === 'Agent' && (
                                 <>

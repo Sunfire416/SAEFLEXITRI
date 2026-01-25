@@ -1,0 +1,90 @@
+{
+  "results": {
+    "total": 3,
+    "demoMode": true,
+    "itineraries": [
+      {
+        "id": "itinerary-demo-1",
+        "departure": "Paris Gare de Lyon",
+        "destination": "Marseille Provence Airport",
+        "date": "2026-01-29",
+        "total_duration": 345,
+        "total_price": 95,
+        "segments": [
+          {
+            "id": "seg-1",
+            "order": 1,
+            "transport": "TRAIN",
+            "departure": "Paris Gare de Lyon",
+            "destination": "Lyon Part-Dieu",
+            "departure_time": "08:00",
+            "arrival_time": "10:00",
+            "duration": 120,
+            "operator": "SNCF TGV",
+            "reference": "SNCF-TGV-2026-001",
+            "price": 50,
+            "accessible_pmr": true
+          },
+          {
+            "id": "seg-2",
+            "order": 2,
+            "transport": "BUS",
+            "departure": "Lyon Gare Routière",
+            "destination": "Marseille St-Charles",
+            "departure_time": "11:00",
+            "arrival_time": "14:00",
+            "duration": 180,
+            "operator": "FlixBus",
+            "reference": "FLIXBUS-2026-042",
+            "price": 25,
+            "accessible_pmr": true
+          },
+          {
+            "id": "seg-3",
+            "order": 3,
+            "transport": "TRAIN",
+            "departure": "Marseille St-Charles",
+            "destination": "Marseille Provence Airport",
+            "departure_time": "15:00",
+            "arrival_time": "15:30",
+            "duration": 30,
+            "operator": "SNCF TER",
+            "reference": "SNCF-TER-2026-789",
+            "price": 20,
+            "accessible_pmr": true
+          }
+        ],
+        "accessibility_features": [
+          "wheelchair_accessible",
+          "priority_boarding",
+          "assistance_available"
+        ]
+      },
+      {
+        "id": "itinerary-demo-2",
+        "departure": "Paris Gare de Lyon",
+        "destination": "Lyon Part-Dieu",
+        "date": "2026-01-29",
+        "total_duration": 120,
+        "total_price": 50,
+        "segments": [
+          {
+            "id": "seg-4",
+            "order": 1,
+            "transport": "TRAIN",
+            "departure": "Paris Gare de Lyon",
+            "destination": "Lyon Part-Dieu",
+            "departure_time": "09:00",
+            "arrival_time": "11:00",
+            "duration": 120,
+            "operator": "SNCF TGV",
+            "reference": "SNCF-TGV-2026-002",
+            "price": 50,
+            "accessible_pmr": true
+          }
+        ],
+        "accessibility_features": ["wheelchair_accessible"]
+      }
+    ]
+  }
+}

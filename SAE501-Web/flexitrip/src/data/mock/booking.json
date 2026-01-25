@@ -1,0 +1,99 @@
+{
+  "demoMode": true,
+  "booking": {
+    "workflow_type": "LIGHT",
+    "booking": {
+      "reservation_id": "RES-DEMO-001",
+      "voyage_id": "VOY-DEMO-001",
+      "booking_reference": "FLEX-2026-0125",
+      "operator": "FlexiTrip Démo",
+      "status": "confirmed",
+      "created_at": "2026-01-25T10:00:00Z",
+      "assistance": {
+        "agent_name": "Marie Lefevre",
+        "meeting_point": "Hall principal, Porte 3",
+        "meeting_time": "2026-01-26T08:30:00Z"
+      },
+      "prise_en_charge": [
+        {
+          "id": "PEC-001",
+          "etape_numero": 1,
+          "mode": "train",
+          "status": "validated",
+          "location": "Paris Gare de Lyon",
+          "line": "TGV 6601",
+          "operator": "SNCF",
+          "validated_at": "2026-01-25T11:00:00Z",
+          "validated_by": "Agent Marie L."
+        },
+        {
+          "id": "PEC-002",
+          "etape_numero": 2,
+          "mode": "bus",
+          "status": "pending",
+          "location": "Lyon Perrache",
+          "line": "FlixBus 305",
+          "operator": "FlixBus",
+          "validation_url": "https://flexitrip.app/prise-en-charge/validate/PEC-002-TOKEN"
+        }
+      ]
+    },
+    "payment": {
+      "amount": 89.50,
+      "status": "completed",
+      "method": "ewallet",
+      "transaction_id": "TXN-DEMO-12345"
+    },
+    "timeline": [
+      {
+        "step": "Réservation créée",
+        "timestamp": "2026-01-25T10:00:00Z",
+        "status": "completed"
+      },
+      {
+        "step": "Paiement confirmé",
+        "timestamp": "2026-01-25T10:05:00Z",
+        "status": "completed"
+      },
+      {
+        "step": "Assistance PMR assignée",
+        "timestamp": "2026-01-25T10:10:00Z",
+        "status": "completed"
+      }
+    ],
+    "total_price": 89.50,
+    "remaining_balance": 0.00,
+    "itinerary": {
+      "segments": [
+        {
+          "mode": "train",
+          "departure": {
+            "station": "Paris Gare de Lyon",
+            "time": "2026-01-26T09:00:00Z"
+          },
+          "arrival": {
+            "station": "Lyon Part-Dieu",
+            "time": "2026-01-26T11:00:00Z"
+          },
+          "duration": "2h00",
+          "operator": "SNCF TGV",
+          "price": 59.00
+        },
+        {
+          "mode": "bus",
+          "departure": {
+            "station": "Lyon Perrache",
+            "time": "2026-01-26T12:30:00Z"
+          },
+          "arrival": {
+            "station": "Marseille Saint-Charles",
+            "time": "2026-01-26T16:00:00Z"
+          },
+          "duration": "3h30",
+          "operator": "FlixBus",
+          "price": 30.50
+        }
+      ]
+    }
+  }
+}

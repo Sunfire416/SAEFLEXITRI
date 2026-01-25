@@ -1,10 +1,9 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { AuthContext } from '../context/AuthContext';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
+import { isDemoMode } from '../config/demoConfig';
+import apiService from '../api/apiService';
 
 const statusLabel = (status) => {
   switch (status) {
@@ -52,17 +51,18 @@ const BaggageDashboard = () => {
   });
   const [creating, setCreating] = useState(false);
 
-  const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
-
   const fetchBagages = async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await axios.get(`${API_BASE_URL}/bagages`, { headers });
-      setBagages(res.data?.bagages || []);
+      const res = await apiService.get('/bagages');
+      setBagages(res?.bagages || []);
     } catch (e) {
       console.error('Erreur chargement bagages:', e);
-      setError(e.response?.data?.error || 'Erreur lors du chargement des bagages');
+      // En mode DEMO, ne jamais bloquer
+      if (!isDemoMode()) {
+        setError(e.response?.data?.error || 'Erreur lors du chargement des bagages');
+      }
     } finally {
       setLoading(false);
     }
@@ -106,8 +106,8 @@ const BaggageDashboard = () => {
         assistance_required: Boolean(createForm.assistance_required)
       };
 
-      const res = await axios.post(`${API_BASE_URL}/bagages`, payload, { headers });
-      const created = res.data?.bagage;
+      const res = await apiService.post('/bagages', payload);
+      const created = res?.bagage;
       if (created) {
         setBagages((prev) => [created, ...prev]);
         setCreateForm({

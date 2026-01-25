@@ -1,10 +1,14 @@
 const session = require('express-session');
-const RedisStore = require('connect-redis').default; // Utilisez `.default` pour importer le store correctement
-const redisClient = require('../config/redis'); // Votre configuration Redis
+
+// TODO DEMO: Redis supprimé - Sessions en mémoire (MemoryStore)
+// Pour production : utiliser connect-pg-simple avec Supabase PostgreSQL
+// Exemple : https://www.npmjs.com/package/connect-pg-simple
 
 const sessionMiddleware = session({
-    store: new RedisStore({ client: redisClient }), // Nouvelle API pour passer le client Redis
-    secret: process.env.SESSION_SECRET || 'dev-session-secret', // Fallback to avoid crash when env not set
+    // MemoryStore par défaut (pas de 'store' spécifié)
+    // ⚠️ ATTENTION: Les sessions sont perdues au redémarrage du serveur
+    // ⚠️ Ne pas utiliser en production avec plusieurs instances
+    secret: process.env.SESSION_SECRET || 'dev-session-secret-change-in-production',
     resave: false,
     saveUninitialized: false,
     cookie: {

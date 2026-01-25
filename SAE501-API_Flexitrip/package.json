@@ -10,6 +10,7 @@
     "start": "node app.js",
     "dev": "nodemon app.js",
     "init:supabase": "node scripts/initSupabase.js",
+    "seed:neo4j": "node scripts/seed-neo4j-demo.js",
     "test": "jest --runInBand"
   },
   "keywords": [],

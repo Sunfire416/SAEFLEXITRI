@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import axios from 'axios';
 import './VoyageTracking.css';
+import { Box, Container, Card, CardContent, Typography, Button, Alert, Stepper, Step, StepLabel } from '@mui/material';
 
 const VoyageTracking = () => {
     const { reservationId } = useParams();
@@ -162,31 +163,32 @@ const VoyageTracking = () => {
 
     if (loading || !reservation) {
         return (
-            <div className="tracking-container">
-                <div className="loading-state">
-                    <div className="spinner"></div>
-                    <p>Chargement des données de suivi...</p>
-                </div>
-            </div>
+            <Container maxWidth="md" sx={{ py: 6 }}>
+                <Card>
+                    <CardContent sx={{ textAlign: 'center' }}>
+                        <div className="spinner"></div>
+                        <Typography variant="body1">Chargement des données de suivi...</Typography>
+                    </CardContent>
+                </Card>
+            </Container>
         );
     }
 
     return (
-        <div className="tracking-container">
-            <div className="tracking-header">
-                <button onClick={() => navigate('/user/voyages')} className="back-btn">
-                    ← Retour
-                </button>
-                <h1>🗺️ Suivi en temps réel</h1>
-            </div>
+        <Container maxWidth="lg" sx={{ py: 4 }}>
+            <Box className="tracking-header" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Button variant="outlined" onClick={() => navigate('/user/voyages')}>← Retour</Button>
+                <Typography variant="h4">🗺️ Suivi en temps réel</Typography>
+            </Box>
 
             {/* Status Bar */}
-            <div className="status-bar" style={{ backgroundColor: getStatusColor() }}>
-                <span className="status-text">{getStatusText()}</span>
-            </div>
+            <Alert severity={status === 'on_time' ? 'success' : status === 'delayed' ? 'warning' : status === 'cancelled' ? 'error' : 'info'} sx={{ mb: 2, borderRadius: 2 }}>
+                {getStatusText()}
+            </Alert>
 
             {/* Trip Info */}
-            <div className="trip-info-card">
+                        <Card sx={{ mb: 3 }}>
+                            <CardContent>
                 <div className="route-info">
                     <div className="location">
                         <span className="icon">📍</span>
@@ -213,11 +215,12 @@ const VoyageTracking = () => {
                             <p className="time">{formatTime(reservation.Date_arrivee)}</p>
                         </div>
                     </div>
-                </div>
-            </div>
+                                </div>
+                            </CardContent>
+                        </Card>
 
             {/* Map Placeholder */}
-            <div className="map-container">
+            <Box sx={{ border: '2px solid', borderColor: 'secondary.main', borderRadius: 3, overflow: 'hidden', height: 400, mb: 3 }}>
                 <div ref={mapRef} className="map-placeholder">
                     <div className="map-overlay">
                         <p>🗺️ Carte interactive</p>
@@ -232,54 +235,43 @@ const VoyageTracking = () => {
                         </p>
                     </div>
                 </div>
-            </div>
+            </Box>
 
             {/* Alerts */}
             {alerts.length > 0 && (
-                <div className="alerts-section">
-                    <h2>🔔 Alertes récentes</h2>
-                    <div className="alerts-list">
-                        {alerts.map(alert => (
-                            <div key={alert.id} className="alert-item">
-                                <span className="alert-message">{alert.message}</span>
-                                <span className="alert-time">
-                                    {formatTime(alert.timestamp)}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                <Box sx={{ mb: 3 }}>
+                    <Typography variant="h5" sx={{ mb: 1 }}>🔔 Alertes récentes</Typography>
+                    <Card>
+                        <CardContent>
+                            {alerts.map(alert => (
+                                <Box key={alert.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 1, borderBottom: '1px solid', borderColor: 'grey.200' }}>
+                                    <Typography>{alert.message}</Typography>
+                                    <Typography variant="body2" color="text.secondary">{formatTime(alert.timestamp)}</Typography>
+                                </Box>
+                            ))}
+                        </CardContent>
+                    </Card>
+                </Box>
             )}
 
             {/* Live Updates */}
-            <div className="live-updates">
-                <h2>📡 Mises à jour en direct</h2>
-                <div className="update-item">
-                    <span className="pulse-dot"></span>
-                    <p>Connexion WebSocket active</p>
-                </div>
-                <div className="update-item">
-                    <span className="pulse-dot"></span>
-                    <p>Suivi GPS activé</p>
-                </div>
+            <Card sx={{ mb: 3 }}>
+              <CardContent>
+                <Typography variant="h5" sx={{ mb: 1 }}>📡 Mises à jour en direct</Typography>
+                <Typography>Connexion WebSocket active</Typography>
+                <Typography>Suivi GPS activé</Typography>
                 {delay > 0 && (
-                    <div className="update-item warning">
-                        <span className="pulse-dot"></span>
-                        <p>Retard détecté - Notification envoyée</p>
-                    </div>
+                    <Alert severity="warning" sx={{ mt: 1 }}>Retard détecté - Notification envoyée</Alert>
                 )}
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Actions */}
-            <div className="tracking-actions">
-                <button className="action-btn" onClick={() => alert('Support contacté')}>
-                    📞 Contacter le support
-                </button>
-                <button className="action-btn" onClick={() => navigate(`/user/checkin/${reservationId}`)}>
-                    ✈️ Check-in
-                </button>
-            </div>
-        </div>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button variant="contained" color="primary" onClick={() => alert('Support contacté')}>📞 Contacter le support</Button>
+                <Button variant="contained" color="primary" onClick={() => navigate(`/user/checkin/${reservationId}`)}>✈️ Check-in</Button>
+            </Box>
+        </Container>
     );
 };
 

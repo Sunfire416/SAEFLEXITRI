@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
+import { Box, Container, Paper, Alert } from '@mui/material';
 import './BookingResult.css';
 
 const BookingResult = () => {
@@ -8,7 +9,39 @@ const BookingResult = () => {
     const navigate = useNavigate();
     const { booking } = location.state || {};
 
-    if (!booking) {
+    const [effectiveBooking, setEffectiveBooking] = useState(booking || null);
+    const [demoMode, setDemoMode] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        // Fallback: si aucune réservation passée via la navigation, charger le mock JSON
+        if (!effectiveBooking) {
+            setLoading(true);
+            import('../data/mock/booking.json')
+                .then((mod) => {
+                    if (mod?.default?.booking) {
+                        setEffectiveBooking(mod.default.booking);
+                        setDemoMode(true);
+                    }
+                })
+                .catch(() => {
+                    // ignore, on affichera l'écran d'erreur standard
+                })
+                .finally(() => setLoading(false));
+        }
+    }, [effectiveBooking]);
+
+    if (!effectiveBooking) {
+        if (loading) {
+            return (
+                <div className="booking-result-container">
+                    <div className="error-card">
+                        <h2>⏳ Chargement des données de démo…</h2>
+                        <p>Patientez un instant, les informations sont en cours de chargement.</p>
+                    </div>
+                </div>
+            );
+        }
         return (
             <div className="booking-result-container">
                 <div className="error-card">
@@ -22,7 +55,7 @@ const BookingResult = () => {
         );
     }
 
-    const { workflow_type, booking: bookingData, payment, timeline, total_price, remaining_balance, itinerary } = booking;
+    const { workflow_type, booking: bookingData, payment, timeline, total_price, remaining_balance, itinerary } = effectiveBooking;
 
     const formatTime = (isoDate) => {
         if (!isoDate) return 'N/A';
@@ -79,13 +112,18 @@ const BookingResult = () => {
     };
 
     return (
-        <div className="booking-result-container">
+        <Container maxWidth="lg" sx={{ py: 3 }}>
+            {demoMode && (
+                <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
+                    ⚠️ MODE DÉMO: données locales affichées
+                </Alert>
+            )}
             {/* Success Header */}
-            <div className="success-header">
+            <Box className="success-header">
                 <div className="success-icon">✅</div>
                 <h1>Réservation Confirmée !</h1>
                 <p>Votre voyage a été réservé avec succès</p>
-            </div>
+            </Box>
 
             {/* Workflow Badge */}
             <div 
@@ -276,28 +314,28 @@ const BookingResult = () => {
 
             {/* QR Code Card */}
             {bookingData.qr_code && (
-                <div className="qr-card">
-                    <h2>📱 Votre QR Code</h2>
-                    <p className="qr-instruction">Présentez ce code lors de votre voyage</p>
+                    <Paper sx={{ p: 3, border: '3px solid', borderColor: 'secondary.main', borderRadius: 2, textAlign: 'center', mb: 2 }}>
+                        <h2>📱 Votre QR Code</h2>
+                        <p className="qr-instruction">Présentez ce code lors de votre voyage</p>
                     
-                    <div className="qr-display">
-                        <QRCodeSVG 
-                            value={bookingData.qr_code.qr_url || bookingData.qr_code.qr_data}
-                            size={200}
-                            level="H"
-                            includeMargin={true}
-                        />
-                    </div>
+                        <Box sx={{ display: 'inline-block', p: 2, backgroundColor: 'white', borderRadius: 2 }}>
+                            <QRCodeSVG 
+                                value={bookingData.qr_code.qr_url || bookingData.qr_code.qr_data}
+                                size={200}
+                                level="H"
+                                includeMargin={true}
+                            />
+                        </Box>
 
-                    <div className="validation-code">
-                        <span className="code-label">Code de validation</span>
-                        <span className="code-value">{bookingData.qr_code.display_code}</span>
-                    </div>
+                        <div className="validation-code">
+                            <span className="code-label">Code de validation</span>
+                            <span className="code-value">{bookingData.qr_code.display_code}</span>
+                        </div>
 
-                    <p className="qr-help">
-                        💡 Vous pouvez également donner le code de validation au personnel
-                    </p>
-                </div>
+                        <p className="qr-help">
+                            💡 Vous pouvez également donner le code de validation au personnel
+                        </p>
+                    </Paper>
             )}
 
             {/* 🆕 Itinéraire Détaillé */}
@@ -453,7 +491,7 @@ const BookingResult = () => {
                     🖨️ Imprimer
                 </button>
             </div>
-        </div>
+        </Container>
     );
 };
 

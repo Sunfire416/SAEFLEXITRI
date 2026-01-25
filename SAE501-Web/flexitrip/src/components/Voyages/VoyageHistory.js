@@ -5,13 +5,12 @@
  */
 
 import React, { useState, useEffect, useContext } from 'react';
-import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
+import { isDemoMode } from '../../config/demoConfig';
+import apiService from '../../api/apiService';
 import VoyageCard from './VoyageCard';
 import VoyageQRModal from './VoyageQRModal';
 import './VoyageHistory.css';
-
-const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 const VoyageHistory = () => {
   const { user } = useContext(AuthContext);
@@ -32,22 +31,14 @@ const VoyageHistory = () => {
    */
   const fetchBagages = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
       // Les bagages sont visibles PMR/Accompagnant; on garde soft-fail pour les autres rôles.
       if (user?.role && !['PMR', 'Accompagnant'].includes(user.role)) {
         setBagagesByReservationId({});
         return;
       }
 
-      const response = await axios.get(`${API_BASE_URL}/bagages`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      const bagages = response.data?.bagages || [];
+      const response = await apiService.get('/bagages');
+      const bagages = response?.bagages || [];
       const grouped = bagages.reduce((acc, bagage) => {
         const key = String(bagage.reservation_id);
         if (!acc[key]) acc[key] = [];
@@ -113,22 +104,22 @@ const VoyageHistory = () => {
       setLoading(true);
       setError(null);
 
-      const response = await axios.get(`${API_BASE_URL}/voyages/history`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      const response = await apiService.get('/voyages/history', {
         params: {
           user_id: user.user_id,
           status: filter === 'all' ? null : filter
         }
       });
 
-      if (response.data.success) {
-        const normalized = (response.data.voyages || []).map(normalizeVoyage);
-        setVoyages(normalized);
-      }
+      const normalized = (response?.voyages || []).map(normalizeVoyage);
+      setVoyages(normalized);
 
     } catch (err) {
       console.error('❌ Erreur fetch voyages:', err);
-      setError('Impossible de charger les voyages');
+      // En mode DEMO, ne jamais afficher d'erreur bloquante
+      if (!isDemoMode()) {
+        setError('Impossible de charger les voyages');
+      }
     } finally {
       setLoading(false);
     }
@@ -156,13 +147,12 @@ const VoyageHistory = () => {
     }
 
     try {
-      const response = await axios.patch(
-        `${API_BASE_URL}/voyages/cancel-checkin/${reservationId}`,
-        { user_id: user.user_id },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      const response = await apiService.patch(
+        `/voyages/cancel-checkin/${reservationId}`,
+        { user_id: user.user_id }
       );
 
-      if (response.data.success) {
+      if (response?.success) {
         alert('✅ Check-in annulé avec succès');
         fetchVoyages(); // Refresh
       }
@@ -182,15 +172,12 @@ const VoyageHistory = () => {
     }
 
     try {
-      const response = await axios.delete(
-        `${API_BASE_URL}/voyages/${voyageId}`,
-        {
-          data: { user_id: user.user_id },
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        }
+      const response = await apiService.delete(
+        `/voyages/${voyageId}`,
+        { data: { user_id: user.user_id } }
       );
 
-      if (response.data.success) {
+      if (response?.success) {
         alert('✅ Voyage supprimé');
         fetchVoyages(); // Refresh
       }

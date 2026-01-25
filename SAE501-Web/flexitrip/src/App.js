@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import { flexitripTheme } from './theme/flexitripTheme';
 import "./App.css";
 import Navbar from "./components/Navbar/Navbar";
 import Footer from "./components/Footer/Footer";
@@ -44,6 +47,9 @@ import VoyageTracking from "./components/Tracking/VoyageTracking";
 import AgentDashboard from "./pages/AgentDashboard";
 import PmrAssistance from "./components/PmrAssistance/PmrAssistance";
 import PmrHome from "./components/Pmr_home/Pmr_home";
+import CheckInHome from "./pages/CheckInHome";
+import AgentMissionDashboard from "./pages/AgentMissionDashboard";
+import MonTrajet from "./pages/MonTrajet";
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -53,19 +59,21 @@ function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <NotificationProvider>
-        <QrCodeProvider>
-          <BaggageProvider>
-            <LanguageProvider>
-              <Router>
-                <div className="App">
-                  {isLoading ? (
-                    <Spinner size={200} message="Chargement en cours ..." />
-                  ) : (
-                    <>
-                      <Navbar />
-                      <Routes>
+    <ThemeProvider theme={flexitripTheme}>
+      <CssBaseline />
+      <AuthProvider>
+        <NotificationProvider>
+          <QrCodeProvider>
+            <BaggageProvider>
+              <LanguageProvider>
+                <Router>
+                  <div className="App">
+                    {isLoading ? (
+                      <Spinner size={200} message="Chargement en cours ..." />
+                    ) : (
+                      <>
+                        <Navbar />
+                        <Routes>
                         {/* Public Routes */}
                         <Route path="/" element={<HomePage />} />
                         <Route path="/login" element={<LoginPage />} />
@@ -91,12 +99,15 @@ function App() {
                         <Route path="/user/checkin/:reservationId" element={<RouteProtect><CheckInInterface /></RouteProtect>} />
                         <Route path="/user/notifications" element={<RouteProtect><NotificationCenter /></RouteProtect>} />
                         <Route path="/user/voyages" element={<RouteProtect><VoyageHistory /></RouteProtect>} />
+                        <Route path="/user/mon-trajet" element={<RouteProtect><MonTrajet /></RouteProtect>} />
+                        <Route path="/mon-trajet" element={<RouteProtect><MonTrajet /></RouteProtect>} />
                         <Route path="/user/booking-result" element={<RouteProtect><BookingResult /></RouteProtect>} />
                         <Route path="/user/wallet/history" element={<RouteProtect><WalletHistory /></RouteProtect>} />
                         <Route path="/feedback/:reservationId" element={<RouteProtect><FeedbackForm /></RouteProtect>} />
                         <Route path="/user/tracking/:reservationId" element={<RouteProtect><VoyageTracking /></RouteProtect>} />
                         <Route path="/user/pmr-assistance" element={<RouteProtect><PmrAssistance /></RouteProtect>} />
                         <Route path="/pmr/home" element={<RouteProtect><PmrHome /></RouteProtect>} />
+                        <Route path="/check-in-home" element={<RouteProtect><CheckInHome /></RouteProtect>} />
                         <Route path="/user/agent-assignment" element={<RouteProtect><AgentAssignmentPage /></RouteProtect>} />
                         <Route path="/suivi-prise-en-charge/:reservationId" element={<RouteProtect><SuiviPriseEnCharge /></RouteProtect>} />
 
@@ -109,6 +120,7 @@ function App() {
 
                         {/* Agent PMR Dashboard */}
                         <Route path="/agent/dashboard" element={<RouteProtect allowedRoles={["Agent"]}><AgentDashboard /></RouteProtect>} />
+                        <Route path="/agent/missions" element={<RouteProtect allowedRoles={["Agent"]}><AgentMissionDashboard /></RouteProtect>} />
 
                         {/* Agent: scan bagage */}
                         <Route path="/agent/bagages/scan" element={<RouteProtect allowedRoles={["Agent"]}><BaggageScan /></RouteProtect>} />
@@ -123,6 +135,7 @@ function App() {
         </QrCodeProvider>
       </NotificationProvider>
     </AuthProvider>
+    </ThemeProvider>
   );
 }
 

@@ -1,0 +1,34 @@
+{
+  "agents": [
+    {
+      "id": "agent-demo-1",
+      "name": "Marie Lefevre",
+      "role": "Accompagnant SNCF",
+      "available": true,
+      "station": "Paris Gare de Lyon",
+      "phone": "+33 6 12 34 56 78",
+      "specialties": ["TRAIN", "PMR_MOBILITE"],
+      "current_missions": 1
+    },
+    {
+      "id": "agent-demo-2",
+      "name": "Claude Petit",
+      "role": "Accompagnant Bus",
+      "available": true,
+      "station": "Lyon Gare Routière",
+      "phone": "+33 6 23 45 67 89",
+      "specialties": ["BUS"],
+      "current_missions": 0
+    },
+    {
+      "id": "agent-demo-3",
+      "name": "Sophie Durand",
+      "role": "Accompagnant Aéroport",
+      "available": true,
+      "station": "Marseille Provence Airport",
+      "phone": "+33 6 34 56 78 90",
+      "specialties": ["FLIGHT", "PMR_VISUEL"],
+      "current_missions": 2
+    }
+  ]
+}

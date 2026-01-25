@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Box, Container, TextField, Button, Alert, FormControlLabel, Checkbox, Select, MenuItem, InputLabel, FormControl, Card, CardContent, Typography, Grid, Chip } from '@mui/material';
 import './SearchEngine.css';
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
@@ -20,6 +21,7 @@ function SearchEngine() {
     const [results, setResults] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [demoMode, setDemoMode] = useState(false);
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -33,6 +35,7 @@ function SearchEngine() {
         e.preventDefault();
         setError('');
         setLoading(true);
+        setDemoMode(false);
 
         try {
             const params = new URLSearchParams({
@@ -45,16 +48,27 @@ function SearchEngine() {
             });
 
             const response = await axios.get(
-                `${API_BASE_URL}/search/multimodal?${params.toString()}`
+                `${API_BASE_URL}/search/multimodal?${params.toString()}`,
+                { timeout: 3000 }  // Timeout court pour démo
             );
 
             setResults(response.data);
             setLoading(false);
 
         } catch (err) {
-            console.error('Erreur recherche:', err);
-            setError(err.response?.data?.message || 'Erreur lors de la recherche');
-            setLoading(false);
+            console.warn('⚠️ API indisponible, chargement données démo locale...', err);
+            
+            // Fallback : charger mock data local
+            try {
+                const mockData = await import('../../data/mock/reservations.json');
+                setResults(mockData.default.results);
+                setDemoMode(true);
+                setLoading(false);
+            } catch (mockError) {
+                console.error('Erreur chargement données démo:', mockError);
+                setError('Erreur : impossible de charger les données');
+                setLoading(false);
+            }
         }
     };
 
@@ -72,190 +86,197 @@ function SearchEngine() {
     };
 
     return (
-        <div className="search-engine-container">
-            <div className="search-header">
-                <h1>🔍 Recherche de voyage multimodal</h1>
-                <p>Trouvez votre itinéraire combinant avion, train et bus</p>
-            </div>
+        <Box sx={{ backgroundColor: 'background.default', minHeight: '100vh', py: 4 }}>
+            <Container maxWidth="lg">
+                <Box sx={{ textAlign: 'center', mb: 3 }}>
+                    <Typography variant="h3">🔍 Recherche de voyage multimodal</Typography>
+                    <Typography variant="body1" color="text.secondary">
+                        Trouvez votre itinéraire combinant avion, train et bus
+                    </Typography>
+                </Box>
 
-            {/* Formulaire de recherche */}
-            <form className="search-form" onSubmit={handleSearch}>
-                <div className="search-row">
-                    <div className="search-field">
-                        <label htmlFor="departure">📍 Départ</label>
-                        <input
-                            type="text"
-                            id="departure"
-                            name="departure"
-                            value={searchParams.departure}
-                            onChange={handleInputChange}
-                            placeholder="Paris, Lyon, Marseille..."
-                            required
-                        />
-                    </div>
+                {/* Badge MODE DÉMO */}
+                {demoMode && (
+                    <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
+                        ⚠️ MODE DÉMO - Données locales chargées
+                    </Alert>
+                )}
 
-                    <div className="search-field">
-                        <label htmlFor="destination">🎯 Destination</label>
-                        <input
-                            type="text"
-                            id="destination"
-                            name="destination"
-                            value={searchParams.destination}
-                            onChange={handleInputChange}
-                            placeholder="Barcelone, Madrid, Rome..."
-                            required
-                        />
-                    </div>
+                {/* Formulaire de recherche */}
+                <Card sx={{ mb: 3 }}>
+                    <CardContent>
+                        <Box component="form" onSubmit={handleSearch} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} md={4}>
+                                    <TextField
+                                        fullWidth
+                                        label="📍 Départ"
+                                        name="departure"
+                                        value={searchParams.departure}
+                                        onChange={handleInputChange}
+                                        placeholder="Paris, Lyon, Marseille..."
+                                        required
+                                    />
+                                </Grid>
+                                <Grid item xs={12} md={4}>
+                                    <TextField
+                                        fullWidth
+                                        label="🎯 Destination"
+                                        name="destination"
+                                        value={searchParams.destination}
+                                        onChange={handleInputChange}
+                                        placeholder="Barcelone, Madrid, Rome..."
+                                        required
+                                    />
+                                </Grid>
+                                <Grid item xs={12} md={4}>
+                                    <TextField
+                                        fullWidth
+                                        type="date"
+                                        label="📅 Date"
+                                        name="date"
+                                        value={searchParams.date}
+                                        onChange={handleInputChange}
+                                        InputLabelProps={{ shrink: true }}
+                                        inputProps={{ min: new Date().toISOString().split('T')[0] }}
+                                    />
+                                </Grid>
+                            </Grid>
 
-                    <div className="search-field">
-                        <label htmlFor="date">📅 Date</label>
-                        <input
-                            type="date"
-                            id="date"
-                            name="date"
-                            value={searchParams.date}
-                            onChange={handleInputChange}
-                            min={new Date().toISOString().split('T')[0]}
-                        />
-                    </div>
-                </div>
-
-                <div className="search-row">
-                    <div className="search-field">
-                        <label htmlFor="max_price">💰 Prix maximum</label>
-                        <input
-                            type="number"
-                            id="max_price"
-                            name="max_price"
-                            value={searchParams.max_price}
-                            onChange={handleInputChange}
-                            min="0"
-                            step="10"
-                        />
-                    </div>
-
-                    <div className="search-field">
-                        <label htmlFor="max_transfers">🔄 Correspondances max</label>
-                        <select
-                            id="max_transfers"
-                            name="max_transfers"
-                            value={searchParams.max_transfers}
-                            onChange={handleInputChange}
-                        >
-                            <option value="0">Direct uniquement</option>
-                            <option value="1">1 correspondance</option>
-                            <option value="2">2 correspondances</option>
-                        </select>
-                    </div>
-
-                    <div className="search-field checkbox-field">
-                        <label>
-                            <input
-                                type="checkbox"
-                                name="pmr_required"
-                                checked={searchParams.pmr_required}
-                                onChange={handleInputChange}
-                            />
-                            ♿ Accessibilité PMR requise
-                        </label>
-                    </div>
-                </div>
-
-                <button type="submit" className="search-button" disabled={loading}>
-                    {loading ? '🔄 Recherche en cours...' : '🚀 Rechercher'}
-                </button>
-            </form>
-
-            {error && (
-                <div className="error-message">
-                    ❌ {error}
-                </div>
-            )}
-
-            {/* Résultats */}
-            {results && (
-                <div className="search-results">
-                    <div className="results-header">
-                        <h2>✨ {results.results.total} itinéraire(s) trouvé(s)</h2>
-                        <div className="results-stats">
-                            <span>📍 {results.results.direct} direct(s)</span>
-                            <span>🔄 {results.results.with_transfers} avec correspondance(s)</span>
-                        </div>
-                    </div>
-
-                    {results.trips.length === 0 ? (
-                        <div className="no-results">
-                            <p>Aucun itinéraire trouvé avec ces critères.</p>
-                            <p>Essayez de modifier vos paramètres de recherche.</p>
-                        </div>
-                    ) : (
-                        <div className="trips-list">
-                            {results.trips.map((trip, index) => (
-                                <div key={index} className={`trip-card ${trip.pmr_compatible ? 'pmr-compatible' : ''}`}>
-                                    <div className="trip-header">
-                                        <div className="trip-type">
-                                            {trip.type === 'direct' ? '🎯 Trajet direct' : `🔄 ${trip.number_of_transfers} correspondance(s)`}
-                                        </div>
-                                        {trip.pmr_compatible && (
-                                            <span className="pmr-badge">♿ PMR</span>
-                                        )}
-                                    </div>
-
-                                    <div className="trip-segments">
-                                        {trip.segments.map((segment, idx) => (
-                                            <div key={idx} className="segment">
-                                                <div className="segment-icon">
-                                                    {segment.type === 'avion' && '✈️'}
-                                                    {segment.type === 'train' && '🚄'}
-                                                    {segment.type === 'taxi' && '🚕'}
-                                                </div>
-                                                <div className="segment-info">
-                                                    <div className="segment-route">
-                                                        <strong>{segment.departure}</strong>
-                                                        <span className="arrow">→</span>
-                                                        <strong>{segment.arrival}</strong>
-                                                    </div>
-                                                    <div className="segment-details">
-                                                        <span>{segment.company}</span>
-                                                        {segment.train_type && <span>• {segment.train_type}</span>}
-                                                        <span>• {segment.duration}</span>
-                                                        <span>• {formatPrice(segment.price)}</span>
-                                                    </div>
-                                                    <div className="segment-times">
-                                                        <span>🕐 {new Date(segment.departure_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
-                                                        <span>→</span>
-                                                        <span>🕐 {new Date(segment.arrival_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {trip.transfer_info && (
-                                        <div className="transfer-info">
-                                            🔄 Correspondance à <strong>{trip.transfer_info.city}</strong> ({trip.transfer_info.duration})
-                                        </div>
-                                    )}
-
-                                    <div className="trip-footer">
-                                        <div className="trip-summary">
-                                            <span className="total-duration">⏱️ {trip.total_duration}</span>
-                                            <span className="total-price">💰 {formatPrice(trip.total_price)}</span>
-                                        </div>
-                                        <button
-                                            className="select-trip-button"
-                                            onClick={() => handleSelectTrip(trip)}
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} md={4}>
+                                    <TextField
+                                        fullWidth
+                                        type="number"
+                                        label="💰 Prix maximum"
+                                        name="max_price"
+                                        value={searchParams.max_price}
+                                        onChange={handleInputChange}
+                                        inputProps={{ min: 0, step: 10 }}
+                                    />
+                                </Grid>
+                                <Grid item xs={12} md={4}>
+                                    <FormControl fullWidth>
+                                        <InputLabel>🔄 Correspondances max</InputLabel>
+                                        <Select
+                                            label="🔄 Correspondances max"
+                                            name="max_transfers"
+                                            value={searchParams.max_transfers}
+                                            onChange={handleInputChange}
                                         >
-                                            Sélectionner →
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
+                                            <MenuItem value={0}>Direct uniquement</MenuItem>
+                                            <MenuItem value={1}>1 correspondance</MenuItem>
+                                            <MenuItem value={2}>2 correspondances</MenuItem>
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+                                <Grid item xs={12} md={4}>
+                                    <FormControlLabel
+                                        control={
+                                            <Checkbox
+                                                name="pmr_required"
+                                                checked={searchParams.pmr_required}
+                                                onChange={handleInputChange}
+                                            />
+                                        }
+                                        label="♿ Accessibilité PMR requise"
+                                    />
+                                </Grid>
+                            </Grid>
+
+                            <Box sx={{ textAlign: 'right' }}>
+                                <Button type="submit" variant="contained" disabled={loading}>
+                                    {loading ? '🔄 Recherche en cours...' : '🚀 Rechercher'}
+                                </Button>
+                            </Box>
+                        </Box>
+                    </CardContent>
+                </Card>
+
+                {error && (
+                    <Alert severity="error" sx={{ mb: 2 }}>
+                        ❌ {error}
+                    </Alert>
+                )}
+
+                {/* Résultats */}
+                {results && (
+                    <Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                            <Typography variant="h5">✨ {results.results.total} itinéraire(s) trouvé(s)</Typography>
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                <Chip label={`📍 ${results.results.direct} direct(s)`} />
+                                <Chip label={`🔄 ${results.results.with_transfers} correspondance(s)`} />
+                            </Box>
+                        </Box>
+
+                        {results.trips.length === 0 ? (
+                            <Alert severity="info">Aucun itinéraire trouvé avec ces critères. Essayez de modifier vos paramètres de recherche.</Alert>
+                        ) : (
+                            <Grid container spacing={2}>
+                                {results.trips.map((trip, index) => (
+                                    <Grid item xs={12} key={index}>
+                                        <Card sx={{ borderRadius: 2 }}>
+                                            <CardContent>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <Typography variant="subtitle1">
+                                                        {trip.type === 'direct' ? '🎯 Trajet direct' : `🔄 ${trip.number_of_transfers} correspondance(s)`}
+                                                    </Typography>
+                                                    {trip.pmr_compatible && (
+                                                        <Chip label="♿ PMR" color="success" size="small" />
+                                                    )}
+                                                </Box>
+
+                                                <Box sx={{ mt: 2 }}>
+                                                    {trip.segments.map((segment, idx) => (
+                                                        <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1, borderBottom: idx < trip.segments.length - 1 ? '1px solid' : 'none', borderColor: 'grey.200' }}>
+                                                            <Box sx={{ width: 28 }}>
+                                                                {segment.type === 'avion' && '✈️'}
+                                                                {segment.type === 'train' && '🚄'}
+                                                                {segment.type === 'taxi' && '🚕'}
+                                                            </Box>
+                                                            <Box sx={{ flex: 1 }}>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                    <Typography variant="body1" fontWeight={600}>{segment.departure}</Typography>
+                                                                    <Typography variant="body2" color="text.secondary">→</Typography>
+                                                                    <Typography variant="body1" fontWeight={600}>{segment.arrival}</Typography>
+                                                                </Box>
+                                                                <Typography variant="body2" color="text.secondary">
+                                                                    {segment.company} {segment.train_type ? `• ${segment.train_type}` : ''} • {segment.duration} • {formatPrice(segment.price)}
+                                                                </Typography>
+                                                                <Typography variant="body2" color="text.secondary">
+                                                                    🕐 {new Date(segment.departure_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} → 🕐 {new Date(segment.arrival_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                                                </Typography>
+                                                            </Box>
+                                                        </Box>
+                                                    ))}
+                                                </Box>
+
+                                                {trip.transfer_info && (
+                                                    <Alert severity="info" sx={{ mt: 2 }}>
+                                                        🔄 Correspondance à <strong>{trip.transfer_info.city}</strong> ({trip.transfer_info.duration})
+                                                    </Alert>
+                                                )}
+
+                                                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <Box sx={{ display: 'flex', gap: 2 }}>
+                                                        <Chip label={`⏱️ ${trip.total_duration}`} />
+                                                        <Chip label={`💰 ${formatPrice(trip.total_price)}`} />
+                                                    </Box>
+                                                    <Button variant="contained" color="primary" onClick={() => handleSelectTrip(trip)}>
+                                                        Sélectionner →
+                                                    </Button>
+                                                </Box>
+                                            </CardContent>
+                                        </Card>
+                                    </Grid>
+                                ))}
+                            </Grid>
+                        )}
+                    </Box>
+                )}
+            </Container>
+        </Box>
     );
 }
 

@@ -1,6 +1,30 @@
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Reset global */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
 /* src/index.css */
 body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background-color: #f0f0f0;
+        margin: 0;
+        font-family: 'Inter', 'Stem Extra Light', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        color: #393839;
+        background-color: #f8fafc;
+}
+
+/* Typographie globale */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', 'Stem Extra Light', sans-serif;
+    color: #393839;
+}
+
+/* Boutons globaux (fallback) */
+button {
+    font-family: 'Inter', sans-serif;
 }

@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import apiService from '../api/apiService';
+import { isDemoMode } from '../config/demoConfig';
 import { jwtDecode } from 'jwt-decode';
 
 export const AuthContext = createContext();
@@ -7,8 +8,6 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
-
-    const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
     const isTokenValid = (token) => {
         try {
@@ -30,13 +29,12 @@ export const AuthProvider = ({ children }) => {
                     return;
                 }
 
-                const { data } = await axios.get(`${API_BASE_URL}/auth/me`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-
+                // Utiliser apiService (qui gère DEMO fallback)
+                const data = await apiService.get('/auth/me');
                 setUser(data.user || data);
             } catch (error) {
                 console.error('Erreur lors de la récupération de l’utilisateur :', error);
+                // En cas d'erreur réseau, laisser apiService décider du fallback
                 localStorage.removeItem('token');
                 setUser(null);
             } finally {
@@ -45,20 +43,28 @@ export const AuthProvider = ({ children }) => {
         };
 
         fetchUser();
-    }, [API_BASE_URL]);
+    }, []);
 
     const login = async (credentials) => {
         try {
-            const { data } = await axios.post(`${API_BASE_URL}/auth/login`, credentials);
+            const data = await apiService.post('/auth/login', credentials);
 
-            localStorage.setItem('token', data.token);
-            setUser(data.user);
+            // apiService retourne directement l'objet mock ou la réponse API
+            const token = data.token || data?.data?.token;
+            const userResp = data.user || data?.data?.user || data;
 
-            return data.user;
+            if (token) localStorage.setItem('token', token);
+            if (userResp) setUser(userResp);
+
+            return userResp;
         } catch (error) {
             console.error('Erreur de connexion :', error);
             if (error.response?.status === 401) {
                 throw new Error('Identifiants invalides. Veuillez réessayer.');
+            }
+            if (isDemoMode()) {
+                // En DEMO, retourner l'utilisateur mock si present
+                return null;
             }
             throw new Error('Erreur de connexion. Veuillez réessayer plus tard.');
         }
@@ -69,14 +75,11 @@ export const AuthProvider = ({ children }) => {
             const token = localStorage.getItem('token');
             if (!token) throw new Error('Utilisateur non authentifié');
 
-            const { data } = await axios.get(`${API_BASE_URL}/users/${id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-
-            return data.user;
+            const data = await apiService.get(`/users/${id}`);
+            return data.user || data;
         } catch (error) {
             console.error(`Erreur lors de la récupération de l'utilisateur avec ID ${id} :`, error);
-            if (error.response?.status === 404) throw new Error('Utilisateur non trouvé.');
+            if (error?.response?.status === 404) throw new Error('Utilisateur non trouvé.');
             throw new Error('Erreur lors de la récupération des données utilisateur.');
         }
     };
@@ -88,20 +91,17 @@ export const AuthProvider = ({ children }) => {
 
     // Inscription utilisateur
     const signup = async (credentials) => {
-        return (
-            <AuthContext.Provider
-                value={{
-                    user,
-                    loading,
-                    login,
-                    logout,
-                    getUserById,
-                    setUser,
-                }}
-            >
-                {children}
-            </AuthContext.Provider>
-        );
+        try {
+            const data = await apiService.post('/auth/signup', credentials);
+            const token = data.token || data?.data?.token;
+            const userResp = data.user || data?.data?.user || data;
+            if (token) localStorage.setItem('token', token);
+            if (userResp) setUser(userResp);
+            return userResp;
+        } catch (error) {
+            console.error('Erreur signup :', error);
+            throw new Error('Erreur lors de l\'inscription.');
+        }
     };
     const updateUserProfile = async (updates) => {
         try {
@@ -112,10 +112,9 @@ export const AuthProvider = ({ children }) => {
                 throw new Error("L'ID de l'utilisateur est requis pour la mise à jour.");
             }
 
-            // ✅ PUT /api/users/:id
-            const { data } = await axios.put(`${API_BASE_URL}/users/${updates.user_id}`, updates, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            // ✅ PUT /api/users/:id via apiService (gère token & DEMO fallback)
+            const resp = await apiService.put(`/users/${updates.user_id}`, updates);
+            const data = resp?.data || resp;
 
             // routes/users.js renvoie: { success: true, user: {...} }
             if (data?.user) {
@@ -140,15 +139,22 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Kafka consumer (si endpoint existe côté API)
+    // TODO DEMO: Kafka supprimé - Utiliser Supabase Realtime à la place
+    // Exemple d'implémentation Supabase Realtime :
+    // const subscribeToNotifications = () => {
+    //   const channel = supabase.channel('notifications')
+    //     .on('postgres_changes', { 
+    //       event: 'INSERT', 
+    //       schema: 'public', 
+    //       table: 'notifications' 
+    //     }, payload => {
+    //       console.log('Nouvelle notification:', payload.new);
+    //     })
+    //     .subscribe();
+    // };
     const startKafkaConsumer = async (onMessage, onError) => {
-        try {
-            const { data } = await axios.get(`${API_BASE_URL}/kafka/messages`);
-            if (onMessage) onMessage(data.message);
-        } catch (error) {
-            console.error('Erreur lors du démarrage du consommateur Kafka :', error);
-            if (onError) onError('Erreur lors du démarrage du consommateur Kafka.');
-        }
+        console.warn('TODO DEMO: Kafka supprimé - Utiliser Supabase Realtime');
+        if (onError) onError('Kafka a été remplacé par Supabase Realtime');
     };
 
     const value = React.useMemo(

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import './ewallet.css';
-import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 import { useQrCode } from '../../context/QrCodeContext';
 import { useBaggage } from '../../context/BaggageContext';
+import { isDemoMode } from '../../config/demoConfig';
+import apiService from '../../api/apiService';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Container,
@@ -18,8 +19,6 @@ import {
   Divider
 } from '@mui/material';
 import { Download as DownloadIcon, Delete as DeleteIcon } from '@mui/icons-material';
-
-const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 const PAGE_SIZE_BAGGAGE = 4;
 
 function Ewallet() {
@@ -48,25 +47,25 @@ function Ewallet() {
   // Fetch balance et historique
   const fetchBalance = async () => {
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/blockchain/balance`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setBalance(response.data.balance);
+      const response = await apiService.get('/blockchain/balance');
+      setBalance(response?.balance || 0);
     } catch (err) {
       console.error("Erreur lors de la récupération du solde:", err);
+      if (isDemoMode()) {
+        setBalance(105); // Solde par défaut en DEMO
+      }
     }
   };
 
   const fetchPaymentHistory = async () => {
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/blockchain/history`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setPaymentHistory(response.data);
+      const response = await apiService.get('/blockchain/history');
+      setPaymentHistory(response?.transactions || []);
     } catch (err) {
       console.error("Erreur lors de la récupération de l'historique:", err);
+      if (isDemoMode()) {
+        setPaymentHistory([]);
+      }
     }
   };
 
@@ -94,13 +93,12 @@ function Ewallet() {
         description: "Paiement"
       };
 
-      const response = await axios.post(
-        `${API_BASE_URL}/transactions/pay`,
-        paymentData,
-        { headers: { Authorization: `Bearer ${token}` } }
+      const response = await apiService.post(
+        '/transactions/pay',
+        paymentData
       );
 
-      if (response.status === 200 || response.data.success) {
+      if (response?.success) {
         fetchBalance();
         fetchPaymentHistory();
         setError(null);
