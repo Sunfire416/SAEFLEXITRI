@@ -1,0 +1,57 @@
+name: Deploy API Flexitrip to Raspberry Pi
+
+on:
+  workflow_dispatch:  # Permet d'exécuter le workflow manuellement
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository (Obligatoire pour récupérer les fichiers du repo)
+        uses: actions/checkout@v3
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/github_deploy_key
+          chmod 600 ~/.ssh/github_deploy_key
+          ssh-keyscan -p 17002 -H 88.185.44.213 >> ~/.ssh/known_hosts
+
+      - name: Deploy API on Raspberry Pi
+        run: |
+          ssh -v -i ~/.ssh/github_deploy_key -p 17002 yassdudix@88.185.44.213 << 'EOF'
+          # Définition du répertoire de déploiement
+          DEPLOY_DIR="/home/yassdudix/API_Flexitrip"
+
+          # Aller dans le dossier de l'utilisateur
+          cd /home/yassdudix
+
+          # Supprimer l'ancien dossier proprement
+          if [ -d "$DEPLOY_DIR" ]; then
+            rm -rf "$DEPLOY_DIR"
+          fi
+
+          # Cloner la branche API_Flexitrip
+          git clone --branch API_Flexitrip https://github.com/yassdah21/SAE501.git "$DEPLOY_DIR"
+
+          # Vérifier si le clonage a réussi
+          if [ ! -d "$DEPLOY_DIR" ]; then
+            echo "Erreur: Le clonage du repo a échoué !" >&2
+            exit 1
+          fi
+
+          # Aller dans le dossier du projet
+          cd "$DEPLOY_DIR"
+
+          # Installer les dépendances
+          npm install || { echo "npm install a échoué !"; exit 1; }
+
+          # Arrêter les anciennes instances de l'API
+          pkill -f "node app.js" || echo "Aucune ancienne instance de l'API trouvée"
+
+          # Démarrer l'API en arrière-plan
+          nohup node app.js > output.log 2>&1 &
+          
+          echo "Déploiement terminé avec succès !"
+          EOF
