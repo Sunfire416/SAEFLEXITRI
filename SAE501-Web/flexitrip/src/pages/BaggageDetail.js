@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Button } from '@mui/material';
 import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
@@ -83,7 +84,7 @@ const BaggageDetail = () => {
       <div style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>
         <h2>🧳 Détail bagage</h2>
         <p style={{ color: 'crimson' }}>{error}</p>
-        <button onClick={() => navigate('/user/bagages')}>← Retour</button>
+        <Button onClick={() => navigate('/user/baggage-tracking')} variant="text" sx={{ textTransform: 'none' }}>← Retour</Button>
       </div>
     );
   }
@@ -151,9 +152,9 @@ const BaggageDetail = () => {
       </div>
 
       <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
-        <button onClick={() => navigate('/user/bagages')}>← Retour</button>
-        <button
-          type="button"
+        <Button onClick={() => navigate('/user/baggage-tracking')} variant="text" sx={{ textTransform: 'none' }}>← Retour</Button>
+        <Button
+          variant="outlined"
           onClick={async () => {
             try {
               await navigator.clipboard.writeText(bagage?.bagage_public_id || '');
@@ -164,7 +165,7 @@ const BaggageDetail = () => {
           }}
         >
           Copier code
-        </button>
+        </Button>
       </div>
     </div>
   );

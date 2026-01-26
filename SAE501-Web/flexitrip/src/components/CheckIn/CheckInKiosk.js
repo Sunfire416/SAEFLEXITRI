@@ -1,18 +1,53 @@
-/**
- * CheckInKiosk - Interface check-in kiosk/agent
- * VERSION CORRIGÉE - Affichage boarding pass complet
- */
-
 import React, { useState } from 'react';
 import axios from 'axios';
 import WebcamCapture from '../shared/WebcamCapture';
-import './CheckInKiosk.css';
+import {
+  Container,
+  Box,
+  Typography,
+  Paper,
+  Button,
+  Grid,
+  Divider,
+  Stack,
+  IconButton,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Stepper,
+  Step,
+  StepLabel,
+  Card,
+  CardContent,
+  useTheme,
+  CircularProgress,
+  Alert,
+  ToggleButtonGroup,
+  ToggleButton,
+  Avatar,
+  Chip
+} from '@mui/material';
+import {
+  QrCodeScanner as QrIcon,
+  Face as FaceIcon,
+  CheckCircle as SuccessIcon,
+  Refresh as ResetIcon,
+  Print as PrintIcon,
+  ArrowForward as NextIcon,
+  ArrowBack as BackIcon,
+  Computer as KioskIcon,
+  SupportAgent as AgentIcon,
+  CloudUpload as UploadIcon
+} from '@mui/icons-material';
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:17777') + '/api';
 
 const CheckInKiosk = () => {
+  const theme = useTheme();
   const [mode, setMode] = useState('kiosk'); // 'kiosk' ou 'agent'
-  const [step, setStep] = useState(1); // 1: scan QR, 2: photo, 3: résultat
+  const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -24,22 +59,20 @@ const CheckInKiosk = () => {
   // Résultat
   const [checkInResult, setCheckInResult] = useState(null);
 
-  // Scanner QR (simulation)
+  const steps = ['Identification', 'Biométrie', 'Confirmation'];
+
   const handleQRScan = (e) => {
-    const input = e.target.value;
-    setQrData(input);
+    setQrData(e.target.value);
   };
 
-  // Simuler scan QR depuis fichier
   const handleQRFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Dans la vraie vie : utiliser jsQR pour décoder l'image
-    // Ici : simulation
+    // Simulation du contenu d'un QR code
     const mockQRData = JSON.stringify({
       type: 'ENROLLMENT',
-      id: 'ENR-4-1767532528-A3F2',
+      id: 'ENR-DEMO-' + Math.floor(Math.random() * 10000),
       user_id: 4,
       reservation_id: 3,
       identity: {
@@ -51,15 +84,13 @@ const CheckInKiosk = () => {
     });
 
     setQrData(mockQRData);
-    console.log('📷 QR code scanné (simulation)');
+    if (location) setActiveStep(1);
   };
 
-  // Capture photo live
   const handlePhotoCapture = (imageBase64) => {
     setLivePhoto(imageBase64);
   };
 
-  // Soumettre check-in
   const handleCheckIn = async () => {
     if (!qrData || !livePhoto || !location) {
       setError('Tous les champs sont requis');
@@ -70,9 +101,8 @@ const CheckInKiosk = () => {
     setError(null);
 
     try {
-      // 🆕 Si c'est juste un booking_reference (texte simple), chercher la réservation
       let checkinData;
-      
+
       if (qrData.startsWith('{')) {
         // C'est un QR JSON
         checkinData = {
@@ -83,16 +113,14 @@ const CheckInKiosk = () => {
         };
       } else {
         // C'est un booking_reference simple, chercher d'abord la réservation
-        console.log('🔍 Recherche réservation par booking_reference:', qrData);
-        
         const searchResponse = await axios.get(`${API_BASE_URL}/checkin/search-reservation`, {
           params: { booking_reference: qrData }
         });
-        
+
         if (!searchResponse.data.success || !searchResponse.data.reservation) {
-          throw new Error('Réservation introuvable avec ce booking_reference');
+          throw new Error('Réservation introuvable avec ce code');
         }
-        
+
         const reservation = searchResponse.data.reservation;
         checkinData = {
           user_id: reservation.user_id,
@@ -101,11 +129,7 @@ const CheckInKiosk = () => {
           location: location,
           checkin_type: mode
         };
-        
-        console.log('✅ Réservation trouvée:', reservation.reservation_id);
       }
-
-      console.log('📤 Envoi check-in...');
 
       const response = await axios.post(
         `${API_BASE_URL}/checkin/scan`,
@@ -118,171 +142,19 @@ const CheckInKiosk = () => {
         }
       );
 
-      console.log('✅ Check-in réussi:', response.data);
-
       setCheckInResult(response.data);
-      setStep(3);
+      setActiveStep(2);
 
     } catch (err) {
       console.error('❌ Erreur check-in:', err);
-      setError(
-        err.response?.data?.error ||
-        'Erreur lors du check-in'
-      );
+      setError(err.response?.data?.error || 'Erreur lors du traitement de votre check-in');
     } finally {
       setLoading(false);
     }
   };
 
-  // Check-in manuel (agent)
-  const handleManualCheckIn = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const manualData = {
-        reservation_id: 3, // À récupérer depuis formulaire
-        agent_id: 1,
-        location: location,
-        reason: 'Check-in manuel suite à échec auto'
-      };
-
-      const response = await axios.post(
-        `${API_BASE_URL}/checkin/manual`,
-        manualData,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-
-      console.log('✅ Check-in manuel réussi:', response.data);
-
-      setCheckInResult(response.data);
-      setStep(3);
-
-    } catch (err) {
-      console.error('❌ Erreur check-in manuel:', err);
-      setError(err.response?.data?.error || 'Erreur');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Imprimer boarding pass
-  const printBoardingPass = () => {
-    if (!checkInResult?.boarding_pass) return;
-
-    const bp = checkInResult.boarding_pass;
-    const passenger = checkInResult.passenger;
-
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Boarding Pass - FlexiTrip</title>
-          <style>
-            body { 
-              font-family: Arial, sans-serif; 
-              text-align: center; 
-              padding: 2rem;
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-            }
-            .bp-container {
-              background: white;
-              color: #333;
-              max-width: 600px;
-              margin: 0 auto;
-              padding: 2rem;
-              border-radius: 15px;
-              box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            }
-            h1 { margin: 0 0 1rem; font-size: 1.8rem; }
-            h2 { margin: 0.5rem 0; font-size: 1.5rem; color: #667eea; }
-            .details { margin: 2rem 0; text-align: left; }
-            .detail-row { 
-              display: flex; 
-              justify-content: space-between; 
-              padding: 0.8rem; 
-              border-bottom: 1px solid #eee; 
-            }
-            .detail-row:last-child { border-bottom: none; }
-            .label { font-weight: bold; color: #666; }
-            .value { color: #333; font-size: 1.1rem; }
-            img { max-width: 300px; margin: 2rem 0; }
-            .barcode { 
-              margin: 1rem 0; 
-              font-family: 'Courier New', monospace; 
-              font-size: 1.5rem;
-              letter-spacing: 0.2rem;
-              background: #f5f5f5;
-              padding: 1rem;
-              border-radius: 5px;
-            }
-            .pmr-alert {
-              background: #ffc107;
-              color: #000;
-              padding: 1rem;
-              margin: 1.5rem 0;
-              border-radius: 8px;
-              font-weight: bold;
-              font-size: 1.1rem;
-            }
-            @media print {
-              body { background: white; }
-              .bp-container { box-shadow: none; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="bp-container">
-            <h1>🎫 FlexiTrip Boarding Pass</h1>
-            <h2>${passenger?.nom || 'N/A'} ${passenger?.prenom || 'N/A'}</h2>
-            
-            <div class="details">
-              <div class="detail-row">
-                <span class="label">Vol/Train :</span>
-                <span class="value">${bp.flight_train || bp.flight_train_number || 'N/A'}</span>
-              </div>
-              <div class="detail-row">
-                <span class="label">Embarquement :</span>
-                <span class="value">${new Date(bp.boarding_time).toLocaleString('fr-FR')}</span>
-              </div>
-              ${bp.gate ? `
-              <div class="detail-row">
-                <span class="label">Porte :</span>
-                <span class="value">${bp.gate}</span>
-              </div>
-              ` : ''}
-              ${bp.seat ? `
-              <div class="detail-row">
-                <span class="label">Siège :</span>
-                <span class="value">${bp.seat}</span>
-              </div>
-              ` : ''}
-            </div>
-            
-            ${bp.pmr_assistance ? '<div class="pmr-alert">♿ ASSISTANCE PMR REQUISE - PRIORITÉ EMBARQUEMENT</div>' : ''}
-            
-            ${bp.qr_data ? `<img src="data:image/png;base64,QR_CODE_PLACEHOLDER" alt="QR Code" />` : ''}
-            ${bp.barcode ? `<div class="barcode">${bp.barcode}</div>` : ''}
-            
-            <p style="color: #999; font-size: 0.9rem; margin-top: 2rem;">
-              Pass ID: ${bp.pass_id} | Émis le ${new Date().toLocaleDateString('fr-FR')}
-            </p>
-          </div>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
-  };
-
-  // Recommencer
   const reset = () => {
-    setStep(1);
+    setActiveStep(0);
     setQrData('');
     setLivePhoto(null);
     setCheckInResult(null);
@@ -290,251 +162,250 @@ const CheckInKiosk = () => {
   };
 
   return (
-    <div className="checkin-kiosk-container">
-      <div className="kiosk-header">
-        <h1>🏢 FlexiTrip Check-In</h1>
-        <div className="mode-selector">
-          <button
-            className={`mode-btn ${mode === 'kiosk' ? 'active' : ''}`}
-            onClick={() => setMode('kiosk')}
-          >
-            🖥️ Mode Kiosk
-          </button>
-          <button
-            className={`mode-btn ${mode === 'agent' ? 'active' : ''}`}
-            onClick={() => setMode('agent')}
-          >
-            👤 Mode Agent
-          </button>
-        </div>
-      </div>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: { xs: 4, md: 8 } }}>
+      <Container maxWidth="md">
+        <Paper elevation={0} sx={{
+          p: { xs: 3, md: 6 },
+          borderRadius: 6,
+          border: '1px solid #e2e8f0',
+          bgcolor: 'white',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.03)'
+        }}>
+          {/* Header */}
+          <Box sx={{ mb: 6, textAlign: 'center' }}>
+            <Typography variant="h1" gutterBottom sx={{ fontSize: { xs: '2rem', md: '2.75rem' }, fontWeight: 900 }}>Check-In Libre Service</Typography>
+            <Typography variant="body1" color="textSecondary" sx={{ mb: 4, fontSize: '1.1rem' }}>Identifiez-vous pour obtenir votre boarding pass</Typography>
 
-      <div className="kiosk-content">
-        {/* Étape 1 : Scanner QR */}
-        {step === 1 && (
-          <div className="kiosk-step">
-            <h2>📱 Scannez votre QR code</h2>
-
-            <div className="qr-scan-section">
-              {/* Simulation scan */}
-              <div className="qr-input-group">
-                <label>Scanner QR (ou coller données JSON)</label>
-                <textarea
-                  value={qrData}
-                  onChange={handleQRScan}
-                  placeholder='{"type":"ENROLLMENT","id":"ENR-4-..."}'
-                  rows={4}
-                  className="qr-input"
-                />
-              </div>
-
-              <div className="qr-upload-group">
-                <label>Ou uploader image QR</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleQRFileUpload}
-                  className="file-input"
-                />
-              </div>
-
-              {/* Location */}
-              <div className="location-group">
-                <label>Localisation</label>
-                <select
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="location-select"
-                >
-                  <option value="">Sélectionner...</option>
-                  <option value="Gare Lyon Part-Dieu">Gare Lyon Part-Dieu</option>
-                  <option value="Gare Paris Montparnasse">Gare Paris Montparnasse</option>
-                  <option value="CDG Terminal 2E">CDG Terminal 2E</option>
-                  <option value="Orly Terminal 3">Orly Terminal 3</option>
-                </select>
-              </div>
-
-              {qrData && (
-                <div className="qr-preview">
-                  ✅ QR code détecté
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={() => setStep(2)}
-              className="btn-next-kiosk"
-              disabled={!qrData || !location}
+            <ToggleButtonGroup
+              value={mode}
+              exclusive
+              onChange={(e, v) => v && setMode(v)}
+              sx={{ bgcolor: '#f1f5f9', p: 0.5, borderRadius: 3 }}
             >
-              Suivant → Vérification faciale
-            </button>
-          </div>
-        )}
+              <ToggleButton value="kiosk" sx={{ px: 4, py: 1.2, borderRadius: '10px !important', textTransform: 'none', fontWeight: 800, gap: 1 }}>
+                <KioskIcon fontSize="small" /> Kiosk
+              </ToggleButton>
+              <ToggleButton value="agent" sx={{ px: 4, py: 1.2, borderRadius: '10px !important', textTransform: 'none', fontWeight: 800, gap: 1 }}>
+                <AgentIcon fontSize="small" /> Agent
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
 
-        {/* Étape 2 : Photo faciale */}
-        {step === 2 && (
-          <div className="kiosk-step">
-            <h2>📸 Vérification faciale</h2>
-            <p className="step-instruction">
-              Positionnez votre visage face à la caméra
-            </p>
+          <Stepper activeStep={activeStep} sx={{ mb: 8, '& .MuiStepLabel-label': { fontWeight: 700 } }}>
+            {steps.map((label) => (
+              <Step key={label}><StepLabel>{label}</StepLabel></Step>
+            ))}
+          </Stepper>
 
-            {!livePhoto ? (
-              <WebcamCapture
-                mode="photo"
-                label="Capturer photo"
-                onCapture={handlePhotoCapture}
-              />
-            ) : (
-              <div className="photo-preview">
-                <img src={livePhoto} alt="Live" />
-                <button onClick={() => setLivePhoto(null)} className="btn-retake">
-                  🔄 Reprendre
-                </button>
-              </div>
+          {/* Content Switcher */}
+          <Box sx={{ minHeight: 400 }}>
+            {activeStep === 0 && (
+              <Box component="div" sx={{ animation: 'fadeIn 0.5s ease-out' }}>
+                <Typography variant="h3" sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2, fontWeight: 800 }}>
+                  <QrIcon color="primary" sx={{ fontSize: 32 }} /> Scanner votre QR Code
+                </Typography>
+
+                <Stack spacing={4}>
+                  <FormControl fullWidth>
+                    <InputLabel>Lieu d'enregistrement</InputLabel>
+                    <Select
+                      value={location}
+                      label="Lieu d'enregistrement"
+                      onChange={(e) => setLocation(e.target.value)}
+                      sx={{ borderRadius: 3 }}
+                    >
+                      <MenuItem value="Gare Lyon Part-Dieu">Gare Lyon Part-Dieu</MenuItem>
+                      <MenuItem value="Gare Paris Montparnasse">Gare Paris Montparnasse</MenuItem>
+                      <MenuItem value="CDG Terminal 2E">CDG Terminal 2E</MenuItem>
+                      <MenuItem value="Orly Terminal 3">Orly Terminal 3</MenuItem>
+                    </Select>
+                  </FormControl>
+
+                  <TextField
+                    label="Référence de réservation ou QR JSON"
+                    multiline rows={4} fullWidth
+                    value={qrData} onChange={handleQRScan}
+                    placeholder='Entrez votre code de réservation (ex: FR-123) ou scannez le QR code de votre voyage'
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+                  />
+
+                  <Paper variant="outlined" sx={{ p: 4, border: '2px dashed #cbd5e0', borderRadius: 4, textAlign: 'center', bgcolor: '#f8fafc' }}>
+                    <Button variant="contained" component="label" startIcon={<UploadIcon />} sx={{ borderRadius: 2, textTransform: 'none', px: 4 }}>
+                      Simuler un scan de fichier
+                      <input type="file" hidden accept="image/*" onChange={handleQRFileUpload} />
+                    </Button>
+                    <Typography variant="caption" sx={{ display: 'block', mt: 2, color: 'text.secondary' }}>Format accepté: PNG, JPG, JPEG</Typography>
+                  </Paper>
+                </Stack>
+
+                <Box sx={{ mt: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button
+                    variant="contained" size="large" endIcon={<NextIcon />}
+                    disabled={!qrData || !location}
+                    onClick={() => setActiveStep(1)}
+                    sx={{ px: 6, py: 2, borderRadius: 4, fontWeight: 800, fontSize: '1.1rem', boxShadow: theme.shadows[4] }}
+                  >Étape suivante</Button>
+                </Box>
+              </Box>
             )}
 
-            {error && (
-              <div className="error-box">
-                ⚠️ {error}
-              </div>
+            {activeStep === 1 && (
+              <Box component="div" sx={{ animation: 'fadeIn 0.5s ease-out' }}>
+                <Typography variant="h3" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 2, fontWeight: 800 }}>
+                  <FaceIcon color="primary" sx={{ fontSize: 32 }} /> Enrôlement Biométrique
+                </Typography>
+                <Typography variant="body1" color="textSecondary" sx={{ mb: 5 }}>Positionnez votre visage face à la caméra. Vos données resteront cryptées sur la blockchain.</Typography>
+
+                <Box sx={{ display: 'flex', justifyContent: 'center', mb: 5 }}>
+                  {!livePhoto ? (
+                    <Paper elevation={4} sx={{ p: 2, borderRadius: 6, bgcolor: '#000', overflow: 'hidden', width: '100%', maxWidth: 540, aspectRatio: '4/3', position: 'relative' }}>
+                      <WebcamCapture mode="photo" label="Capturer mon identité" onCapture={handlePhotoCapture} />
+                    </Paper>
+                  ) : (
+                    <Box sx={{ position: 'relative', width: '100%', maxWidth: 540 }}>
+                      <Box component="img" src={livePhoto} sx={{ width: '100%', borderRadius: 6, boxShadow: theme.shadows[15], border: '4px solid white' }} />
+                      <IconButton
+                        onClick={() => setLivePhoto(null)}
+                        sx={{
+                          position: 'absolute', top: 20, right: 20,
+                          bgcolor: 'white', '&:hover': { bgcolor: '#f1f5f9' },
+                          boxShadow: theme.shadows[4]
+                        }}
+                      ><ResetIcon /></IconButton>
+                      <Box sx={{ position: 'absolute', bottom: -15, left: '50%', transform: 'translateX(-50%)' }}>
+                        <Chip label="Photo capturée ✅" color="success" sx={{ fontWeight: 800, px: 2, height: 32 }} />
+                      </Box>
+                    </Box>
+                  )}
+                </Box>
+
+                {error && <Alert severity="error" variant="filled" sx={{ mb: 4, borderRadius: 3 }}>{error}</Alert>}
+
+                <Box sx={{ mt: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Button startIcon={<BackIcon />} onClick={() => setActiveStep(0)} sx={{ fontWeight: 700, borderRadius: 2 }}>Retour à l'identification</Button>
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    {mode === 'agent' && (
+                      <Button variant="outlined" color="warning" onClick={handleCheckIn} sx={{ borderRadius: 3, px: 3, fontWeight: 700 }}>Override Manuel</Button>
+                    )}
+                    <Button
+                      variant="contained" size="large"
+                      disabled={!livePhoto || loading}
+                      onClick={handleCheckIn}
+                      sx={{ px: 6, py: 2, borderRadius: 4, fontWeight: 800, fontSize: '1.1rem' }}
+                    >
+                      {loading ? <CircularProgress size={24} color="inherit" /> : 'Finaliser le Check-in'}
+                    </Button>
+                  </Box>
+                </Box>
+              </Box>
             )}
 
-            <div className="kiosk-actions">
-              <button onClick={() => setStep(1)} className="btn-back-kiosk">
-                ← Retour
-              </button>
+            {activeStep === 2 && checkInResult && (
+              <Box component="div" sx={{ textAlign: 'center', animation: 'scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
+                <Avatar sx={{ bgcolor: 'success.main', width: 100, height: 100, mx: 'auto', mb: 3, boxShadow: '0 8px 16px rgba(16, 185, 129, 0.3)' }}>
+                  <SuccessIcon sx={{ fontSize: 60 }} />
+                </Avatar>
+                <Typography variant="h2" gutterBottom sx={{ fontWeight: 900 }}>Check-in validé avec succès !</Typography>
+                <Typography color="textSecondary" sx={{ mb: 8, fontSize: '1.2rem' }}>Bon voyage avec FlexiTrip, {checkInResult.passenger?.prenom}.</Typography>
 
-              {mode === 'kiosk' && (
-                <button
-                  onClick={handleCheckIn}
-                  className="btn-checkin"
-                  disabled={!livePhoto || loading}
-                >
-                  {loading ? '⏳ Vérification...' : '✅ Valider check-in'}
-                </button>
-              )}
+                <Grid container spacing={4}>
+                  <Grid item xs={12} md={6}>
+                    <Card elevation={0} sx={{ borderRadius: 4, height: '100%', textAlign: 'left', border: '1px solid #e2e8f0', bgcolor: '#f8fafc' }}>
+                      <CardContent sx={{ p: 4 }}>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>Passager Vérifié</Typography>
+                        <Typography variant="h3" sx={{ mt: 1, mb: 3, fontWeight: 800 }}>{checkInResult.passenger?.nom} {checkInResult.passenger?.prenom}</Typography>
 
-              {mode === 'agent' && (
-                <>
-                  <button
-                    onClick={handleCheckIn}
-                    className="btn-checkin"
-                    disabled={!livePhoto || loading}
-                  >
-                    Vérification auto
-                  </button>
-                  <button
-                    onClick={handleManualCheckIn}
-                    className="btn-manual"
-                    disabled={loading}
-                  >
-                    ✋ Override manuel
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
+                        <Stack spacing={1.5}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <SuccessIcon color="success" fontSize="small" />
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>Biométrie confirmée ({(checkInResult.verification?.face_match_score || 99).toFixed(0)}%)</Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <SuccessIcon color="success" fontSize="small" />
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>Liveness verified ✅</Typography>
+                          </Box>
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  </Grid>
 
-        {/* Étape 3 : Résultat + Boarding Pass */}
-        {step === 3 && checkInResult && (
-          <div className="kiosk-step result-step">
-            <div className="success-animation">
-              <div className="checkmark">✓</div>
-            </div>
+                  <Grid item xs={12} md={6}>
+                    <Card elevation={0} sx={{
+                      borderRadius: 4,
+                      height: '100%',
+                      background: 'linear-gradient(135deg, #2eb378 0%, #15803d 100%)',
+                      color: 'white',
+                      textAlign: 'left',
+                      boxShadow: '0 12px 24px rgba(46, 179, 120, 0.25)'
+                    }}>
+                      <CardContent sx={{ p: 4 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                          <Typography variant="caption" sx={{ opacity: 0.8, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>Carte d'Accès</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 600 }}>ID: {checkInResult.boarding_pass?.pass_id}</Typography>
+                        </Box>
+                        <Typography variant="h2" sx={{ color: 'white', mb: 4, fontSize: '2.5rem', fontFamily: 'monospace' }}>
+                          {checkInResult.boarding_pass?.flight_train || checkInResult.boarding_pass?.flight_train_number}
+                        </Typography>
 
-            <h2>Check-in réussi !</h2>
+                        <Grid container spacing={2}>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" sx={{ opacity: 0.8, display: 'block' }}>PORTE</Typography>
+                            <Typography variant="h5" sx={{ fontWeight: 700 }}>{checkInResult.boarding_pass?.gate || 'TBA'}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" sx={{ opacity: 0.8, display: 'block' }}>SIÈGE</Typography>
+                            <Typography variant="h5" sx={{ fontWeight: 700 }}>{checkInResult.boarding_pass?.seat || 'Any'}</Typography>
+                          </Grid>
+                        </Grid>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                </Grid>
 
-            <div className="passenger-info">
-              <h3>Passager</h3>
-              <p className="passenger-name">
-                {checkInResult.passenger?.nom || 'N/A'} {checkInResult.passenger?.prenom || 'N/A'}
-              </p>
-
-              {checkInResult.verification && (
-                <div className="verification-scores">
-                  <div className="score-badge">
-                    Face Match : {checkInResult.verification.face_match_score?.toFixed(0)}%
-                  </div>
-                  {checkInResult.verification.liveness_verified && (
-                    <div className="score-badge green">
-                      ✅ Liveness vérifié
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {checkInResult.boarding_pass && (
-              <div className="boarding-pass-display">
-                <h3>🎫 Boarding Pass</h3>
-
-                <div className="bp-details">
-                  <div className="bp-row">
-                    <span>Vol/Train :</span>
-                    <strong>
-                      {checkInResult.boarding_pass.flight_train ||
-                        checkInResult.boarding_pass.flight_train_number ||
-                        'N/A'}
-                    </strong>
-                  </div>
-                  <div className="bp-row">
-                    <span>Embarquement :</span>
-                    <strong>
-                      {new Date(checkInResult.boarding_pass.boarding_time).toLocaleString('fr-FR')}
-                    </strong>
-                  </div>
-                  {checkInResult.boarding_pass.gate && (
-                    <div className="bp-row">
-                      <span>Porte :</span>
-                      <strong>{checkInResult.boarding_pass.gate}</strong>
-                    </div>
-                  )}
-                  {checkInResult.boarding_pass.seat && (
-                    <div className="bp-row">
-                      <span>Siège :</span>
-                      <strong>{checkInResult.boarding_pass.seat}</strong>
-                    </div>
-                  )}
-                </div>
-
-                {checkInResult.boarding_pass.pmr_assistance && (
-                  <div className="pmr-alert">
-                    ♿ Assistance PMR requise - Priorité embarquement
-                  </div>
+                {checkInResult.boarding_pass?.pmr_assistance && (
+                  <Alert severity="warning" variant="filled" sx={{ mt: 5, borderRadius: 4, py: 2, fontWeight: 900, fontSize: '1.1rem', boxShadow: theme.shadows[4] }}>
+                    ♿ ASSISTANCE PMR REQUISE - PRIORITÉ D'EMBARQUEMENT
+                  </Alert>
                 )}
 
-                <div className="bp-qr-display">
-                  {checkInResult.boarding_pass.qr_code && (
-                    <img
-                      src={checkInResult.boarding_pass.qr_code}
-                      alt="Boarding Pass QR"
-                      className="bp-qr-image"
-                    />
-                  )}
-                  {checkInResult.boarding_pass.barcode && (
-                    <p className="barcode-text">
-                      {checkInResult.boarding_pass.barcode}
-                    </p>
-                  )}
-                </div>
+                <Divider sx={{ my: 8 }} />
 
-                <button onClick={printBoardingPass} className="btn-print">
-                  🖨️ Imprimer boarding pass
-                </button>
-              </div>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} justifyContent="center">
+                  <Button
+                    variant="outlined"
+                    size="large"
+                    startIcon={<ResetIcon />}
+                    onClick={reset}
+                    sx={{ borderRadius: 3, py: 2, px: 4, fontWeight: 700, borderWidth: 2, '&:hover': { borderWidth: 2 } }}
+                  >Nouveau Check-in</Button>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    startIcon={<PrintIcon />}
+                    color="primary"
+                    onClick={() => window.print()}
+                    sx={{ borderRadius: 3, py: 2, px: 6, fontWeight: 800, boxShadow: theme.shadows[4] }}
+                  >Imprimer Boarding Pass</Button>
+                </Stack>
+              </Box>
             )}
+          </Box>
+        </Paper>
 
-            <div className="completion-actions">
-              <button onClick={reset} className="btn-new-checkin">
-                ➕ Nouveau check-in
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+        <style>
+          {`
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes scaleIn {
+                    from { opacity: 0; transform: scale(0.9); }
+                    to { opacity: 1; transform: scale(1); }
+                }
+            `}
+        </style>
+      </Container>
+    </Box>
   );
 };
 

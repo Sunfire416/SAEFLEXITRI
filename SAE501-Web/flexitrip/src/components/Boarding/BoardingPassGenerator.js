@@ -397,7 +397,7 @@ const BoardingPassGenerator = () => {
                 <Typography sx={{ mt: 2 }}>{generatedQRCode}</Typography>
                 <Button
                   variant="contained"
-                  color="secondary"
+                  color="primary"
                   onClick={handlePayment}
                   sx={{ mt: 4 }}
                 >

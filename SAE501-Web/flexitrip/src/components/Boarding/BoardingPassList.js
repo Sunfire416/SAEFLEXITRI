@@ -2,11 +2,38 @@ import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
 import { AuthContext } from '../../context/AuthContext';
-import './BoardingPassList.css';
+import {
+  Container,
+  Box,
+  Typography,
+  Paper,
+  Grid,
+  Chip,
+  Button,
+  CircularProgress,
+  Alert,
+  useTheme,
+  Card,
+  CardContent,
+  CardHeader,
+  Avatar,
+  Divider
+} from '@mui/material';
+import {
+  ConfirmationNumber as TicketIcon,
+  Refresh as RefreshIcon,
+  FlightTakeoff as FlightIcon,
+  CheckCircle as CheckIcon,
+  Cancel as CancelIcon,
+  Timer as TimerIcon,
+  Accessible as AccessibleIcon,
+  PriorityHigh as PriorityIcon
+} from '@mui/icons-material';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:17777';
 
 const BoardingPassList = () => {
+  const theme = useTheme();
   const { user } = useContext(AuthContext);
   const [boardingPasses, setBoardingPasses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,10 +52,9 @@ const BoardingPassList = () => {
 
     try {
       setLoading(true);
-      
-      // Récupérer d'abord les réservations de l'utilisateur
+
       const voyagesResponse = await axios.get(
-        `${API_BASE_URL}/voyages/history`,
+        `${API_BASE_URL}/api/voyages/history`,
         {
           params: { user_id: user.user_id }
         }
@@ -38,7 +64,6 @@ const BoardingPassList = () => {
         throw new Error('Erreur récupération voyages');
       }
 
-      // Pour chaque réservation, récupérer le boarding pass s'il existe
       const reservations = voyagesResponse.data.voyages.flatMap(
         voyage => voyage.reservations || []
       );
@@ -46,11 +71,10 @@ const BoardingPassList = () => {
       const boardingPassPromises = reservations.map(async (reservation) => {
         try {
           const response = await axios.get(
-            `${API_BASE_URL}/boarding/pass/${reservation.reservation_id}`
+            `${API_BASE_URL}/api/boarding/pass/${reservation.reservation_id}`
           );
           return response.data.success ? response.data.boarding_pass : null;
         } catch (err) {
-          // Si 404, pas de boarding pass pour cette réservation
           if (err.response?.status === 404) {
             return null;
           }
@@ -60,11 +84,6 @@ const BoardingPassList = () => {
 
       const passes = await Promise.all(boardingPassPromises);
       const validPasses = passes.filter(pass => pass !== null);
-
-      console.log('✅ Boarding passes récupérés:', validPasses);
-      validPasses.forEach(pass => {
-        console.log(`  📋 Pass ID: ${pass.pass_id} | Réservation: ${pass.reservation_id} | Vol/Train: ${pass.flight_train_number}`);
-      });
 
       setBoardingPasses(validPasses);
       setError(null);
@@ -91,6 +110,7 @@ const BoardingPassList = () => {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR', {
       day: '2-digit',
@@ -100,6 +120,7 @@ const BoardingPassList = () => {
   };
 
   const formatTime = (dateString) => {
+    if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleTimeString('fr-FR', {
       hour: '2-digit',
@@ -107,173 +128,191 @@ const BoardingPassList = () => {
     });
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusInfo = (status) => {
     switch (status) {
       case 'issued':
-        return '✅';
+        return { icon: <CheckIcon />, label: 'Émis', color: 'success' };
       case 'boarded':
-        return '🛫';
+        return { icon: <FlightIcon />, label: 'Embarqué', color: 'primary' };
       case 'cancelled':
-        return '❌';
+        return { icon: <CancelIcon />, label: 'Annulé', color: 'error' };
       case 'expired':
-        return '⏰';
+        return { icon: <TimerIcon />, label: 'Expiré', color: 'warning' };
       default:
-        return '📋';
-    }
-  };
-
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'issued':
-        return 'Émis';
-      case 'boarded':
-        return 'Embarqué';
-      case 'cancelled':
-        return 'Annulé';
-      case 'expired':
-        return 'Expiré';
-      default:
-        return status;
+        return { icon: <TicketIcon />, label: status, color: 'default' };
     }
   };
 
   if (loading) {
     return (
-      <div className="boarding-pass-list-container">
-        <div className="loading">
-          <div className="spinner"></div>
-          <p>Chargement de vos boarding passes...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="boarding-pass-list-container">
-        <div className="error-message">
-          <span>⚠️</span>
-          <p>{error}</p>
-          <button onClick={fetchBoardingPasses} className="retry-button">
-            Réessayer
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (boardingPasses.length === 0) {
-    return (
-      <div className="boarding-pass-list-container">
-        <div className="empty-state">
-          <span className="empty-icon">🎫</span>
-          <h2>Aucun boarding pass</h2>
-          <p>Vous n'avez pas encore de boarding pass émis.</p>
-          <p>Effectuez un check-in pour obtenir votre boarding pass.</p>
-        </div>
-      </div>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 2 }}>
+        <CircularProgress size={60} thickness={4} />
+        <Typography variant="h6" color="textSecondary">Chargement de vos boarding passes...</Typography>
+      </Box>
     );
   }
 
   return (
-    <div className="boarding-pass-list-container">
-      <h1 className="page-title">
-        <span className="title-icon">🎫</span>
-        Mes Boarding Passes
-      </h1>
+    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', py: 6 }}>
+      <Container maxWidth="lg">
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 5, gap: 2 }}>
+          <TicketIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+          <Typography variant="h1">Mes Boarding Passes</Typography>
+        </Box>
 
-      <div className="boarding-passes-grid">
-        {boardingPasses.map((pass) => (
-          <div key={pass.pass_id} className={`boarding-pass-card status-${pass.status}`}>
-            <div className="boarding-pass-header">
-              <div className="pass-status">
-                <span className="status-icon">{getStatusIcon(pass.status)}</span>
-                <span className="status-label">{getStatusLabel(pass.status)}</span>
-              </div>
-              <div className="pass-id">Pass #{pass.pass_id}</div>
-            </div>
+        {error && (
+          <Alert severity="error" sx={{ mb: 4, borderRadius: 3 }} action={
+            <Button color="inherit" size="small" onClick={fetchBoardingPasses} startIcon={<RefreshIcon />}>Réessayer</Button>
+          }>
+            {error}
+          </Alert>
+        )}
 
-            <div className="boarding-pass-body">
-              <div className="flight-info">
-                <div className="flight-number">
-                  <span className="label">Vol/Train</span>
-                  <span className="value">{pass.flight_train_number}</span>
-                </div>
+        {boardingPasses.length === 0 ? (
+          <Paper elevation={0} sx={{ p: { xs: 4, md: 8 }, textAlign: 'center', borderRadius: 4 }}>
+            <TicketIcon sx={{ fontSize: 100, color: 'text.disabled', mb: 3, opacity: 0.2 }} />
+            <Typography variant="h2" color="textSecondary" gutterBottom>Aucun boarding pass</Typography>
+            <Typography variant="body1" color="textSecondary" sx={{ mb: 4, maxWidth: 500, mx: 'auto' }}>
+              Vous n'avez pas encore de boarding pass émis. Effectuez un check-in pour obtenir votre boarding pass.
+            </Typography>
+            <Button variant="contained" href="/user/voyages" sx={{ borderRadius: 3 }}>
+              Voir mes voyages
+            </Button>
+          </Paper>
+        ) : (
+          <Grid container spacing={4}>
+            {boardingPasses.map((pass) => {
+              const statusInfo = getStatusInfo(pass.status);
+              return (
+                <Grid item xs={12} md={6} key={pass.pass_id}>
+                  <Card elevation={0} sx={{
+                    borderRadius: 4,
+                    border: '1px solid #e2e8f0',
+                    '&:hover': { boxShadow: theme.shadows[4] },
+                    transition: '0.3s'
+                  }}>
+                    <CardHeader
+                      sx={{
+                        bgcolor: pass.status === 'boarded' ? 'primary.main' : 'secondary.main',
+                        color: 'white',
+                        py: 2
+                      }}
+                      avatar={
+                        <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }}>
+                          {statusInfo.icon}
+                        </Avatar>
+                      }
+                      title={<Typography variant="h4" color="white" sx={{ fontSize: '1.25rem' }}>{statusInfo.label}</Typography>}
+                      action={
+                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 700, mr: 2, mt: 1, display: 'block' }}>
+                          PASS #{pass.pass_id}
+                        </Typography>
+                      }
+                    />
+                    <CardContent sx={{ p: 4 }}>
+                      <Grid container spacing={3}>
+                        <Grid item xs={12} sm={7}>
+                          <Box sx={{ mb: 3 }}>
+                            <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>Vol / Train</Typography>
+                            <Typography variant="h2" sx={{ fontSize: '2rem', fontFamily: 'monospace', mt: 0.5, color: 'primary.dark' }}>{pass.flight_train_number}</Typography>
+                          </Box>
 
-                <div className="gate-seat-row">
-                  <div className="gate-info">
-                    <span className="label">Porte</span>
-                    <span className="value">{pass.gate || 'N/A'}</span>
-                  </div>
-                  <div className="seat-info">
-                    <span className="label">Place</span>
-                    <span className="value">{pass.seat || 'N/A'}</span>
-                  </div>
-                </div>
+                          <Grid container spacing={2} sx={{ mb: 3 }}>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>Porte</Typography>
+                              <Typography variant="h5" fontWeight={600}>{pass.gate || 'N/A'}</Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>Place</Typography>
+                              <Typography variant="h5" fontWeight={600}>{pass.seat || 'N/A'}</Typography>
+                            </Grid>
+                          </Grid>
 
-                <div className="boarding-time">
-                  <span className="label">Embarquement</span>
-                  <span className="value">
-                    {formatDate(pass.boarding_time)} à {formatTime(pass.boarding_time)}
-                  </span>
-                </div>
+                          <Box sx={{ mb: 3 }}>
+                            <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>Embarquement</Typography>
+                            <Typography variant="body1" fontWeight={600} sx={{ fontSize: '1.1rem' }}>
+                              {formatDate(pass.boarding_time)} à {formatTime(pass.boarding_time)}
+                            </Typography>
+                          </Box>
 
-                {pass.pmr_assistance && (
-                  <div className="pmr-badges">
-                    {pass.pmr_assistance && (
-                      <span className="badge badge-pmr">♿ Assistance PMR</span>
-                    )}
-                    {pass.pmr_priority && (
-                      <span className="badge badge-priority">⭐ Embarquement prioritaire</span>
-                    )}
-                    {pass.wheelchair_required && (
-                      <span className="badge badge-wheelchair">🦽 Fauteuil roulant</span>
-                    )}
-                  </div>
-                )}
-              </div>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            {pass.pmr_assistance && (
+                              <Chip
+                                icon={<AccessibleIcon fontSize="small" />}
+                                label="Assistance PMR"
+                                color="primary"
+                                variant="outlined"
+                                size="small"
+                                sx={{ fontWeight: 600, px: 1 }}
+                              />
+                            )}
+                            {pass.pmr_priority && (
+                              <Chip
+                                icon={<PriorityIcon fontSize="small" />}
+                                label="Priorité"
+                                color="warning"
+                                variant="outlined"
+                                size="small"
+                                sx={{ fontWeight: 600, px: 1 }}
+                              />
+                            )}
+                          </Box>
+                        </Grid>
 
-              <div className="qr-code-section">
-                <div className="pass-id-badge">
-                  <span className="pass-id-label">Pass ID</span>
-                  <span className="pass-id-number">{pass.pass_id}</span>
-                </div>
-                <QRCodeSVG
-                  value={generateQRData(pass)}
-                  size={180}
-                  level="H"
-                  includeMargin={true}
-                />
-                <p className="qr-instruction">
-                  Présentez ce QR code à la porte d'embarquement
-                </p>
-                <p className="qr-instruction-alt">
-                  Ou entrez le Pass ID <strong>{pass.pass_id}</strong> sur la borne
-                </p>
-              </div>
-            </div>
+                        <Grid item xs={12} sm={5} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                          <Box
+                            sx={{
+                              p: 2,
+                              bgcolor: '#f8fafc',
+                              borderRadius: 4,
+                              border: '2px dashed #cbd5e0',
+                              textAlign: 'center',
+                              width: '100%',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <Box sx={{ p: 1, bgcolor: 'white', borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.05)', mb: 2 }}>
+                              <QRCodeSVG
+                                value={generateQRData(pass)}
+                                size={150}
+                                level="H"
+                                includeMargin={false}
+                              />
+                            </Box>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500, lineHeight: 1.2 }}>
+                              Scannez ce code ou utilisez le Pass ID <strong>{pass.pass_id}</strong>
+                            </Typography>
+                          </Box>
+                        </Grid>
+                      </Grid>
 
-            <div className="boarding-pass-footer">
-              <div className="issued-info">
-                <span className="label">Émis le</span>
-                <span className="value">
-                  {formatDate(pass.issued_at)} à {formatTime(pass.issued_at)}
-                </span>
-              </div>
-              {pass.boarded_at && (
-                <div className="boarded-info">
-                  <span className="label">Embarqué le</span>
-                  <span className="value">
-                    {formatDate(pass.boarded_at)} à {formatTime(pass.boarded_at)}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+                      <Divider sx={{ my: 3.5 }} />
+
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box>
+                          <Typography variant="caption" color="textSecondary" sx={{ display: 'block', fontWeight: 600 }}>Émis le</Typography>
+                          <Typography variant="body2" fontWeight={500} color="textPrimary">{formatDate(pass.issued_at)} à {formatTime(pass.issued_at)}</Typography>
+                        </Box>
+                        {pass.boarded_at && (
+                          <Box sx={{ textAlign: 'right' }}>
+                            <Typography variant="caption" sx={{ display: 'block', fontWeight: 600, color: 'success.main' }}>Embarqué</Typography>
+                            <Typography variant="body2" fontWeight={600} color="success.dark">{formatDate(pass.boarded_at)} à {formatTime(pass.boarded_at)}</Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              );
+            })}
+          </Grid>
+        )}
+      </Container>
+    </Box>
   );
 };
 
 export default BoardingPassList;
+

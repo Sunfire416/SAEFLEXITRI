@@ -1000,10 +1000,10 @@ class SupabaseService {
                 .from('reservations')
                 .select('qr_code_data, ticket_qr_code')
                 .eq('id_voyage', voyageId)
-                .single();
+                .limit(1);
 
-            if (error) return null;
-            return data;
+            if (error || !data || data.length === 0) return null;
+            return data[0];
         } catch (error) {
             return null;
         }

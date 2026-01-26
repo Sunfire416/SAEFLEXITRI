@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import './Navbar.css';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Chip } from '@mui/material';
+import { Chip, Button } from '@mui/material';
 import logo from '../../assets/images/Flexitrip.png';
 import defaultProfileImage from '../../assets/images/younes.png'; // Image par défaut
 import { AuthContext } from '../../context/AuthContext';
@@ -27,8 +27,8 @@ function Navbar() {
         return localStorage.getItem('profileImage') || user?.profilePicture || defaultProfileImage;
     });
 
-    
-    
+
+
 
     const toggleMobileMenu = () => {
         setMobileMenuOpen(!mobileMenuOpen);
@@ -93,7 +93,7 @@ function Navbar() {
             };
         }
     }, []);
-    
+
 
     // Assurer la navigation vers les routes utilisateur sans forcer /user/home
     useEffect(() => {
@@ -134,6 +134,9 @@ function Navbar() {
                                 <a href="/search" className="nav-links">Réserver</a>
                             </li>
                             <li className="nav-item">
+                                <a href="/user/baggage-tracking" className="nav-links">Bagages</a>
+                            </li>
+                            <li className="nav-item">
                                 <a href="/mon-trajet" className="nav-links">Mon trajet</a>
                             </li>
                             <li className="nav-item">
@@ -144,22 +147,7 @@ function Navbar() {
                 </ul>
 
                 {/* Chip DEMO Mode */}
-                {isDemoMode() && (
-                    <Chip 
-                        label="DEMO" 
-                        size="small" 
-                        sx={{ 
-                            bgcolor: '#fff3cd', 
-                            color: '#856404',
-                            fontWeight: 600,
-                            fontFamily: 'Inter',
-                            mr: 2,
-                            cursor: 'pointer',
-                            '&:hover': { bgcolor: '#ffe69c' }
-                        }}
-                        onClick={toggleDemoMode}
-                    />
-                )}
+
 
                 {/* User Section */}
                 {user ? (
@@ -183,7 +171,7 @@ function Navbar() {
                                 <a href="/user/notifications">📬 Notifications <AngleRightIcon className="icon-Drop" /></a>
                                 <a href="/user/voyages">✈️ Mes Voyages <AngleRightIcon className="icon-Drop" /></a>
                                 {(user.role === 'PMR' || user.role === 'Accompagnant') && (
-                                    <a href="/user/bagages">🧳 Mes bagages <AngleRightIcon className="icon-Drop" /></a>
+                                    <a href="/user/baggage-tracking">🧳 Mes bagages <AngleRightIcon className="icon-Drop" /></a>
                                 )}
                                 <a href="/user/checkin">📋 Check-in <AngleRightIcon className="icon-Drop" /></a>
                                 <a href="/user/boarding">🎫 Boarding Pass <AngleRightIcon className="icon-Drop" /></a>
@@ -205,16 +193,16 @@ function Navbar() {
                                         style={{ display: 'none' }}
                                     />
                                 </label>
-                                <button onClick={handleLogout} className="btn-logout">
+                                <Button onClick={handleLogout} variant="text" sx={{ borderRadius: 2, textTransform: 'none', mt: 1 }}>
                                     Logout <AngleRightIcon className="icon-Drop" />
-                                </button>
+                                </Button>
                             </div>
                         )}
                     </div>
                 ) : (
                     <div className="auth-links">
-                        <a href="/login" className="btn-nav">Sign In</a>
-                        <a href="/signup" className="btn-nav">Register</a>
+                        <Button href="/login" color="primary" variant="text" sx={{ textTransform: 'none' }}>Sign In</Button>
+                        <Button href="/signup" color="primary" variant="outlined" sx={{ textTransform: 'none', ml: 1 }}>Register</Button>
                     </div>
                 )}
 
@@ -252,7 +240,7 @@ function Navbar() {
                             <span className="user-role">{user.role}</span>
                             <div className="profile-actions">
                                 <a href="/user/profile" className="profile-link">
-                                    <UserIcon className='icon-user' />{/* Icône SVG */} Profile   
+                                    <UserIcon className='icon-user' />{/* Icône SVG */} Profile
                                 </a>
                                 <a href="/user/settings" className="profile-link">
                                     <SettingsIcon className="icon-settings" /> {/* Icône SVG */} Settings
@@ -262,8 +250,8 @@ function Navbar() {
                         </div>
                     ) : (
                         <div className="auth-links-menu">
-                            <a href="/login" className="btn btn-primary">Sign In</a>
-                            <a href="/signup" className="btn btn-secondary">Register</a>
+                            <Button href="/login" variant="contained" color="primary" sx={{ textTransform: 'none' }}>Sign In</Button>
+                            <Button href="/signup" variant="outlined" sx={{ textTransform: 'none', ml: 1 }}>Register</Button>
                         </div>
                     )}
                 </div>
@@ -271,48 +259,48 @@ function Navbar() {
                     {!user && (
                         <>
                             <li className="nav-item">
-                                <a href="/pmr-assistance" className="nav-links" onClick={toggleMobileMenu}>PMR Assistance<AngleRightIcon className="icon-angle"/></a>
+                                <a href="/pmr-assistance" className="nav-links" onClick={toggleMobileMenu}>PMR Assistance<AngleRightIcon className="icon-angle" /></a>
                             </li>
                             <li className="nav-item">
-                                <a href="/baggage-tracking" className="nav-links" onClick={toggleMobileMenu}>Baggage Tracking<AngleRightIcon className="icon-angle"/></a>
+                                <a href="/baggage-tracking" className="nav-links" onClick={toggleMobileMenu}>Baggage Tracking<AngleRightIcon className="icon-angle" /></a>
                             </li>
                             <li className="nav-item">
-                                <a href="/ewallet" className="nav-links" onClick={toggleMobileMenu}>e-Wallet<AngleRightIcon className="icon-angle"/></a>
+                                <a href="/ewallet" className="nav-links" onClick={toggleMobileMenu}>e-Wallet<AngleRightIcon className="icon-angle" /></a>
                             </li>
                         </>
                     )}
                     {user && (
                         <>
                             <li className="nav-item">
-                                <a href="/search" className="nav-links" onClick={toggleMobileMenu}>Réserver<AngleRightIcon className="icon-angle"/></a>
+                                <a href="/search" className="nav-links" onClick={toggleMobileMenu}>Réserver<AngleRightIcon className="icon-angle" /></a>
                             </li>
                             <li className="nav-item">
-                                <a href="/mon-trajet" className="nav-links" onClick={toggleMobileMenu}>Mon trajet<AngleRightIcon className="icon-angle"/></a>
+                                <a href="/mon-trajet" className="nav-links" onClick={toggleMobileMenu}>Mon trajet<AngleRightIcon className="icon-angle" /></a>
                             </li>
                             <li className="nav-item">
-                                <a href="/user/voyages" className="nav-links" onClick={toggleMobileMenu}>Mes Voyages<AngleRightIcon className="icon-angle"/></a>
+                                <a href="/user/voyages" className="nav-links" onClick={toggleMobileMenu}>Mes Voyages<AngleRightIcon className="icon-angle" /></a>
                             </li>
                             {(user.role === 'PMR' || user.role === 'Accompagnant') && (
                                 <li className="nav-item">
-                                    <a href="/user/bagages" className="nav-links" onClick={toggleMobileMenu}>Mes bagages<AngleRightIcon className="icon-angle"/></a>
+                                    <a href="/user/baggage-tracking" className="nav-links" onClick={toggleMobileMenu}>Mes bagages<AngleRightIcon className="icon-angle" /></a>
                                 </li>
                             )}
                             <li className="nav-item">
-                                <a href="/user/checkin" className="nav-links" onClick={toggleMobileMenu}>Check-in<AngleRightIcon className="icon-angle"/></a>
+                                <a href="/user/checkin" className="nav-links" onClick={toggleMobileMenu}>Check-in<AngleRightIcon className="icon-angle" /></a>
                             </li>
                             <li className="nav-item">
-                                <a href="/user/boarding" className="nav-links" onClick={toggleMobileMenu}>Boarding Pass<AngleRightIcon className="icon-angle"/></a>
+                                <a href="/user/boarding" className="nav-links" onClick={toggleMobileMenu}>Boarding Pass<AngleRightIcon className="icon-angle" /></a>
                             </li>
                             <li className="nav-item">
-                                <a href="/user/access" className="nav-links" onClick={toggleMobileMenu}>Wallet & QR<AngleRightIcon className="icon-angle"/></a>
+                                <a href="/user/access" className="nav-links" onClick={toggleMobileMenu}>Wallet & QR<AngleRightIcon className="icon-angle" /></a>
                             </li>
                             {user.role === 'Agent' && (
                                 <>
                                     <li className="nav-item">
-                                        <a href="/agent/dashboard" className="nav-links" onClick={toggleMobileMenu}>Dashboard Agent<AngleRightIcon className="icon-angle"/></a>
+                                        <a href="/agent/dashboard" className="nav-links" onClick={toggleMobileMenu}>Dashboard Agent<AngleRightIcon className="icon-angle" /></a>
                                     </li>
                                     <li className="nav-item">
-                                        <a href="/agent/bagages/scan" className="nav-links" onClick={toggleMobileMenu}>Scan bagage<AngleRightIcon className="icon-angle"/></a>
+                                        <a href="/agent/bagages/scan" className="nav-links" onClick={toggleMobileMenu}>Scan bagage<AngleRightIcon className="icon-angle" /></a>
                                     </li>
                                 </>
                             )}

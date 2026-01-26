@@ -1,10 +1,41 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Box, Container, Paper, Alert } from '@mui/material';
-import './BookingResult.css';
+import {
+    Box,
+    Container,
+    Paper,
+    Alert,
+    Button,
+    Typography,
+    Grid,
+    Chip,
+    Divider,
+    Avatar,
+    useTheme,
+    Card,
+    CardContent,
+    Stack,
+    TextField,
+    CircularProgress
+} from '@mui/material';
+import {
+    CheckCircle as CheckCircleIcon,
+    History as HistoryIcon,
+    Search as SearchIcon,
+    Print as PrintIcon,
+    Info as InfoIcon,
+    Accessible as AccessibleIcon,
+    Fingerprint as FingerprintIcon,
+    AirplaneTicket as TicketIcon,
+    Payments as PaymentsIcon,
+    Timeline as TimelineIcon,
+    Navigation as NavigationIcon,
+    ArrowForward as ArrowForwardIcon
+} from '@mui/icons-material';
 
 const BookingResult = () => {
+    const theme = useTheme();
     const location = useLocation();
     const navigate = useNavigate();
     const { booking } = location.state || {};
@@ -34,24 +65,22 @@ const BookingResult = () => {
     if (!effectiveBooking) {
         if (loading) {
             return (
-                <div className="booking-result-container">
-                    <div className="error-card">
-                        <h2>⏳ Chargement des données de démo…</h2>
-                        <p>Patientez un instant, les informations sont en cours de chargement.</p>
-                    </div>
-                </div>
+                <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
+                    <Stack spacing={3} alignItems="center">
+                        <CircularProgress size={60} />
+                        <Typography variant="h5" color="textSecondary">Chargement des données...</Typography>
+                    </Stack>
+                </Box >
             );
         }
         return (
-            <div className="booking-result-container">
-                <div className="error-card">
-                    <h2>❌ Aucune réservation trouvée</h2>
-                    <p>Retournez à la recherche pour créer une réservation</p>
-                    <button onClick={() => navigate('/user/search')}>
-                        Retour à la recherche
-                    </button>
-                </div>
-            </div>
+            <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
+                <Paper sx={{ p: 6, textAlign: 'center', borderRadius: 4, maxWidth: 500 }}>
+                    <Typography variant="h2" color="error" gutterBottom sx={{ fontSize: '2.5rem' }}>❌ Aucune réservation</Typography>
+                    <Typography color="textSecondary" sx={{ mb: 4 }}>Retournez à la recherche pour créer une réservation</Typography>
+                    <Button variant="contained" size="large" onClick={() => navigate('/user/search')}>Retour à la recherche</Button>
+                </Paper>
+            </Box>
         );
     }
 
@@ -60,17 +89,6 @@ const BookingResult = () => {
     const formatTime = (isoDate) => {
         if (!isoDate) return 'N/A';
         return new Date(isoDate).toLocaleTimeString('fr-FR', {
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'Europe/Paris'
-        });
-    };
-
-    const formatDateTime = (isoDate) => {
-        if (!isoDate) return 'N/A';
-        return new Date(isoDate).toLocaleString('fr-FR', {
-            day: '2-digit',
-            month: 'short',
             hour: '2-digit',
             minute: '2-digit',
             timeZone: 'Europe/Paris'
@@ -91,16 +109,6 @@ const BookingResult = () => {
         return icons[mode] || '🚗';
     };
 
-    const getWorkflowIcon = (type) => {
-        const icons = {
-            'MINIMAL': '🚌',
-            'LIGHT': '🚆',
-            'MODERATE': '✈️',
-            'FULL': '🌍'
-        };
-        return icons[type] || '🎫';
-    };
-
     const getWorkflowColor = (type) => {
         const colors = {
             'MINIMAL': '#22c55e',
@@ -108,391 +116,313 @@ const BookingResult = () => {
             'MODERATE': '#f59e0b',
             'FULL': '#ef4444'
         };
-        return colors[type] || '#667eea';
+        return colors[type] || theme.palette.primary.main;
     };
 
     return (
-        <Container maxWidth="lg" sx={{ py: 3 }}>
-            {demoMode && (
-                <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
-                    ⚠️ MODE DÉMO: données locales affichées
-                </Alert>
-            )}
-            {/* Success Header */}
-            <Box className="success-header">
-                <div className="success-icon">✅</div>
-                <h1>Réservation Confirmée !</h1>
-                <p>Votre voyage a été réservé avec succès</p>
-            </Box>
+        <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: 6 }}>
+            <Container maxWidth="md">
+                {demoMode && (
+                    <Alert severity="warning" sx={{ mb: 3, borderRadius: 3 }}>
+                        ⚠️ MODE DÉMO: données locales affichées
+                    </Alert>
+                )}
 
-            {/* Workflow Badge */}
-            <div 
-                className="workflow-badge"
-                style={{ backgroundColor: getWorkflowColor(workflow_type) }}
-            >
-                <span className="workflow-icon">{getWorkflowIcon(workflow_type)}</span>
-                <span className="workflow-type">Workflow {workflow_type}</span>
-            </div>
+                {/* Success Header */}
+                <Paper
+                    elevation={0}
+                    sx={{
+                        p: { xs: 4, md: 6 },
+                        textAlign: 'center',
+                        background: 'linear-gradient(135deg, #2eb378 0%, #5bbcea 100%)',
+                        color: 'white',
+                        borderRadius: 4,
+                        mb: 4,
+                        boxShadow: '0 8px 32px rgba(46, 179, 120, 0.25)'
+                    }}
+                >
+                    <CheckCircleIcon sx={{ fontSize: 80, mb: 2, filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.1))' }} />
+                    <Typography variant="h1" sx={{ color: 'white', mb: 1, fontSize: { xs: '2rem', md: '2.5rem' } }}>Réservation Confirmée !</Typography>
+                    <Typography variant="h5" sx={{ opacity: 0.95, fontWeight: 400 }}>Votre voyage a été réservé avec succès</Typography>
+                </Paper>
 
-            {/* Main Info Card */}
-            <div className="booking-card">
-                <div className="booking-header">
-                    <h2>📋 Détails de votre réservation</h2>
-                    <span className="reservation-id">
-                        Réservation #{bookingData.reservation_id || bookingData.voyage_id}
-                    </span>
-                </div>
+                {/* Workflow Badge */}
+                <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
+                    <Chip
+                        label={`Workflow ${workflow_type}`}
+                        sx={{
+                            bgcolor: getWorkflowColor(workflow_type),
+                            color: 'white',
+                            fontWeight: 800,
+                            px: 2.5,
+                            height: 44,
+                            fontSize: '1.1rem',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                            letterSpacing: 0.5
+                        }}
+                    />
+                </Box>
 
-                <div className="booking-details">
-                    <div className="detail-row">
-                        <span className="detail-label">📍 Référence</span>
-                        <span className="detail-value">{bookingData.booking_reference}</span>
-                    </div>
+                {/* Main Info Card */}
+                <Card sx={{ borderRadius: 4, mb: 4, border: '1px solid #e2e8f0' }}>
+                    <CardContent sx={{ p: { xs: 3, md: 4 } }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
+                            <Typography variant="h3">📋 Détails du voyage</Typography>
+                            <Chip
+                                label={`Resa #${bookingData.reservation_id || bookingData.voyage_id}`}
+                                color="secondary"
+                                variant="outlined"
+                                sx={{ fontWeight: 700, borderRadius: 2 }}
+                            />
+                        </Box>
 
-                    <div className="detail-row">
-                        <span className="detail-label">🏢 Opérateur</span>
-                        <span className="detail-value">{bookingData.operator}</span>
-                    </div>
+                        <Grid container spacing={2} sx={{ mb: 4 }}>
+                            {[
+                                { label: '📍 Référence', value: bookingData.booking_reference, icon: <TicketIcon fontSize="small" color="primary" /> },
+                                { label: '🏢 Opérateur', value: bookingData.operator, icon: <NavigationIcon fontSize="small" color="primary" /> },
+                                { label: '💰 Prix Total', value: `${total_price?.toFixed(2)}€`, icon: <PaymentsIcon fontSize="small" color="primary" /> },
+                                { label: '💳 Solde restant', value: `${remaining_balance?.toFixed(2)}€`, icon: <PaymentsIcon fontSize="small" color="primary" /> }
+                            ].map((item, idx) => (
+                                <Grid item xs={12} sm={6} key={idx}>
+                                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: '#f9fafb', display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        <Box sx={{ p: 1, bgcolor: 'white', borderRadius: 1.5, display: 'flex', boxShadow: theme.shadows[1] }}>{item.icon}</Box>
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{item.label}</Typography>
+                                            <Typography variant="body1" fontWeight={700} color="text.primary">{item.value}</Typography>
+                                        </Box>
+                                    </Paper>
+                                </Grid>
+                            ))}
+                        </Grid>
 
-                    <div className="detail-row">
-                        <span className="detail-label">💰 Prix</span>
-                        <span className="detail-value">{total_price?.toFixed(2)}€</span>
-                    </div>
-
-                    <div className="detail-row">
-                        <span className="detail-label">💳 Solde restant</span>
-                        <span className="detail-value">{remaining_balance?.toFixed(2)}€</span>
-                    </div>
-                </div>
-
-                {/* Assistance PMR */}
-                {bookingData.assistance && (
-                    <div className="assistance-info">
-                        <h3>🦽 Assistance PMR</h3>
-                        <div className="assistance-details">
-                            <p><strong>Agent:</strong> {bookingData.assistance.agent_name}</p>
-                            <p><strong>Point de rencontre:</strong> {bookingData.assistance.meeting_point}</p>
-                            {bookingData.assistance.meeting_time && (
-                                <p><strong>Heure:</strong> {new Date(bookingData.assistance.meeting_time).toLocaleString('fr-FR')}</p>
+                        {/* Components PMR, Biometric, etc. */}
+                        <Stack spacing={2}>
+                            {bookingData.assistance && (
+                                <Paper sx={{ p: 3, bgcolor: '#f0f9ff', borderRadius: 3, borderLeft: '6px solid #3b82f6' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                                        <AccessibleIcon color="primary" />
+                                        <Typography variant="h4" color="#1e40af">Assistance PMR</Typography>
+                                    </Box>
+                                    <Grid container spacing={2}>
+                                        <Grid item xs={12} sm={4}>
+                                            <Typography variant="caption" color="text.secondary">Agent affecté</Typography>
+                                            <Typography variant="body1" fontWeight={600}>{bookingData.assistance.agent_name}</Typography>
+                                        </Grid>
+                                        <Grid item xs={12} sm={8}>
+                                            <Typography variant="caption" color="text.secondary">Point de rencontre</Typography>
+                                            <Typography variant="body1" fontWeight={600}>{bookingData.assistance.meeting_point}</Typography>
+                                        </Grid>
+                                    </Grid>
+                                </Paper>
                             )}
-                        </div>
-                    </div>
-                )}
 
-                {/* 🆕 Prise en Charge PMR - Multi-segments */}
-                {bookingData.prise_en_charge && Array.isArray(bookingData.prise_en_charge) && bookingData.prise_en_charge.length > 0 ? (
-                    <div className="prise-en-charge-card">
-                        <h3>📋 Prise en Charge PMR {bookingData.prise_en_charge.length > 1 && `(${bookingData.prise_en_charge.length} segments)`}</h3>
-                        {bookingData.prise_en_charge.map((pec, index) => (
-                            <div key={pec.id} className="pec-item">
-                                <div className="pec-header">
-                                    <h4>🚌 Étape {pec.etape_numero} - {pec.mode ? pec.mode.toUpperCase() : 'Transport'}</h4>
-                                    <span className={`pec-status ${pec.status}`}>
-                                        {pec.status === 'pending' && '⏳ En attente'}
-                                        {pec.status === 'validated' && '✅ Validée'}
-                                        {pec.status === 'cancelled' && '❌ Annulée'}
-                                    </span>
-                                </div>
-                                <p className="pec-info">
-                                    <strong>Lieu:</strong> {pec.location}
-                                    {pec.line && <> • <strong>Ligne:</strong> {pec.line}</>}
-                                    {pec.operator && <> • <strong>Opérateur:</strong> {pec.operator}</>}
-                                </p>
-                                {pec.status === 'pending' && (
-                                    <div className="pec-link-container">
-                                        <label>🔗 Lien de validation à partager au personnel :</label>
-                                        <div className="pec-url-box">
-                                            <input 
-                                                type="text" 
-                                                readOnly 
-                                                value={pec.validation_url} 
-                                                className="pec-url-input"
-                                                onClick={(e) => e.target.select()}
-                                            />
-                                            <button 
-                                                className="pec-copy-btn"
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(pec.validation_url);
-                                                    alert(`✅ Lien copié pour l'étape ${pec.etape_numero} !`);
-                                                }}
-                                            >
-                                                📋 Copier
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                                {pec.status === 'validated' && (
-                                    <div className="pec-validated-info">
-                                        <p><strong>✅ Validée</strong></p>
-                                        {pec.validated_at && (
-                                            <p>Le {new Date(pec.validated_at).toLocaleString('fr-FR')}</p>
-                                        )}
-                                        {pec.validated_by && (
-                                            <p>Par : {pec.validated_by}</p>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                        
-                        <div className="suivi-button-container">
-                            <button 
-                                className="btn-suivi" 
-                                onClick={() => navigate(`/suivi-prise-en-charge/${bookingData.reservation_id}`)}
-                            >
-                                📊 Suivre toutes les prises en charge
-                            </button>
-                        </div>
-                        
-                        <p className="pec-note">
-                            💡 Le personnel de chaque transport pourra valider votre prise en charge via son lien
-                        </p>
-                    </div>
-                ) : (
-                    <div className="prise-en-charge-card" style={{background: '#f3f4f6', borderLeftColor: '#9ca3af'}}>
-                        <h3>📋 Prise en Charge PMR</h3>
-                        <p style={{margin: 0, color: '#6b7280', fontSize: '14px'}}>
-                            ℹ️ Cette fonctionnalité n'était pas disponible lors de la création de cette réservation. 
-                            Elle sera activée pour vos prochaines réservations.
-                        </p>
-                    </div>
-                )}
-
-                {/* Biometric Data */}
-                {bookingData.biometric && (
-                    <div className="biometric-info">
-                        <h3>🔐 Vérification biométrique</h3>
-                        <div className="biometric-details">
-                            <p>✅ Enrôlement réussi</p>
-                            <p>Confiance: {(bookingData.biometric.confidence * 100).toFixed(1)}%</p>
-                            {bookingData.biometric.liveness && (
-                                <p>Liveness: {bookingData.biometric.liveness}</p>
+                            {bookingData.biometric && (
+                                <Paper sx={{ p: 3, bgcolor: '#fdf2f8', borderRadius: 3, borderLeft: '6px solid #db2777' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                                        <FingerprintIcon sx={{ color: '#db2777' }} />
+                                        <Typography variant="h4" sx={{ color: '#9d174d' }}>Vérification biométrique</Typography>
+                                    </Box>
+                                    <Typography variant="body2">✅ Enrôlement réussi • Confiance: <strong>{(bookingData.biometric.confidence * 100).toFixed(1)}%</strong></Typography>
+                                </Paper>
                             )}
-                        </div>
-                    </div>
-                )}
 
-                {/* Check-in Info (for flights) */}
-                {bookingData.checkin && (
-                    <div className="checkin-info">
-                        <h3>✈️ Check-in</h3>
-                        <div className="checkin-details">
-                            <div className="checkin-row">
-                                <span>Boarding Pass:</span>
-                                <strong>{bookingData.checkin.boarding_pass}</strong>
-                            </div>
-                            <div className="checkin-row">
-                                <span>Porte:</span>
-                                <strong>{bookingData.checkin.gate}</strong>
-                            </div>
-                            <div className="checkin-row">
-                                <span>Siège:</span>
-                                <strong>{bookingData.checkin.seat}</strong>
-                            </div>
-                            {bookingData.checkin.boarding_time && (
-                                <div className="checkin-row">
-                                    <span>Embarquement:</span>
-                                    <strong>{new Date(bookingData.checkin.boarding_time).toLocaleTimeString('fr-FR')}</strong>
-                                </div>
+                            {bookingData.prise_en_charge && Array.isArray(bookingData.prise_en_charge) && bookingData.prise_en_charge.length > 0 && (
+                                <Box sx={{ mt: 2 }}>
+                                    <Typography variant="h4" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                        <InfoIcon color="primary" /> Prise en Charge PMR
+                                    </Typography>
+                                    <Stack spacing={2}>
+                                        {bookingData.prise_en_charge.map((pec) => (
+                                            <Paper key={pec.id} variant="outlined" sx={{ p: 2.5, borderRadius: 3, borderColor: '#fbbf24', bgcolor: '#fffbeb' }}>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                                    <Typography variant="h6" fontWeight={700}>Étape {pec.etape_numero} • {pec.mode?.toUpperCase()}</Typography>
+                                                    <Chip
+                                                        label={pec.status === 'pending' ? 'En attente' : pec.status === 'validated' ? 'Validée' : 'Annulée'}
+                                                        color={pec.status === 'pending' ? 'warning' : pec.status === 'validated' ? 'success' : 'error'}
+                                                        size="small"
+                                                        sx={{ fontWeight: 700 }}
+                                                    />
+                                                </Box>
+                                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                                    <strong>Lieu:</strong> {pec.location} {pec.line && `• Ligne: ${pec.line}`}
+                                                </Typography>
+
+                                                {pec.status === 'pending' && (
+                                                    <Box sx={{ p: 2, bgcolor: 'white', borderRadius: 2, border: '1px dashed #fbbf24' }}>
+                                                        <Typography variant="caption" sx={{ display: 'block', mb: 1, color: '#92400e', fontWeight: 600 }}>Lien de validation pour le personnel :</Typography>
+                                                        <Box sx={{ display: 'flex', gap: 1 }}>
+                                                            <TextField size="small" fullWidth value={pec.validation_url} InputProps={{ readOnly: true, sx: { bgcolor: '#f9fafb', fontSize: '0.8rem', fontFamily: 'monospace' } }} />
+                                                            <Button
+                                                                variant="contained"
+                                                                color="warning"
+                                                                sx={{ borderRadius: 2, textTransform: 'none' }}
+                                                                onClick={() => {
+                                                                    navigator.clipboard.writeText(pec.validation_url);
+                                                                    alert('Lien copié !');
+                                                                }}
+                                                            >Copier</Button>
+                                                        </Box>
+                                                    </Box>
+                                                )}
+                                            </Paper>
+                                        ))}
+                                    </Stack>
+                                    <Button
+                                        variant="contained"
+                                        fullWidth
+                                        onClick={() => navigate(`/suivi-prise-en-charge/${bookingData.reservation_id}`)}
+                                        sx={{ mt: 2, py: 1.5, borderRadius: 3 }}
+                                    >📊 Suivre toutes les prises en charge</Button>
+                                </Box>
                             )}
-                        </div>
-                    </div>
-                )}
+                        </Stack>
+                    </CardContent>
+                </Card>
 
-                {/* OCR Data (for international flights) */}
-                {bookingData.ocr_data && (
-                    <div className="ocr-info">
-                        <h3>📄 Document vérifié</h3>
-                        <div className="ocr-details">
-                            <p>Type: {bookingData.ocr_data.document_type}</p>
-                            <p>Numéro: {bookingData.ocr_data.document_number}</p>
-                            <p>Confiance: {(bookingData.ocr_data.confidence * 100).toFixed(1)}%</p>
-                        </div>
-                    </div>
-                )}
-            </div>
+                {/* QR Code Card */}
+                {bookingData.qr_code && (
+                    <Paper
+                        elevation={0}
+                        sx={{
+                            p: { xs: 4, md: 6 },
+                            borderRadius: 4,
+                            textAlign: 'center',
+                            mb: 4,
+                            border: '3px solid',
+                            borderColor: 'secondary.main',
+                            bgcolor: 'white'
+                        }}
+                    >
+                        <Typography variant="h2" gutterBottom>📱 Votre QR Code</Typography>
+                        <Typography variant="body1" color="textSecondary" sx={{ mb: 4 }}>Présentez ce code lors de votre voyage pour valider vos accès</Typography>
 
-            {/* QR Code Card */}
-            {bookingData.qr_code && (
-                    <Paper sx={{ p: 3, border: '3px solid', borderColor: 'secondary.main', borderRadius: 2, textAlign: 'center', mb: 2 }}>
-                        <h2>📱 Votre QR Code</h2>
-                        <p className="qr-instruction">Présentez ce code lors de votre voyage</p>
-                    
-                        <Box sx={{ display: 'inline-block', p: 2, backgroundColor: 'white', borderRadius: 2 }}>
-                            <QRCodeSVG 
+                        <Box sx={{ display: 'inline-block', p: 3, bgcolor: 'white', borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.08)', mb: 4 }}>
+                            <QRCodeSVG
                                 value={bookingData.qr_code.qr_url || bookingData.qr_code.qr_data}
-                                size={200}
+                                size={220}
                                 level="H"
                                 includeMargin={true}
                             />
                         </Box>
 
-                        <div className="validation-code">
-                            <span className="code-label">Code de validation</span>
-                            <span className="code-value">{bookingData.qr_code.display_code}</span>
-                        </div>
-
-                        <p className="qr-help">
-                            💡 Vous pouvez également donner le code de validation au personnel
-                        </p>
+                        <Box sx={{ p: 3, bgcolor: '#f8fafc', borderRadius: 3, maxWidth: 400, mx: 'auto', border: '1px solid #e2e8f0' }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, fontWeight: 700, textTransform: 'uppercase' }}>Code de validation manuel</Typography>
+                            <Typography variant="h2" sx={{ letterSpacing: 6, fontFamily: 'monospace', color: 'primary.dark' }}>{bookingData.qr_code.display_code}</Typography>
+                        </Box>
                     </Paper>
-            )}
+                )}
 
-            {/* 🆕 Itinéraire Détaillé */}
-            {itinerary && itinerary.segments && itinerary.segments.length > 0 && (
-                <div className="itinerary-card">
-                    <h2>🗺️ Votre Itinéraire Détaillé</h2>
-                    <div className="itinerary-timeline">
-                        {itinerary.segments.map((segment, idx) => (
-                            <div key={idx} className="itinerary-segment">
-                                <div className="segment-timeline-marker">
-                                    <div className="segment-icon">{getTransportIcon(segment.mode)}</div>
-                                    {idx < itinerary.segments.length - 1 && <div className="timeline-connector"></div>}
-                                </div>
-                                
-                                <div className="segment-content">
-                                    <div className="segment-header">
-                                        <div className="segment-transport">
-                                            <strong>{(segment.mode || '').toUpperCase()}</strong>
-                                            {segment.line && (
-                                                <span className="segment-line-badge">Ligne {segment.line}</span>
-                                            )}
-                                            {segment.operator && (
-                                                <span className="segment-operator">{segment.operator}</span>
-                                            )}
-                                        </div>
-                                        <div className="segment-duration">
-                                            {segment.duration ? `${segment.duration}min` : ''}
-                                        </div>
-                                    </div>
-
-                                    <div className="segment-route">
-                                        <div className="route-point departure">
-                                            <span className="point-icon">🔵</span>
-                                            <div className="point-info">
-                                                <strong>{segment.departure_station || segment.from}</strong>
-                                                {segment.departure_time && (
-                                                    <span className="point-time">{formatTime(segment.departure_time)}</span>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="route-point arrival">
-                                            <span className="point-icon">🟢</span>
-                                            <div className="point-info">
-                                                <strong>{segment.arrival_station || segment.to}</strong>
-                                                {segment.arrival_time && (
-                                                    <span className="point-time">{formatTime(segment.arrival_time)}</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {segment.accessible === false && (
-                                        <div className="accessibility-warning">
-                                            ⚠️ Accessibilité limitée
-                                        </div>
+                {/* Itinerary Timeline */}
+                {itinerary && itinerary.segments && (
+                    <Box sx={{ mb: 6 }}>
+                        <Typography variant="h3" sx={{ mb: 4, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                            <NavigationIcon color="primary" /> Votre Itinéraire Détaillé
+                        </Typography>
+                        <Box sx={{ position: 'relative', pl: 4 }}>
+                            {itinerary.segments.map((segment, idx) => (
+                                <Box key={idx} sx={{ position: 'relative', mb: 4 }}>
+                                    {/* Line connector */}
+                                    {idx < itinerary.segments.length - 1 && (
+                                        <Box sx={{ position: 'absolute', left: -26, top: 40, bottom: -20, width: 4, bgcolor: 'secondary.light', opacity: 0.3, borderRadius: 2 }} />
                                     )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="itinerary-summary">
-                        <span>🕐 Durée totale: {itinerary.duration || itinerary.total_duration || 'N/A'} min</span>
-                        {itinerary.distance && (
-                            <span>📍 Distance: {(itinerary.distance / 1000).toFixed(1)} km</span>
-                        )}
-                    </div>
-                </div>
-            )}
 
-            {/* Timeline Card */}
-            {timeline && timeline.length > 0 && (
-                <div className="timeline-card">
-                    <h2>⏱️ Étapes effectuées</h2>
-                    <div className="timeline-steps">
-                        {timeline.map((step, idx) => (
-                            <div key={idx} className="timeline-step completed">
-                                <div className="step-number">{step.order}</div>
-                                <div className="step-info">
-                                    <strong>{step.step.replace(/_/g, ' ')}</strong>
-                                    <span className="step-duration">{step.duration}</span>
-                                </div>
-                                <div className="step-check">✓</div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
+                                    {/* Icon Marker */}
+                                    <Avatar
+                                        sx={{
+                                            position: 'absolute',
+                                            left: -48,
+                                            top: 0,
+                                            bgcolor: 'white',
+                                            color: 'text.primary',
+                                            border: '3px solid',
+                                            borderColor: 'secondary.main',
+                                            width: 48,
+                                            height: 48,
+                                            zIndex: 2,
+                                            fontSize: '1.5rem'
+                                        }}
+                                    >
+                                        {getTransportIcon(segment.mode)}
+                                    </Avatar>
 
-            {/* Payment Info */}
-            {payment && (
-                <div className="payment-card">
-                    <h2>💳 Paiement</h2>
-                    <div className="payment-details">
-                        <p><strong>Transaction ID:</strong></p>
-                        <p className="transaction-id">{payment.transaction_id}</p>
-                        <div className="payment-row">
-                            <span>Bloc:</span>
-                            <span>#{payment.block_number}</span>
-                        </div>
-                        <div className="payment-row">
-                            <span>Montant:</span>
-                            <span><strong>{payment.amount?.toFixed(2)}€</strong></span>
-                        </div>
-                        <div className="payment-row">
-                            <span>Frais:</span>
-                            <span>{payment.gas_fee?.toFixed(3)}€</span>
-                        </div>
-                        <div className="payment-row">
-                            <span>Statut:</span>
-                            <span className="status-confirmed">✅ {payment.status}</span>
-                        </div>
-                        <div className="payment-row">
-                            <span>Confirmations:</span>
-                            <span>{payment.confirmations}</span>
-                        </div>
-                    </div>
-                </div>
-            )}
+                                    <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid #e2e8f0', bgcolor: 'white' }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'flex-start' }}>
+                                            <Box>
+                                                <Typography variant="h6" fontWeight={800} color="primary.dark">{(segment.mode || '').toUpperCase()}</Typography>
+                                                {segment.operator && <Typography variant="caption" color="textSecondary">{segment.operator}</Typography>}
+                                            </Box>
+                                            <Chip label={`${segment.duration || '?'} min`} size="small" variant="outlined" sx={{ fontWeight: 700 }} />
+                                        </Box>
 
-            {/* Next Steps */}
-            <div className="next-steps-card">
-                <h2>🚀 Prochaines étapes</h2>
-                <p className="next-step-main">{bookingData.next_step || bookingData.steps_completed?.[bookingData.steps_completed.length - 1]}</p>
-                
-                <div className="steps-list">
-                    {bookingData.steps_completed && bookingData.steps_completed.map((step, idx) => (
-                        <div key={idx} className="completed-step">
-                            ✅ {step.replace(/_/g, ' ')}
-                        </div>
-                    ))}
-                </div>
-            </div>
+                                        <Stack spacing={2.5}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                <Box sx={{ width: 14, height: 14, borderRadius: '50%', bgcolor: 'primary.main', ring: '4px solid rgba(46, 179, 120, 0.1)' }} />
+                                                <Box>
+                                                    <Typography variant="body1" fontWeight={700}>{segment.departure_station || segment.from}</Typography>
+                                                    {segment.departure_time && <Typography variant="caption" color="text.secondary">{formatTime(segment.departure_time)}</Typography>}
+                                                </Box>
+                                            </Box>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                <Box sx={{ width: 14, height: 14, borderRadius: '50%', bgcolor: 'secondary.main' }} />
+                                                <Box>
+                                                    <Typography variant="body1" fontWeight={700}>{segment.arrival_station || segment.to}</Typography>
+                                                    {segment.arrival_time && <Typography variant="caption" color="text.secondary">{formatTime(segment.arrival_time)}</Typography>}
+                                                </Box>
+                                            </Box>
+                                        </Stack>
 
-            {/* Action Buttons */}
-            <div className="action-buttons">
-                <button 
-                    className="btn-primary"
-                    onClick={() => navigate('/user/voyages')}
-                >
-                    📖 Voir mes voyages
-                </button>
-                <button 
-                    className="btn-secondary"
-                    onClick={() => navigate('/user/search')}
-                >
-                    🔍 Nouvelle recherche
-                </button>
-                <button 
-                    className="btn-secondary"
-                    onClick={() => window.print()}
-                >
-                    🖨️ Imprimer
-                </button>
-            </div>
-        </Container>
+                                        {segment.accessible === false && (
+                                            <Alert severity="warning" sx={{ mt: 2, py: 0, borderRadius: 2 }}>Accessibilité limitée</Alert>
+                                        )}
+                                    </Paper>
+                                </Box>
+                            ))}
+                        </Box>
+                    </Box>
+                )}
+
+                {/* Final Actions */}
+                <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                        <Button
+                            variant="contained"
+                            fullWidth
+                            size="large"
+                            startIcon={<HistoryIcon />}
+                            onClick={() => navigate('/user/voyages')}
+                            sx={{ py: 2, borderRadius: 3, fontSize: '1.1rem' }}
+                        >
+                            Voir mes voyages
+                        </Button>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                        <Button
+                            variant="outlined"
+                            fullWidth
+                            size="large"
+                            startIcon={<SearchIcon />}
+                            onClick={() => navigate('/user/search')}
+                            sx={{ py: 2, borderRadius: 3, fontSize: '1.1rem' }}
+                        >
+                            Nouvelle recherche
+                        </Button>
+                    </Grid>
+                    <Grid item xs={12}>
+                        <Button
+                            variant="text"
+                            fullWidth
+                            startIcon={<PrintIcon />}
+                            onClick={() => window.print()}
+                            sx={{ color: 'text.secondary' }}
+                        >
+                            Imprimer ma confirmation
+                        </Button>
+                    </Grid>
+                </Grid>
+            </Container>
+        </Box>
     );
 };
 
 export default BookingResult;
+

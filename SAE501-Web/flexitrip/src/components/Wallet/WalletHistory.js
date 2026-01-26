@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import axios from 'axios';
 import './WalletHistory.css';
+import { Button } from '@mui/material';
 
 const WalletHistory = () => {
     const { user } = useContext(AuthContext);
@@ -118,9 +119,9 @@ const WalletHistory = () => {
                 <div className="error-message">
                     <span className="error-icon">⚠️</span>
                     <p>{error}</p>
-                    <button onClick={fetchWalletData} className="retry-button">
+                    <Button onClick={fetchWalletData} className="retry-button" variant="contained" color="primary" sx={{ textTransform: 'none' }}>
                         Réessayer
-                    </button>
+                    </Button>
                 </div>
             </div>
         );
@@ -140,33 +141,14 @@ const WalletHistory = () => {
 
             <div className="wallet-actions">
                 <div className="filter-buttons">
-                    <button
-                        className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
-                        onClick={() => setFilter('all')}
-                    >
-                        📋 Toutes ({transactions.length})
-                    </button>
-                    <button
-                        className={`filter-btn ${filter === 'sent' ? 'active' : ''}`}
-                        onClick={() => setFilter('sent')}
-                    >
-                        📤 Envoyées ({transactions.filter(t => getTransactionType(t) === 'sent').length})
-                    </button>
-                    <button
-                        className={`filter-btn ${filter === 'received' ? 'active' : ''}`}
-                        onClick={() => setFilter('received')}
-                    >
-                        📥 Reçues ({transactions.filter(t => getTransactionType(t) === 'received').length})
-                    </button>
+                    <Button className={`filter-btn ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')} sx={{ textTransform: 'none' }}>📋 Toutes ({transactions.length})</Button>
+                    <Button className={`filter-btn ${filter === 'sent' ? 'active' : ''}`} onClick={() => setFilter('sent')} sx={{ textTransform: 'none' }}>📤 Envoyées ({transactions.filter(t => getTransactionType(t) === 'sent').length})</Button>
+                    <Button className={`filter-btn ${filter === 'received' ? 'active' : ''}`} onClick={() => setFilter('received')} sx={{ textTransform: 'none' }}>📥 Reçues ({transactions.filter(t => getTransactionType(t) === 'received').length})</Button>
                 </div>
 
                 <div className="export-buttons">
-                    <button onClick={downloadCSV} className="export-btn csv-btn">
-                        📊 Exporter CSV
-                    </button>
-                    <button onClick={exportToPDF} className="export-btn pdf-btn">
-                        📄 Facture PDF
-                    </button>
+                    <Button onClick={downloadCSV} className="export-btn csv-btn" variant="outlined" sx={{ textTransform: 'none' }}>📊 Exporter CSV</Button>
+                    <Button onClick={exportToPDF} className="export-btn pdf-btn" variant="outlined" sx={{ textTransform: 'none', ml: 1 }}>📄 Facture PDF</Button>
                 </div>
             </div>
 

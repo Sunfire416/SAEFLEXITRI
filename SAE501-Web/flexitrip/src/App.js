@@ -114,8 +114,12 @@ function App() {
                         {/* Chat (PMR / Agent) */}
                         <Route path="/chat/reservation/:reservationId/etape/:etapeNumero" element={<RouteProtect allowedRoles={["PMR", "Agent"]}><ChatPage /></RouteProtect>} />
 
-                        {/* Bagages (PMR / Accompagnant) */}
-                        <Route path="/user/bagages" element={<RouteProtect allowedRoles={["PMR", "Accompagnant"]}><BaggageDashboard /></RouteProtect>} />
+                        {/* Bagages (PMR / Accompagnant) - baggage tracking */}
+                        <Route path="/user/baggage-tracking" element={<RouteProtect allowedRoles={["PMR", "Accompagnant"]}><BagagePage /></RouteProtect>} />
+                        {/* Legacy alias to keep old links working */}
+                        <Route path="/user/bagages" element={<RouteProtect allowedRoles={["PMR", "Accompagnant"]}><BagagePage /></RouteProtect>} />
+                        {/* Detail routes (alias both paths) */}
+                        <Route path="/user/baggage-tracking/:bagageId" element={<RouteProtect allowedRoles={["PMR", "Accompagnant"]}><BaggageDetail /></RouteProtect>} />
                         <Route path="/user/bagages/:bagageId" element={<RouteProtect allowedRoles={["PMR", "Accompagnant"]}><BaggageDetail /></RouteProtect>} />
 
                         {/* Agent PMR Dashboard */}

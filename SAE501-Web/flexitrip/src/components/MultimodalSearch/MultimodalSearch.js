@@ -3,6 +3,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Autocomplete, TextField } from '@mui/material';
+import { Button } from '@mui/material';
 import { debounce } from 'lodash';
 import './MultimodalSearch.css';
 
@@ -579,13 +580,15 @@ const MultimodalSearch = () => {
                                             </div>
                                         )}
 
-                                        <button
+                                        <Button
                                             className="btn-book-route"
                                             onClick={() => handleBooking(route)}
                                             disabled={bookingLoading}
+                                            variant="contained"
+                                            color="primary"
                                         >
                                             {bookingLoading ? '⏳ Réservation...' : '🎫 Réserver ce trajet'}
-                                        </button>
+                                        </Button>
                                     </div>
                                 );
                             })}
